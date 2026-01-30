@@ -1,0 +1,70 @@
+/* =========================
+   Sass Modules
+========================= */
+@use "sass:color";
+
+/* =========================
+   Load Bootstrap + Override Variable
+   (INI CARA YANG BENAR)
+========================= */
+@use "bootstrap/scss/bootstrap" as * with (
+  $primary: #c1121f,
+  $secondary: #f77f00,
+  $warning: #fcbf49
+);
+
+/* =========================
+   Global Styles
+========================= */
+body {
+  background-color: #f8f9fa;
+}
+
+.navbar {
+  background: linear-gradient(
+    90deg,
+    $primary,
+    $secondary,
+    $warning
+  );
+}
+
+.text-brand {
+  color: $primary;
+}
+
+/* =========================
+   Signin Page
+========================= */
+.signin-wrapper {
+  min-height: 70vh;
+  background: linear-gradient(
+    5deg,
+    color.adjust($primary, $lightness: 40%),
+    color.adjust($warning, $lightness: 35%)
+  );
+}
+
+.signin-card {
+  width: 100%;
+  max-width: 380px;
+  border-radius: 12px;
+  border: none;
+}
+
+/* =========================
+   Password Toggle
+========================= */
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 38px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  opacity: 0.7;
+  user-select: none;
+
+  &:hover {
+    opacity: 1;
+  }
+}
