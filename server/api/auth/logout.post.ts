@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
        * 2. Invalidate session
        */
       await lucia.invalidateSession(sessionId);
-      console.log("SESSION INVALIDATED:", sessionId);
+    //  console.log("SESSION INVALIDATED:", sessionId);
 
       /**
        * 3. Audit logout (AMAN)

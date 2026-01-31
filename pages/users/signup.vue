@@ -1,171 +1,167 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: ["auth", "superadmin"],
+  middleware: ["superadmin"],
 });
-import { ref, watch } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "~/stores/auth";
+import { reactive, ref } from "vue";
 
-const store = useAuthStore();
-const router = useRouter();
+const authStore = useAuthStore();
+const { signupUser } = useUsersApi();
 
-// 🔧 State form
-const name = ref("");
-const email = ref("");
-const password = ref("");
-const role = ref("guest");
-const region = ref("");
-const area = ref("");
-const hp = ref("");
+const loading = ref(false);
+const errorMessage = ref<string | null>(null);
 
-const showPassword = ref(false);
+/**
+ * 🔐 FE Guard
+ */
+if (authStore.user?.role !== "superadmin") {
+  console.warn("[SIGNUP] Forbidden role:", authStore.user?.role);
+  navigateTo("/users");
+}
 
-const error = ref("");
-const message = ref("");
-
-// ✅ Validasi dasar
-const isValidEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-const isNumeric = (val: string) => /^[0-9]+$/.test(val);
-
-// 🧠 Validasi realtime
-watch(email, (val) => {
-  error.value = val && !isValidEmail(val) ? "Invalid email format" : "";
-});
-
-watch(hp, (val) => {
-  error.value = val && !isNumeric(val) ? "Phone must be numeric" : "";
+/**
+ * Form state
+ */
+const user = reactive({
+  email: "",
+  password: "",
+  firstName: "",
+  lastName: "",
+  phone: "",
+  region: "",
+  area: "",
+  role: "staff",
+  isActive: true,
+  avatarUrl: "http://profile/update",
 });
 
-// 🚀 Submit form
-const register = async () => {
-  error.value = "";
-  message.value = "";
+/**
+ * Submit signup
+ */
+const submit = async () => {
+  console.log("🟡 [SIGNUP] Submit clicked");
+  console.log("🟡 [SIGNUP] Payload:", JSON.parse(JSON.stringify(user)));
 
-  if (
-    !name.value ||
-    !email.value ||
-    !password.value ||
-    !role.value ||
-    !region.value ||
-    !area.value ||
-    !hp.value
-  ) {
-    error.value = "All fields are required!";
-    return;
-  }
-
-  if (!isValidEmail(email.value)) {
-    error.value = "Invalid email format";
-    return;
-  }
-
-  if (!isNumeric(hp.value)) {
-    error.value = "Phone must be numeric";
-    return;
-  }
+  errorMessage.value = null;
+  loading.value = true;
 
   try {
-    const res = await store.signup({
-      name: name.value,
-      email: email.value,
-      password: password.value,
-      role: role.value,
-      region: region.value,
-      area: area.value,
-      hp: hp.value,
+    console.log("🟠 [SIGNUP] Calling API...");
+    await signupUser({
+      email: user.email,
+      password: user.password,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      region: user.region,
+      area: user.area,
+      role: user.role,
+      isActive: user.isActive,
+      avatarUrl: user.avatarUrl,
     });
 
-    if (res && !res.error) {
-      message.value = "Registration successful!";
-      setTimeout(() => router.push("/users/list"), 1200);
-    } else {
-      error.value = res?.error || "Registration failed!";
+    console.log("🟢 [SIGNUP] Success → redirect");
+    navigateTo("/users");
+  } catch (err: any) {
+    console.error("🔴 [SIGNUP] Failed:", err);
+
+    // 🔥 ZOD VALIDATION ERROR
+    if (err?.data?.data?.fieldErrors) {
+      const fieldErrors = err.data.data.fieldErrors;
+
+      if (fieldErrors.avatarUrl) {
+        errorMessage.value = "Invalid avatar URL";
+        return;
+      }
+
+      if (fieldErrors.email) {
+        errorMessage.value = "Invalid email";
+        return;
+      }
+
+      if (fieldErrors.password) {
+        errorMessage.value = "Invalid password";
+        return;
+      }
+
+      errorMessage.value = "Data input is invalid";
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    error.value = "Something went wrong!";
+
+    errorMessage.value =
+      err?.data?.message ?? err?.message ?? "Signup failed, check console";
+  } finally {
+    loading.value = false;
   }
 };
 </script>
 
 <template>
-  <div class="form-global">
-    <div class="form-box-global">
-      <h2>- REGISTER -</h2>
-      <form @submit.prevent="register">
-        <div class="form-group">
-          <label>Full Name</label>
-          <input v-model="name" type="text" maxlength="50" />
-        </div>
+  <div class="container mt-3" style="max-width: 600px">
+    <h3>Signup User</h3>
 
-        <div class="form-group">
-          <label>Email</label>
-          <input v-model="email" type="email" maxlength="50" />
-        </div>
-
-        <div class="form-group">
-          <label>Password</label>
-          <div class="input-with-toggle">
-            <input
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              maxlength="20"
-            />
-            <span
-              @click="showPassword = !showPassword"
-              style="
-                position: absolute;
-                right: 0.75rem;
-                top: 50%;
-                transform: translateY(-50%);
-                cursor: pointer;
-                user-select: none;
-                font-size: 1.2rem;
-              "
-            >
-              {{ showPassword ? "😶" : "😑" }}
-            </span>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Region</label>
-          <input v-model="region" type="text" maxlength="50" />
-        </div>
-
-        <div class="form-group">
-          <label>Area</label>
-          <input v-model="area" type="text" maxlength="50" />
-        </div>
-
-        <div class="form-group">
-          <label>Phone</label>
-          <input v-model="hp" type="text" maxlength="15" />
-        </div>
-
-        <div class="form-group">
-          <label>Role</label>
-          <select v-model="role">
-            <option value="guest">Guest</option>
-            <option value="admin">Admin</option>
-            <option value="superadmin">Superadmin</option>
-          </select>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">💾Save</button>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="router.push('/users/list')"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-
-      <p v-if="error" class="text-danger mt-2">{{ error }}</p>
-      <p v-if="message" class="text-success mt-2">{{ message }}</p>
+    <div v-if="errorMessage" class="alert alert-danger">
+      {{ errorMessage }}
     </div>
+
+    <div class="mb-2">
+      <label>Email</label>
+      <input class="form-control" v-model="user.email" />
+    </div>
+
+    <div class="mb-2">
+      <label>Password</label>
+      <input type="password" class="form-control" v-model="user.password" />
+    </div>
+
+    <div class="mb-2">
+      <label>First Name</label>
+      <input class="form-control" v-model="user.firstName" />
+    </div>
+
+    <div class="mb-2">
+      <label>Last Name</label>
+      <input class="form-control" v-model="user.lastName" />
+    </div>
+
+    <div class="mb-2">
+      <label>Phone</label>
+      <input class="form-control" v-model="user.phone" />
+    </div>
+
+    <div class="mb-2">
+      <label>Region</label>
+      <input class="form-control" v-model="user.region" />
+    </div>
+
+    <div class="mb-2">
+      <label>Area</label>
+      <input class="form-control" v-model="user.area" />
+    </div>
+
+    <div class="mb-2">
+      <label>Role</label>
+      <select class="form-select" v-model="user.role">
+        <option value="staff">Staff</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin">Superadmin</option>
+      </select>
+    </div>
+
+    <div class="mb-2">
+      <label>Status</label>
+      <select class="form-select" v-model="user.isActive">
+        <option :value="true">Active</option>
+        <option :value="false">Inactive</option>
+      </select>
+    </div>
+
+    <div class="mb-2">
+      <label>Avatar URL</label>
+      <input class="form-control" v-model="user.avatarUrl" />
+    </div>
+
+    <button class="btn btn-success w-100" :disabled="loading" @click="submit">
+      {{ loading ? "Creating..." : "Create User" }}
+    </button>
   </div>
 </template>

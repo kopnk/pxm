@@ -68,3 +68,18 @@ body {
     opacity: 1;
   }
 }
+
+.table-wrapper {
+  width: 100%;
+  max-height: calc(100vh - 160px); // header + footer
+  overflow: auto;                 // 🔥 dua arah
+  border-radius: 8px;
+}
+
+/* Optional: sticky table header */
+.table-users thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+

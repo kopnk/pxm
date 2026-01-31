@@ -2,46 +2,134 @@
 const router = useRouter();
 const profileStore = useProfileStore();
 
-// pastikan profile sudah tersedia (cached di store)
 await profileStore.fetchProfile();
 
-// clone supaya form tidak mutate store langsung
 const user = reactive({ ...profileStore.profile! });
 
-const error = ref("");
+const error = ref<string | null>(null);
 const loading = ref(false);
+const avatarUploaded = ref(false);
 
+/**
+ * ============================
+ * AVATAR STATE
+ * ============================
+ */
+const previewAvatar = ref<string | null>(null);
+const avatarFile = ref<File | null>(null);
+
+const onAvatarChange = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  console.log("🟢 [AVATAR] File selected:", {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+  });
+
+  avatarFile.value = file;
+  previewAvatar.value = URL.createObjectURL(file);
+};
+
+const uploadAvatar = async () => {
+  if (!avatarFile.value) {
+    // console.log("⚪ [AVATAR] No avatar file, skip upload");
+    return;
+  }
+
+  //console.log("🟡 [AVATAR] Uploading avatar...");
+
+  const formData = new FormData();
+  formData.append("avatar", avatarFile.value);
+
+  const res = await $fetch("/api/profile/avatar", {
+    method: "POST",
+    body: formData,
+  });
+
+  // console.log("🟢 [AVATAR] Upload success:", res.data.avatarUrl);
+
+  /**
+   * 🆕 langsung pakai URL baru (sudah versioned)
+   */
+  profileStore.applyProfileUpdate({
+    avatarUrl: res.data.avatarUrl,
+  });
+
+  avatarUploaded.value = true;
+};
+
+/**
+ * ============================
+ * SUBMIT
+ * ============================
+ */
 const submit = async () => {
-  error.value = "";
+  //console.log("🚀 [SUBMIT] Submit clicked");
+  error.value = null;
   loading.value = true;
 
-  try {
-    // payload dasar (sesuai business rule)
-    const payload: Record<string, any> = {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-    };
+  const payload: Record<string, any> = {};
+  const original = profileStore.profile!;
 
-    // 🔹 PLAN B: avatar URL opsional
-    if (user.avatarUrl && user.avatarUrl !== profileStore.profile?.avatarUrl) {
-      payload.avatarUrl = user.avatarUrl;
+  //console.log("📦 [SUBMIT] Original profile:", original);
+  //console.log("📝 [SUBMIT] Edited user:", user);
+
+  if (
+    typeof user.firstName === "string" &&
+    user.firstName.trim() !== "" &&
+    user.firstName !== original.firstName
+  ) {
+    payload.firstName = user.firstName.trim();
+  }
+
+  if (
+    typeof user.lastName === "string" &&
+    user.lastName.trim() !== "" &&
+    user.lastName !== original.lastName
+  ) {
+    payload.lastName = user.lastName.trim();
+  }
+
+  if (
+    typeof user.phone === "string" &&
+    user.phone.trim() !== "" &&
+    user.phone !== original.phone
+  ) {
+    payload.phone = user.phone.trim();
+  }
+
+  try {
+    //  console.log("➡️ [SUBMIT] Step 1: uploadAvatar()");
+    await uploadAvatar();
+
+    if (Object.keys(payload).length === 0 && !avatarUploaded.value) {
+      error.value = "No changes to update";
+      loading.value = false;
+      return;
     }
 
-    // call API
-    await $fetch("/api/profile", {
-      method: "PUT",
-      credentials: "include",
-      body: payload,
-    });
+    if (Object.keys(payload).length > 0) {
+      //  console.log("➡️ [SUBMIT] Step 2: update profile", payload);
 
-    // sync ke profile store (single source of truth)
-    profileStore.updateProfile(payload);
+      await $fetch("/api/profile", {
+        method: "PUT",
+        body: payload,
+      });
 
-    // redirect setelah sukses
+      profileStore.applyProfileUpdate(payload);
+    } else {
+      // console.log("ℹ️ [SUBMIT] Skip profile update (no text changes)");
+    }
+
     await router.replace("/profile");
   } catch (e: any) {
-    error.value = e?.data?.message || "Update failed";
+    error.value =
+      e?.data?.statusMessage ||
+      e?.data?.message ||
+      e?.message ||
+      "Update failed";
   } finally {
     loading.value = false;
   }
@@ -78,18 +166,23 @@ const submit = async () => {
           <input v-model="user.phone" class="form-control" />
         </div>
 
-        <!-- Avatar URL (Plan B) -->
-        <div class="mb-4">
-          <label>Avatar URL</label>
+        <!-- Avatar URL -->
+        <div class="mb-3">
+          <label>Avatar</label>
           <input
-            v-model="user.avatarUrl"
+            type="file"
             class="form-control"
-            placeholder="https://example.com/avatar.png"
+            accept="image/*"
+            @change="onAvatarChange"
           />
-          <small class="text-muted">
-            Optional. Kosongkan jika tidak ingin mengubah avatar.
-          </small>
         </div>
+
+        <img
+          v-if="previewAvatar"
+          :src="previewAvatar"
+          class="rounded mt-2"
+          style="width: 120px; height: 120px; object-fit: cover"
+        />
 
         <!-- Region (view only) -->
         <div class="mb-3">
@@ -103,14 +196,10 @@ const submit = async () => {
           <input v-model="user.area" class="form-control" disabled />
         </div>
 
-        <!-- Role (view only) -->
-        <div class="mb-3">
-          <label>Role</label>
-          <input v-model="user.role" class="form-control" disabled />
-        </div>
-
         <!-- Error -->
-        <p class="text-danger mb-2" v-if="error">{{ error }}</p>
+        <p class="text-danger mb-2" v-if="error">
+          {{ error }}
+        </p>
 
         <!-- Submit -->
         <button class="btn btn-primary w-100" :disabled="loading">

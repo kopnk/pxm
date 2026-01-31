@@ -6,71 +6,54 @@ import argon2 from "argon2";
 import { successResponse, errorResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
+import { userSignupSchema } from "~/server/validation/users.schema";
+import { parseBody } from "~/server/utils/zod";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin"]);
   if (forbidden) return forbidden;
 
   try {
-    const {
-      email,
-      password,
-      firstName,
-      lastName,
-      role = "staff",
-    } = (await readBody(event)) || {};
+    // ✅ VALIDASI BODY
+    const body = parseBody(userSignupSchema, await readBody(event));
 
-    if (!email || !password || !firstName || !lastName) {
-      return errorResponse(event, "Missing required fields", 400);
-    }
-
-    /**
-     * 1. CEK EMAIL DULU
-     */
     const existingUser = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.email, body.email))
       .limit(1)
-      .then(r => r[0]);
+      .then((r) => r[0]);
 
     if (existingUser) {
       return errorResponse(event, "Email already exists", 409);
     }
 
-    /**
-     * 2. HASH PASSWORD
-     */
-    const passwordHash = await argon2.hash(password);
+    const passwordHash = await argon2.hash(body.password);
 
-    /**
-     * 3. INSERT USER
-     */
     const inserted = await db
       .insert(users)
       .values({
-        email,
+        email: body.email,
         passwordHash,
-        firstName,
-        lastName,
-        role,
-        isActive: true,
+        firstName: body.firstName,
+        lastName: body.lastName,
+        phone: body.phone,
+        region: body.region,
+        area: body.area,
+        avatarUrl: body.avatarUrl,
+        role: body.role,
+        isActive: body.isActive ?? true,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning({ id: users.id });
 
-    const newUserId = inserted[0].id;
-
-    /**
-     * 4. AUDIT CREATE
-     */
     await logAudit({
       actorId: event.context.user.id,
       action: "CREATE",
       targetTable: "users",
-      targetId: newUserId,
-      newData: { email, role },
+      targetId: inserted[0].id,
+      newData: { email: body.email, role: body.role },
     });
 
     return successResponse(event, "User created successfully");

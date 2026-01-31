@@ -3,7 +3,9 @@ const auth = useAuthStore();
 const user = computed(() => auth.user);
 
 async function handleLogout() {
-  await useAppLogout();
+  const { logout } = useAppLogout();
+
+  await logout();
 }
 
 const displayName = computed(() =>
@@ -16,7 +18,7 @@ const avatarUrl = computed(
 </script>
 
 <template>
-  <nav class="navbar navbar-expand-lg navbar-dark mb-3">
+  <nav class="navbar navbar-expand-lg navbar-dark header">
     <div class="container">
       <!-- BRAND / LOGO -->
       <NuxtLink to="/" class="navbar-brand fw-bold text-white"> PMS </NuxtLink>
@@ -66,6 +68,11 @@ const avatarUrl = computed(
           <li class="nav-item">
             <NuxtLink class="nav-link" to="/partners" active-class="active">
               Partners
+            </NuxtLink>
+          </li>
+          <li class="nav-item">
+            <NuxtLink class="nav-link" to="/jsa" active-class="active">
+              Jsa
             </NuxtLink>
           </li>
         </ul>

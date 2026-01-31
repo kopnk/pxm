@@ -2,36 +2,52 @@
 import { ref } from "vue";
 
 const { changePassword } = useProfileApi();
+const { logout } = useAppLogout();
 
 const currentPassword = ref("");
 const newPassword = ref("");
 const confirmPassword = ref("");
 const show = ref(false);
 
-const error = ref("");
-const message = ref("");
 const loading = ref(false);
+const error = ref<string | null>(null);
+const message = ref<string | null>(null);
+
+const resetForm = () => {
+  currentPassword.value = "";
+  newPassword.value = "";
+  confirmPassword.value = "";
+};
 
 const submit = async () => {
-  error.value = "";
-  message.value = "";
+  error.value = null;
+  message.value = null;
 
+  // FE validation only
   if (newPassword.value !== confirmPassword.value) {
     error.value = "Password confirmation does not match";
     return;
   }
 
   loading.value = true;
+
   try {
     await changePassword({
       currentPassword: currentPassword.value,
       newPassword: newPassword.value,
+      confirmPassword: confirmPassword.value,
     });
 
-    message.value = "Password updated";
-    currentPassword.value = newPassword.value = confirmPassword.value = "";
+    // backend sudah invalidate semua session
+    message.value = "Password updated. Please login again.";
+    resetForm();
+
+    // kasih jeda biar user baca message
+    setTimeout(async () => {
+      await logout(); // 🔥 SATU PINTU LOGOUT
+    }, 1200);
   } catch (e: any) {
-    error.value = e?.data?.message || "Failed";
+    error.value = e.message || "Change password failed";
   } finally {
     loading.value = false;
   }
@@ -50,6 +66,7 @@ const submit = async () => {
             v-model="currentPassword"
             :type="show ? 'text' : 'password'"
             class="form-control pe-5"
+            required
           />
         </div>
 
@@ -59,6 +76,8 @@ const submit = async () => {
             v-model="newPassword"
             :type="show ? 'text' : 'password'"
             class="form-control pe-5"
+            required
+            minlength="8"
           />
         </div>
 
@@ -68,9 +87,9 @@ const submit = async () => {
             v-model="confirmPassword"
             :type="show ? 'text' : 'password'"
             class="form-control pe-5"
+            required
           />
 
-          <!-- GLOBAL TOGGLE -->
           <span
             class="password-toggle"
             @click="show = !show"
@@ -80,8 +99,8 @@ const submit = async () => {
           </span>
         </div>
 
-        <p class="text-danger mb-2" v-if="error">{{ error }}</p>
-        <p class="text-success mb-2" v-if="message">{{ message }}</p>
+        <p v-if="error" class="text-danger mb-2">{{ error }}</p>
+        <p v-if="message" class="text-success mb-2">{{ message }}</p>
 
         <button class="btn btn-primary w-100" :disabled="loading">
           {{ loading ? "Updating…" : "Update Password" }}

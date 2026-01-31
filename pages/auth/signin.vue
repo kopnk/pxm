@@ -74,7 +74,7 @@ const submit = async () => {
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               class="form-control pe-5"
-              placeholder="••••••••"
+              placeholder="your password"
               required
             />
 

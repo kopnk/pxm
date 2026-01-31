@@ -44,13 +44,13 @@ const profile = computed(() => profileStore.profile);
           </tr>
 
           <tr>
-            <th>Role</th>
-            <td>{{ profile.role }}</td>
+            <th>Phone</th>
+            <td>{{ profile.phone }}</td>
           </tr>
 
           <tr>
-            <th>Phone</th>
-            <td>{{ profile.phone }}</td>
+            <th>Avatar URL</th>
+            <td>{{ profile.avatarUrl }}</td>
           </tr>
 
           <tr>

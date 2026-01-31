@@ -7,19 +7,15 @@ import argon2 from "argon2";
 import { successResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
 import { logAudit } from "~/server/utils/audit";
+import { loginSchema } from "~/server/validation/auth.schema";
+import { parseBody } from "~/server/utils/zod";
 
 export default defineEventHandler(async (event) => {
   /**
-   * 1. Read body
+   * 1. Validasi body (Zod)
    */
-  const { email, password } = (await readBody(event)) ?? {};
-
-  if (!email || !password) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Email and password are required",
-    });
-  }
+  const body = await readBody(event);
+  const { email, password } = parseBody(loginSchema, body);
 
   /**
    * 2. Ambil user
@@ -40,17 +36,11 @@ export default defineEventHandler(async (event) => {
     .then((r) => r[0]);
 
   if (!user) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Invalid credentials",
-    });
+    throw createError({ statusCode: 401, statusMessage: "Invalid credentials" });
   }
 
   if (!user.isActive) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "User is inactive",
-    });
+    throw createError({ statusCode: 403, statusMessage: "User is inactive" });
   }
 
   /**
@@ -58,39 +48,32 @@ export default defineEventHandler(async (event) => {
    */
   const valid = await argon2.verify(user.passwordHash, password);
   if (!valid) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Invalid credentials",
-    });
+    throw createError({ statusCode: 401, statusMessage: "Invalid credentials" });
   }
 
   /**
-   * 4. Update last_login_at (UTC ONLY)
-   * ❗ JANGAN update updated_at
+   * 4. Update last login
    */
   await db
     .update(users)
-    .set({
-      lastLoginAt: new Date(), // UTC
-    })
+    .set({ lastLoginAt: new Date() })
     .where(eq(users.id, user.id));
 
   /**
-   * 5. Create session (Lucia)
+   * 5. Create session
    */
   const session = await lucia.createSession(user.id, {});
   const cookie = lucia.createSessionCookie(session.id);
 
-setCookie(event, cookie.name, cookie.value, {
-  ...cookie.attributes,
-  path: "/",               // WAJIB
-  sameSite: "lax",          // eksplisit
-  secure: false,            // localhost
-});
-
+  setCookie(event, cookie.name, cookie.value, {
+    ...cookie.attributes,
+    path: "/",
+    sameSite: "lax",
+    secure: false,
+  });
 
   /**
-   * 6. Audit LOGIN
+   * 6. Audit
    */
   await logAudit({
     actorId: user.id,
@@ -100,29 +83,20 @@ setCookie(event, cookie.name, cookie.value, {
   });
 
   /**
-   * 7. Response (WIB)
+   * 7. Response
    */
-  return successResponse(
-    event,
-    "Login successful",
-    {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      },
-      session: {
-        id: session.id,
-        createdAt: toLocalTime(session.createdAt),
-        expiresAt: toLocalTime(session.expiresAt),
-      },
-      cookie: {
-        name: cookie.name,
-        attributes: cookie.attributes,
-      },
+  return successResponse(event, "Login successful", {
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
     },
-    200
-  );
+    session: {
+      id: session.id,
+      createdAt: toLocalTime(session.createdAt),
+      expiresAt: toLocalTime(session.expiresAt),
+    },
+  });
 });

@@ -6,18 +6,18 @@ import { successResponse, errorResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
-  console.log("===== [PROFILE GET] START =====");
-  console.log("PATH:", event.path);
+ // console.log("===== [PROFILE GET] START =====");
+// console.log("PATH:", event.path);
 
   try {
     /**
      * 1. Auth user dari middleware
      */
     const authUser = event.context.user;
-    console.log("AUTH USER:", authUser);
+    //console.log("AUTH USER:", authUser);
 
     if (!authUser?.id) {
-      console.log("❌ Unauthorized");
+   //   console.log("❌ Unauthorized");
       return errorResponse(event, "Unauthorized", 401);
     }
 
@@ -44,11 +44,11 @@ export default defineEventHandler(async (event) => {
       .where(eq(users.id, authUser.id))
       .limit(1);
 
-    console.log("RAW DB RESULT:", rows);
+  //  console.log("RAW DB RESULT:", rows);
 
     const user = rows?.[0];
     if (!user) {
-      console.log("❌ USER NOT FOUND");
+    //  console.log("❌ USER NOT FOUND");
       return errorResponse(event, "User not found", 404);
     }
 
@@ -62,8 +62,8 @@ export default defineEventHandler(async (event) => {
       lastLoginAt: toLocalTime(user.lastLoginAt),
     };
 
-    console.log("✅ USER FOUND:", formattedUser.email);
-    console.log("===== [PROFILE GET] SUCCESS =====");
+   // console.log("✅ USER FOUND:", formattedUser.email);
+   // console.log("===== [PROFILE GET] SUCCESS =====");
 
     /**
      * 4. Response sukses

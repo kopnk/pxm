@@ -1,148 +1,139 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: ["auth"],
+  middleware: ["superadmin"],
 });
-import { ref, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { useAuthStore } from "~/stores/auth";
+import { reactive, computed } from "vue";
 
-const store = useAuthStore();
 const route = useRoute();
-const router = useRouter();
+const authStore = useAuthStore();
+const { getUserById, updateUser } = useUsersApi();
 
-const idUser = Number(route.query.id) || 0;
-const user = ref<any>(null);
-const showPassword = ref(false);
+/**
+ * 🔐 FE Guard
+ * kalau bukan superadmin → tendang
+ */
+if (authStore.user?.role !== "superadmin") {
+  navigateTo("/users");
+}
 
-const form = ref({
-  name: "",
-  email: "",
-  password: "",
-  region: "",
-  area: "",
-  hp: "",
-  role: "guest",
+const originalUser = await getUserById(route.query.id as string);
+
+/**
+ * Clone supaya tidak mutate data asli
+ */
+const user = reactive({
+  id: originalUser.id,
+  email: originalUser.email,
+  firstName: originalUser.firstName,
+  lastName: originalUser.lastName,
+  phone: originalUser.phone,
+  region: originalUser.region,
+  area: originalUser.area,
+  role: originalUser.role,
+  isActive: originalUser.isActive,
+  avatarUrl: originalUser.avatarUrl,
+  lastLoginAt: originalUser.lastLoginAt,
+  createdAt: originalUser.createdAt,
+  updatedAt: originalUser.updatedAt,
 });
 
-const message = ref("");
-const error = ref("");
+/**
+ * Payload update
+ * ❗ field read-only TIDAK dikirim
+ */
+const submit = async () => {
+  await updateUser(user.id, {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    region: user.region,
+    area: user.area,
+    role: user.role,
+    isActive: user.isActive,
+    avatarUrl: user.avatarUrl,
+  });
 
-// Ambil data user
-onMounted(async () => {
-  if (idUser) {
-    const res = await store.getUser(idUser);
-    if (res) {
-      user.value = res;
-      form.value = {
-        name: res.name || "",
-        email: res.email || "",
-        password: "",
-        region: res.region || "",
-        area: res.area || "",
-        hp: res.hp || "",
-        role: res.role || "guest",
-      };
-    }
-  }
-});
-
-// ✅ Update user dan redirect otomatis
-const updateUser = async () => {
-  error.value = "";
-  message.value = "";
-
-  if (
-    !form.value.name ||
-    !form.value.email ||
-    !form.value.region ||
-    !form.value.area ||
-    !form.value.hp ||
-    !form.value.role
-  ) {
-    error.value = "All fields are required!";
-    return;
-  }
-
-  try {
-    const res = await store.update({
-      idUser,
-      ...form.value,
-    });
-
-    console.log("Update response:", res);
-
-    if (res?.message && /updated/i.test(res.message)) {
-      message.value = "✅ User successfully updated";
-      await new Promise((r) => setTimeout(r, 1000)); // jeda biar notif sempat tampil
-      router.push("/users/list"); // langsung ganti halaman
-    } else {
-      error.value = res?.message || "Failed to update user!";
-    }
-  } catch (err) {
-    console.error("User update error:", err);
-    error.value = "An error occurred during update!";
-  }
+  navigateTo("/users");
 };
 </script>
 
 <template>
-  <div class="form-global">
-    <div v-if="user" class="form-box-global">
-      <h2>- EDIT -</h2>
-      <form @submit.prevent="updateUser">
-        <div class="form-group">
-          <label>Full Name</label>
-          <input v-model="form.name" type="text" />
-        </div>
+  <div class="container mt-3">
+    <h3>Edit User</h3>
 
-        <div class="form-group">
-          <label>Email</label>
-          <input v-model="form.email" type="email" />
-        </div>
-
-        <div class="form-group">
-          <label>Region</label>
-          <input v-model="form.region" type="text" />
-        </div>
-
-        <div class="form-group">
-          <label>Area</label>
-          <input v-model="form.area" type="text" />
-        </div>
-
-        <div class="form-group">
-          <label>HP</label>
-          <input v-model="form.hp" type="text" />
-        </div>
-
-        <div class="form-group">
-          <label>Role</label>
-          <select v-model="form.role">
-            <option value="guest">Guest</option>
-            <option value="admin">Admin</option>
-            <option value="superadmin">Superadmin</option>
-          </select>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">💾Save</button>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="router.back()"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-
-      <!-- pesan status -->
-      <p v-if="message" class="text-success mt-2">{{ message }}</p>
-      <p v-if="error" class="text-danger mt-2">{{ error }}</p>
+    <!-- READ ONLY -->
+    <div class="mb-2">
+      <label>Email</label>
+      <input class="form-control" :value="user.email" disabled />
     </div>
 
-    <div v-else>
-      <p class="text-center mt-4">Loading user data...</p>
+    <!-- EDITABLE -->
+    <div class="mb-2">
+      <label>First Name</label>
+      <input class="form-control" v-model="user.firstName" />
     </div>
+
+    <div class="mb-2">
+      <label>Last Name</label>
+      <input class="form-control" v-model="user.lastName" />
+    </div>
+
+    <div class="mb-2">
+      <label>Phone</label>
+      <input class="form-control" v-model="user.phone" />
+    </div>
+
+    <div class="mb-2">
+      <label>Region</label>
+      <input class="form-control" v-model="user.region" />
+    </div>
+
+    <div class="mb-2">
+      <label>Area</label>
+      <input class="form-control" v-model="user.area" />
+    </div>
+
+    <!-- ROLE (superadmin only) -->
+    <div class="mb-2">
+      <label>Role</label>
+      <select class="form-select" v-model="user.role">
+        <option value="staff">Staff</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin">Superadmin</option>
+      </select>
+    </div>
+
+    <div class="mb-2">
+      <label>Active</label>
+      <select class="form-select" v-model="user.isActive">
+        <option :value="true">Active</option>
+        <option :value="false">Inactive</option>
+      </select>
+    </div>
+
+    <div class="mb-2">
+      <label>Avatar URL</label>
+      <input class="form-control" v-model="user.avatarUrl" />
+    </div>
+
+    <!-- READ ONLY META -->
+    <hr />
+
+    <div class="mb-2">
+      <label>Last Login At</label>
+      <input class="form-control" :value="user.lastLoginAt" disabled />
+    </div>
+
+    <div class="mb-2">
+      <label>Created At</label>
+      <input class="form-control" :value="user.createdAt" disabled />
+    </div>
+
+    <div class="mb-2">
+      <label>Updated At</label>
+      <input class="form-control" :value="user.updatedAt" disabled />
+    </div>
+
+    <button class="btn btn-primary w-100" @click="submit">Update User</button>
   </div>
 </template>

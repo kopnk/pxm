@@ -7,36 +7,36 @@ import { successResponse, errorResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
-  console.log("🎯 [/api/auth/me] START");
+ // console.log("🎯 [/api/auth/me] START");
 
   /**
    * 1. Ambil session cookie
    */
   const sessionId = getCookie(event, lucia.sessionCookieName);
-  console.log("🍪 Session ID:", sessionId);
+ // console.log("🍪 Session ID:", sessionId);
 
   if (!sessionId) {
-    console.log("❌ No session cookie");
+  //  console.log("❌ No session cookie");
     return errorResponse(event, "Unauthorized - No session", 401);
   }
 
   /**
    * 2. Validasi session
    */
-  console.log("🔐 Validating session...");
+  //console.log("🔐 Validating session...");
   const { session, user: luciaUser } = await lucia.validateSession(sessionId);
 
-  console.log("SESSION VALID:", !!session, "USER VALID:", !!luciaUser);
+ // console.log("SESSION VALID:", !!session, "USER VALID:", !!luciaUser);
 
   if (!session || !luciaUser) {
-    console.log("❌ Invalid session");
+    //console.log("❌ Invalid session");
     return errorResponse(event, "Unauthorized - Invalid session", 401);
   }
 
   /**
    * 3. Ambil user dari DB
    */
-  console.log("📋 Query user:", luciaUser.id);
+  //console.log("📋 Query user:", luciaUser.id);
 
   const user = await db
     .select({
@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
     .then((r) => r[0]);
 
   if (!user) {
-    console.log("❌ User not found in DB");
+    //console.log("❌ User not found in DB");
     return errorResponse(event, "User not found", 404);
   }
 
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
   /**
    * 5. Response sukses
    */
-  console.log("✅ /api/auth/me SUCCESS:", user.email);
+ // console.log("✅ /api/auth/me SUCCESS:", user.email);
 
   return successResponse(event, "Authenticated", {
     user: formattedUser,
