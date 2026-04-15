@@ -13,16 +13,23 @@ export async function logAudit({
   action: "CREATE" | "UPDATE" | "DELETE" | "LOGIN" | "LOGOUT" | "CHANGE_PASSWORD";
   targetTable: string;
   targetId?: string;
-  oldData?: any;
-  newData?: any;
+  oldData?: unknown;
+  newData?: unknown;
 }) {
-  await db.insert(auditLog).values({
-    actorId,
-    action,
-    targetTable,
-    targetId,
-    oldData,
-    newData,
-    createdAt: new Date(), // UTC, nanti di-response jadi WIB
-  });
+  try {
+    await db.insert(auditLog).values({
+      actorId,
+      action,
+      targetTable,
+      targetId,
+      oldData,
+      newData,
+    });
+  } catch (err: unknown) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "logAudit failed:",
+      err instanceof Error ? err.message : err,
+    );
+  }
 }

@@ -5,22 +5,36 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1769333997724,
-      "tag": "0000_sharp_stingray",
+      "when": 1775701874181,
+      "tag": "0000_chemical_fenris",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1769342056494,
-      "tag": "0001_breezy_wind_dancer",
+      "when": 1775903889744,
+      "tag": "0001_align_project_financials",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1769493413277,
-      "tag": "0002_perfect_warbound",
+      "when": 1776000000000,
+      "tag": "0002_drop_project_financials_amount_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776038400000,
+      "tag": "0003_drop_partner_tax_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0004_dcn",
       "breakpoints": true
     }
   ]

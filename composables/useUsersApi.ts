@@ -1,26 +1,22 @@
+import { apiFetch } from "~/utils/apiFetch";
 import type { User } from "~/stores/users";
 
-interface UsersResponse {
+type UsersListData = {
+  items: User[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+type ApiEnvelope<T> = {
   success: boolean;
-  statusCode: number;
-  message: string;
-  data: {
-    items: User[];
-    meta: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  };
-}
+  data: T;
+};
 
 export const useUsersApi = () => {
   const usersStore = useUsersStore();
 
-  /**
-   * GET users
-   */
   const getUsers = async (params: {
     page?: number;
     limit?: number;
@@ -28,40 +24,29 @@ export const useUsersApi = () => {
     role?: string;
     isActive?: boolean;
   }) => {
-    usersStore.loading = true;
+    usersStore.setLoading(true);
+    try {
+      const res = await apiFetch<ApiEnvelope<UsersListData>>("/api/users", {
+        query: params,
+      });
 
-    const { data, error } = await useFetch<UsersResponse>("/api/users", {
-      query: params,
-      key: `users-${JSON.stringify(params)}-${Date.now()}`,
-    });
-
-    if (error.value) {
-      usersStore.loading = false;
-      throw error.value;
+      const d = res.data;
+      usersStore.setUsers(d.items, {
+        page: d.page,
+        limit: d.limit,
+        total: d.total,
+        totalPages: d.totalPages,
+      });
+    } finally {
+      usersStore.setLoading(false);
     }
-
-    if (data.value) {
-      usersStore.setUsers(
-        data.value.data.items,
-        data.value.data.meta
-      );
-    }
-
-    usersStore.loading = false;
   };
 
-  /**
-   * GET user by id
-   */
   const getUserById = async (id: string) => {
-    const { data, error } = await useFetch(`/api/users/${id}`);
-    if (error.value) throw error.value;
-    return data.value?.data;
+    const res = await apiFetch<ApiEnvelope<User>>(`/api/users/${id}`);
+    return res.data;
   };
 
-  /**
-   * SIGNUP user (🔥 IMPORTANT: $fetch)
-   */
   const signupUser = async (payload: {
     email: string;
     password: string;
@@ -74,54 +59,22 @@ export const useUsersApi = () => {
     isActive?: boolean;
     avatarUrl?: string;
   }) => {
-    console.log("🟠 [API] signupUser payload:", payload);
-
-    try {
-      const res = await $fetch("/api/users/signup", {
-        method: "POST",
-        body: payload,
-      });
-
-      console.log("🟢 [API] signupUser success:", res);
-      return res;
-    } catch (err) {
-      console.error("🔴 [API] signupUser error:", err);
-      throw err;
-    }
+    return apiFetch("/api/users/signup", {
+      method: "POST",
+      body: payload,
+    });
   };
 
-  /**
-   * UPDATE user
-   */
-  const updateUser = async (
-    id: string,
-    payload: Partial<User>
-  ) => {
-    const { error } = await useFetch(`/api/users/${id}`, {
+  const updateUser = async (id: string, payload: Partial<User>) => {
+    await apiFetch(`/api/users/${id}`, {
       method: "PUT",
       body: payload,
     });
-
-    if (error.value) throw error.value;
   };
 
-  /**
-   * DELETE user
-   */
   const deleteUser = async (id: string) => {
-    const { error } = await useFetch(`/api/users/${id}`, {
-      method: "DELETE",
-    });
-
-    if (error.value) throw error.value;
-
-    usersStore.items = usersStore.items.filter(
-      (u) => u.id !== id
-    );
-
-    if (usersStore.meta) {
-      usersStore.meta.total -= 1;
-    }
+    await apiFetch(`/api/users/${id}`, { method: "DELETE" });
+    usersStore.removeUser(id);
   };
 
   return {

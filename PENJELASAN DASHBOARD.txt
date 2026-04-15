@@ -1,0 +1,133 @@
+# Penjelasan Dashboard PMS untuk Manajemen
+
+Dokumen ini adalah pegangan singkat untuk menjelaskan bagaimana dashboard dibuat, angka berasal dari mana, dan cara membacanya saat review kinerja proyek.
+
+## Tujuan Dashboard
+
+Dashboard dibuat untuk menjawab 3 pertanyaan utama manajemen:
+
+1. Apakah pekerjaan berjalan sesuai rencana waktu?
+2. Apakah biaya aktual masih efisien terhadap progres?
+3. Secara keseluruhan, proyek sehat atau berisiko?
+
+Karena itu dashboard menampilkan KPI EVM sederhana (CPI, SPI, PV, EV, AC), tren progres mingguan, dan S-Curve plan vs actual.
+
+## Sumber Data Dashboard
+
+Dashboard menggabungkan data dari 4 modul:
+
+- `projects`: baseline nilai proyek (PO Price / nilai kontrak sebelum pajak)
+- `project_details`: detail scope per site/item pekerjaan
+- `project_progress`: plan date dan actual date per stage
+- `project_financials`: transaksi biaya/tagihan
+
+Semua angka utama saat ini disajikan dengan basis **excl pajak** agar konsisten dan adil untuk evaluasi performa proyek.
+
+## Prinsip Perhitungan (Disepakati)
+
+Untuk menjaga perbandingan seimbang:
+
+- Basis nilai utama: **excl PPN dan excl PPh**
+- Revenue/omzet: nilai pekerjaan tanpa pajak
+- Cost/AC: biaya partner tanpa komponen pajak
+- CPI/SPI dihitung dari basis yang sama (apple-to-apple)
+
+## Bagian 1 - Ringkasan Atas (Summary Cards)
+
+### Projects
+Jumlah project yang masuk ke filter aktif dashboard.
+
+### Details
+Jumlah detail/scope item yang masuk filter aktif.
+
+### Progress Site
+Jumlah site yang sudah tercatat progress actual secara kumulatif.
+
+### PO Price + Omzet
+- **PO Price**: baseline kontrak sebelum pajak.
+- **Omzet (Excl PPN)**: realisasi nilai tagihan/pekerjaan tanpa pajak.
+
+Penjelasan manajemen: PO Price menunjukkan target nilai kontrak, sementara Omzet menunjukkan realisasi yang sudah terbentuk dari data berjalan.
+
+## Bagian 2 - Grafik CPI & SPI Trend (Weekly)
+
+Grafik ini menunjukkan efisiensi biaya dan ketepatan jadwal per minggu.
+
+- **CPI (EV/AC)**: indeks efisiensi biaya
+  - > 1: biaya lebih efisien
+  - = 1: sesuai rencana
+  - < 1: boros/over budget
+- **SPI (EV/PV)**: indeks ketepatan jadwal
+  - > 1: lebih cepat
+  - = 1: tepat waktu
+  - < 1: terlambat
+
+Sumbu X adalah timeline mingguan (8 minggu terakhir), sumbu Y adalah nilai indeks.
+
+## Bagian 3 - Grafik Progress Site Trend (Weekly)
+
+Grafik ini memperlihatkan kecepatan site masuk progress actual dari minggu ke minggu.
+
+- Kurva naik: ada penambahan site yang progress.
+- Kurva datar: tidak ada penambahan progress site pada periode itu.
+
+Penjelasan manajemen: grafik ini mudah dipakai untuk membaca momentum eksekusi lapangan.
+
+## Bagian 4 - Grafik S-Curve (Plan vs Actual)
+
+S-Curve membandingkan:
+
+- **Planned %**: akumulasi progress rencana
+- **Actual %**: akumulasi progress realisasi
+
+Interpretasi cepat:
+
+- Actual di bawah Planned: eksekusi tertinggal
+- Actual sejajar Planned: on schedule
+- Actual di atas Planned: eksekusi lebih cepat
+
+## Bagian 5 - Project Summary (KPI Utama)
+
+Di panel ini ditampilkan KPI inti beserta notasi rumus:
+
+- `CPI (EV/AC)`
+- `SPI (EV/PV)`
+- `PV (Budget x Plan%)`
+- `EV (Budget x Actual%)`
+- `AC (Qty x Unit Price Partner)`
+
+Status otomatis:
+
+- **Project On Track** jika CPI >= 1 dan SPI >= 1
+- **Project At Risk** jika salah satu di bawah 1
+
+## Arti Masing-Masing Komponen EVM
+
+- **PV (Planned Value)**: nilai pekerjaan yang seharusnya selesai sesuai rencana.
+- **EV (Earned Value)**: nilai pekerjaan yang benar-benar sudah dicapai.
+- **AC (Actual Cost)**: biaya aktual yang benar-benar keluar (basis excl pajak).
+
+## Cara Baca Cepat Saat Meeting
+
+Gunakan urutan ini agar diskusi terstruktur:
+
+1. Cek status akhir (On Track / At Risk).
+2. Lihat CPI dan SPI:
+   - CPI untuk efisiensi biaya
+   - SPI untuk ketepatan jadwal
+3. Validasi dengan S-Curve:
+   - apakah actual mengejar/meninggalkan plan
+4. Lihat Progress Site Trend untuk momentum mingguan.
+5. Cocokkan PO Price vs Omzet untuk konteks komersial.
+
+## Narasi Singkat Siap Pakai ke Manajemen
+
+"Dashboard ini menggabungkan progres lapangan, nilai kontrak, dan biaya aktual menjadi KPI mingguan. Kami membaca kesehatan proyek dari dua sisi: biaya (CPI) dan jadwal (SPI). Bila CPI dan SPI minimal 1, proyek dinilai on track. Kurva plan-vs-actual dipakai untuk melihat deviasi eksekusi dari rencana, sementara progress site trend menunjukkan momentum penyelesaian mingguan. Semua KPI utama disajikan dengan basis excl pajak agar perbandingan performa tetap konsisten."
+
+## Catatan Batasan (Transparansi)
+
+Dashboard ini sudah cukup kuat untuk kontrol operasional dan review manajemen rutin. Namun sebagai transparansi:
+
+- kualitas insight sangat tergantung kelengkapan input progress dan financial
+- jika ada transaksi belum diinput, KPI bisa berubah
+- model ini adalah EVM praktis untuk monitoring; untuk audit detail bisa dilengkapi analisis per stage berbobot

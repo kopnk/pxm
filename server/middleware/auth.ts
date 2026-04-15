@@ -18,6 +18,17 @@ export default defineEventHandler(async (event) => {
     return;
   }
 
+  // Partner PO PDF: optional signed `access` query — verified in route handler.
+  const pathOnly = url.split("?")[0] ?? "";
+  const queryString = url.includes("?") ? url.slice(url.indexOf("?") + 1) : "";
+  const pdfParams = new URLSearchParams(queryString);
+  if (
+    pathOnly === "/api/reports/partner-po-pdf" &&
+    pdfParams.get("access")?.trim()
+  ) {
+    return;
+  }
+
   const sessionId = getCookie(event, "pms_session");
   if (!sessionId) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });

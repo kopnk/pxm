@@ -5,6 +5,8 @@ definePageMeta({
 
 import { ref } from "vue";
 import { useRouter } from "#imports";
+import { apiFetch } from "~/utils/apiFetch";
+import type { AuthSessionUser } from "~/stores/auth";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -21,22 +23,20 @@ const submit = async () => {
 
   try {
     // 1️⃣ LOGIN (buat session + cookie)
-    await $fetch("/api/auth/login", {
+    await apiFetch("/api/auth/login", {
       method: "POST",
       body: {
         email: email.value,
         password: password.value,
       },
-      credentials: "include",
     });
 
-    // 2️⃣ AMBIL USER (ME)
-    const me: any = await $fetch("/api/auth/me", {
-      credentials: "include",
-    });
+    const me = await apiFetch<{ data: { user: Record<string, unknown> } }>(
+      "/api/auth/me",
+    );
 
     // 3️⃣ SET AUTH STATE (INI KUNCI UTAMA)
-    auth.setUser(me.data.user);
+    auth.setUser(me.data.user as AuthSessionUser);
 
     // 4️⃣ BARU PINDAH HALAMAN
     await router.push("/");

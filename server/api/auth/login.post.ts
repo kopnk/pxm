@@ -1,7 +1,7 @@
 import { defineEventHandler, readBody, setCookie, createError } from "h3";
 import { lucia } from "~/server/auth/lucia";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
+import { users, sessions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import argon2 from "argon2";
 import { successResponse } from "~/server/utils/response";
@@ -9,16 +9,17 @@ import { toLocalTime } from "~/server/utils/datetime";
 import { logAudit } from "~/server/utils/audit";
 import { loginSchema } from "~/server/validation/auth.schema";
 import { parseBody } from "~/server/utils/zod";
+import { dbTime } from "~/server/utils/dbTime";
 
 export default defineEventHandler(async (event) => {
   /**
-   * 1. Validasi body (Zod)
+   * 1. Validate body
    */
   const body = await readBody(event);
   const { email, password } = parseBody(loginSchema, body);
 
   /**
-   * 2. Ambil user
+   * 2. Get user
    */
   const user = await db
     .select({
@@ -35,12 +36,8 @@ export default defineEventHandler(async (event) => {
     .limit(1)
     .then((r) => r[0]);
 
-  if (!user) {
+  if (!user || !user.isActive) {
     throw createError({ statusCode: 401, statusMessage: "Invalid credentials" });
-  }
-
-  if (!user.isActive) {
-    throw createError({ statusCode: 403, statusMessage: "User is inactive" });
   }
 
   /**
@@ -56,11 +53,11 @@ export default defineEventHandler(async (event) => {
    */
   await db
     .update(users)
-    .set({ lastLoginAt: new Date() })
+    .set({ lastLoginAt: dbTime() })
     .where(eq(users.id, user.id));
 
   /**
-   * 5. Create session
+   * 5. Create session (Lucia)
    */
   const session = await lucia.createSession(user.id, {});
   const cookie = lucia.createSessionCookie(session.id);
@@ -68,12 +65,22 @@ export default defineEventHandler(async (event) => {
   setCookie(event, cookie.name, cookie.value, {
     ...cookie.attributes,
     path: "/",
-    sameSite: "lax",
-    secure: false,
   });
 
   /**
-   * 6. Audit
+   * 6. Ambil created_at langsung dari DB
+   */
+  const dbSession = await db
+    .select({
+      createdAt: sessions.createdAt,
+    })
+    .from(sessions)
+    .where(eq(sessions.id, session.id))
+    .limit(1)
+    .then((r) => r[0]);
+
+  /**
+   * 7. Audit
    */
   await logAudit({
     actorId: user.id,
@@ -83,7 +90,7 @@ export default defineEventHandler(async (event) => {
   });
 
   /**
-   * 7. Response
+   * 8. Response
    */
   return successResponse(event, "Login successful", {
     user: {
@@ -95,7 +102,7 @@ export default defineEventHandler(async (event) => {
     },
     session: {
       id: session.id,
-      createdAt: toLocalTime(session.createdAt),
+      createdAt: toLocalTime(dbSession?.createdAt),
       expiresAt: toLocalTime(session.expiresAt),
     },
   });

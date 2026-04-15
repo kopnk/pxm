@@ -2,107 +2,113 @@
 definePageMeta({
   middleware: ["superadmin"],
 });
-import { onMounted } from "vue";
 
+import { onMounted } from "vue";
+import { useFormHandler } from "@/composables/useFormHandler";
+import { toastSuccessDeleted } from "@/composables/useToastMessages";
 const usersStore = useUsersStore();
 const usersApi = useUsersApi();
 const authStore = useAuthStore();
+const { handle } = useFormHandler();
+
+const rowNumber = (index: number) => {
+  const page = usersStore.meta?.page ?? 1;
+  const limit = usersStore.meta?.limit ?? 10;
+  return (page - 1) * limit + index + 1;
+};
 
 onMounted(async () => {
   await usersApi.getUsers({ page: 1, limit: 10 });
 });
 
 const onDelete = async (id: string) => {
-  if (!confirm("Delete user?")) return;
+  const confirmed = confirm("Delete user?");
+  if (!confirmed) return;
 
-  // delete + mutasi state sudah dilakukan di store
-  await usersStore.deleteUser(id);
-
-  // LOGIC EXISTING TETAP:
-  // reload data agar pagination & meta tetap konsisten
-  await usersApi.getUsers({
-    page: usersStore.meta?.page ?? 1,
-    limit: usersStore.meta?.limit ?? 10,
-  });
+  await handle(async () => {
+    await usersApi.deleteUser(id);
+    await usersApi.getUsers({
+      page: usersStore.meta?.page ?? 1,
+      limit: usersStore.meta?.limit ?? 10,
+    });
+  }, toastSuccessDeleted("user"));
 };
 </script>
 
 <template>
-  <div>
-    <h3>
+  <div class="container py-4">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+      <h4 class="text-brand mb-0">Users</h4>
+
       <NuxtLink
         v-if="authStore.user?.role === 'superadmin'"
         to="/users/signup"
-        class="text-decoration-none"
+        class="btn btn-primary"
       >
-        +Users
+        + New user
       </NuxtLink>
+    </div>
 
-      <span v-else>Users</span>
-    </h3>
+    <div class="card shadow-sm border-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 60px">No</th>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Region</th>
+              <th>Area</th>
+              <th>Role</th>
+              <th>Active</th>
+              <th>Avatar URL</th>
+              <th>Last login</th>
+              <th>Created at</th>
+              <th>Updated at</th>
+            </tr>
+          </thead>
 
-    <table class="table table-bordered table-striped">
-      <thead>
-        <tr>
-          <th style="width: 60px">No</th>
-          <th>Email</th>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Region</th>
-          <th>Area</th>
-          <th>Role</th>
-          <th>Active</th>
-          <th>Avatar Url</th>
-          <th>Last Login</th>
-          <th>Created At</th>
-          <th>Updated At</th>
-        </tr>
-      </thead>
+          <tbody>
+            <tr v-for="(u, index) in usersStore.items" :key="u.id">
+              <td class="text-center">
+                <NuxtLink
+                  to="#"
+                  class="text-danger text-decoration-none"
+                  title="Delete user"
+                  @click.prevent="onDelete(u.id)"
+                >
+                  {{ rowNumber(index) }}
+                </NuxtLink>
+              </td>
 
-      <tbody>
-        <tr v-for="(u, index) in usersStore.items" :key="u.id">
-          <!-- No + Delete -->
-          <td class="text-center">
-            <NuxtLink
-              to="#"
-              class="text-danger text-decoration-none"
-              title="Delete user"
-              @click.prevent="onDelete(u.id)"
-            >
-              {{
-                (usersStore.meta?.page! - 1) * usersStore.meta?.limit! +
-                index +
-                1
-              }}
-            </NuxtLink>
-          </td>
+              <td>
+                <NuxtLink
+                  :to="`/users/update?id=${u.id}`"
+                  class="text-decoration-none"
+                >
+                  {{ u.email }}
+                </NuxtLink>
+              </td>
 
-          <!-- Email = Edit link -->
-          <td>
-            <NuxtLink
-              :to="`/users/update?id=${u.id}`"
-              class="text-decoration-none"
-            >
-              {{ u.email }}
-            </NuxtLink>
-          </td>
+              <td>{{ u.firstName }} {{ u.lastName }}</td>
+              <td>{{ u.phone }}</td>
+              <td>{{ u.region }}</td>
+              <td>{{ u.area }}</td>
+              <td>{{ u.role }}</td>
+              <td>{{ u.isActive }}</td>
+              <td>{{ u.avatarUrl }}</td>
+              <td>{{ u.lastLoginAt }}</td>
+              <td>{{ u.createdAt }}</td>
+              <td>{{ u.updatedAt }}</td>
+            </tr>
 
-          <td>{{ u.firstName }} {{ u.lastName }}</td>
-          <td>{{ u.phone }}</td>
-          <td>{{ u.region }}</td>
-          <td>{{ u.area }}</td>
-          <td>{{ u.role }}</td>
-          <td>{{ u.isActive }}</td>
-          <td>{{ u.avatarUrl }}</td>
-          <td>{{ u.lastLoginAt }}</td>
-          <td>{{ u.createdAt }}</td>
-          <td>{{ u.updatedAt }}</td>
-        </tr>
-
-        <tr v-if="!usersStore.items.length">
-          <td colspan="12" class="text-center">No data</td>
-        </tr>
-      </tbody>
-    </table>
+            <tr v-if="!usersStore.items.length">
+              <td colspan="12" class="text-center text-muted py-4">No data</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </template>

@@ -2,9 +2,9 @@
 const auth = useAuthStore();
 const user = computed(() => auth.user);
 
-async function handleLogout() {
-  const { logout } = useAppLogout();
+const { logout } = useAppLogout();
 
+async function handleLogout() {
   await logout();
 }
 
@@ -12,8 +12,10 @@ const displayName = computed(() =>
   user.value ? user.value.firstName : "Guest",
 );
 
-const avatarUrl = computed(
-  () => user.value?.avatarUrl || "https://github.com/mdo.png",
+const avatarUrl = computed(() =>
+  !user.value?.avatarUrl || user.value.avatarUrl === "http://profile/update"
+    ? "https://wbzgjchzffmgybtblxbj.supabase.co/storage/v1/object/public/avatars/default/default.jpg"
+    : user.value.avatarUrl,
 );
 </script>
 
@@ -46,17 +48,29 @@ const avatarUrl = computed(
             </NuxtLink>
           </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/details" active-class="active">
+            <NuxtLink
+              class="nav-link"
+              to="/project-details"
+              active-class="active"
+            >
               Details
             </NuxtLink>
           </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/progress" active-class="active">
+            <NuxtLink
+              class="nav-link"
+              to="/project-progress"
+              active-class="active"
+            >
               Progress
             </NuxtLink>
           </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/financial" active-class="active">
+            <NuxtLink
+              class="nav-link"
+              to="/project-financials"
+              active-class="active"
+            >
               Financial
             </NuxtLink>
           </li>
@@ -70,22 +84,44 @@ const avatarUrl = computed(
               Partners
             </NuxtLink>
           </li>
+
+          <li class="nav-item dropdown">
+            <a
+              class="nav-link dropdown-toggle"
+              href="#"
+              role="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Taxes
+            </a>
+            <ul class="dropdown-menu">
+              <li>
+                <NuxtLink class="dropdown-item" to="/project-financials/tax-in">
+                  Tax In
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink
+                  class="dropdown-item"
+                  to="/project-financials/tax-out"
+                >
+                  Tax Out
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink class="dropdown-item" to="/project-financials/pph">
+                  PPH
+                </NuxtLink>
+              </li>
+            </ul>
+          </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/jsa" active-class="active">
-              Jsa
+            <NuxtLink class="nav-link" to="/dcn" active-class="active">
+              DCN
             </NuxtLink>
           </li>
         </ul>
-
-        <!-- SEARCH -->
-        <form class="d-flex me-3 position-relative" role="search">
-          <input
-            class="form-control form-control-sm"
-            type="search"
-            placeholder="Search…"
-            aria-label="Search"
-          />
-        </form>
 
         <!-- USER DROPDOWN -->
         <div class="dropdown" v-if="user">

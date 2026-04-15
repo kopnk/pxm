@@ -1,63 +1,39 @@
-import { defineEventHandler } from "h3";
+import { defineEventHandler, createError } from "h3";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
-import { successResponse, errorResponse } from "~/server/utils/response";
+import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { toLocalTime } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
+
   const forbidden = requireRole(event, ["admin", "superadmin"]);
   if (forbidden) return forbidden;
 
-  const authRole = event.context.user.role;
-  const id = event.context.params.id;
+  const actor = event.context.user!;
+  const id = event.context.params?.id;
 
-  const selectFields =
-    authRole === "superadmin"
-      ? {
-          id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          phone: users.phone,
-          region: users.region,
-          area: users.area,
-          role: users.role,
-          isActive: users.isActive,
-          avatarUrl: users.avatarUrl,
-          lastLoginAt: users.lastLoginAt,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-        }
-      : {
-          id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-          isActive: users.isActive,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-        };
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
+  }
 
-  const user = await db
-    .select(selectFields)
+  const rows = await db
+    .select()
     .from(users)
     .where(eq(users.id, id))
-    .limit(1)
-    .then((r) => r[0]);
+    .limit(1);
+
+  const user = rows[0];
 
   if (!user) {
-    return errorResponse(event, "User not found", 404);
+    throw createError({ statusCode: 404, statusMessage: "User not found" });
   }
 
   return successResponse(event, "User retrieved", {
     ...user,
     createdAt: toLocalTime(user.createdAt),
     updatedAt: toLocalTime(user.updatedAt),
-    lastLoginAt: user.lastLoginAt
-      ? toLocalTime(user.lastLoginAt)
-      : null,
+    lastLoginAt: user.lastLoginAt ? toLocalTime(user.lastLoginAt) : null,
   });
 });

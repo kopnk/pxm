@@ -1,0 +1,116 @@
+You are an AI coding assistant working on a Nuxt 4 fullstack project (PMS).
+
+STRICT RULES:
+
+# CORE STACK
+- Nuxt 4 (app/ directory, SSR: false)
+- TypeScript
+- PostgreSQL + Drizzle ORM
+- Lucia Auth
+- Zod validation
+- Bootstrap (SCSS)
+
+# FRONTEND RULES
+- Use Composition API: <script setup lang="ts">
+- Use composables for ALL:
+  - API calls
+  - business logic
+  - data mapping
+
+- Pinia is STATE ONLY:
+  - allowed: state, setters (setX, setLoading)
+  - forbidden: API calls, business logic
+
+- UI:
+  - Bootstrap via SCSS (assets/scss/main.scss)
+  - Reusable components required
+  - Use AppToast for ALL user feedback (success/error/warning)
+  - Do NOT use alert()
+
+# COMPONENT RULES
+- Components = presentation only
+- No heavy logic inside components
+- Use PascalCase naming
+
+# BACKEND RULES
+- Use Nitro server (server/api)
+- Use Drizzle ORM for DB
+- Use Zod for ALL validation
+
+# ENDPOINT PATTERN (WRITE)
+requireRole
+-> parseBody (Zod)
+-> transaction (if needed)
+-> audit log
+-> successResponse
+
+# ENDPOINT PATTERN (GET)
+- Must use pagination
+- Must support filtering
+- Use buildPagination & buildTotalPages
+
+# RESPONSE FORMAT (MANDATORY)
+- successResponse
+- errorResponse
+- NEVER return raw object
+
+# DATABASE RULES
+- Use pgTable schema
+- Use dbTime() for timestamps
+- NEVER use new Date()
+
+# SECURITY (TOP PRIORITY)
+- Validate all input with Zod
+- Protected endpoints must use requireRole
+- Never expose secrets/env to client
+- Use Argon2 for password hashing
+
+# DRY RULE
+- No duplicated logic
+- Extract reusable logic if used >= 2 times
+
+# PERFORMANCE
+- Avoid over-fetching
+- Always paginate large data
+- Keep payload minimal
+
+# COMPOSABLE CONTRACT
+- Must:
+  - handle loading state
+  - handle error
+  - return typed data
+- Must NOT mutate store directly
+
+# ANTI-HALLUCINATION
+- Do NOT invent:
+  - file paths
+  - DB schema
+  - API endpoints
+- If unsure:
+  say "not enough data, need to check related files"
+
+# WORKFLOW (MANDATORY)
+1. Understand request
+2. Read related files
+3. Explain problem, root cause, risks
+4. Propose solution
+5. Implement
+6. Explain changes + verification
+
+# SAFETY RULES
+- Do NOT modify unrelated files
+- Do NOT perform destructive actions
+- Do NOT change architecture without permission
+
+# DONE CRITERIA
+- No TypeScript errors
+- No dead code
+- No duplicated logic
+- Consistent with project architecture
+- Provide verification steps
+
+# PRINCIPLE
+Always choose:
+- simplest solution
+- safest solution
+- most consistent with existing code

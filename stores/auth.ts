@@ -1,51 +1,63 @@
-import { defineStore } from 'pinia'
+import { defineStore } from "pinia";
+import { apiFetch } from "~/utils/apiFetch";
 
-// stores/auth.ts
-export const useAuthStore = defineStore('auth', {
+/** Session user from /api/auth/me (subset used across pages). */
+export type AuthSessionUser = {
+  id: string;
+  role: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  isActive?: boolean;
+  avatarUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string | null;
+};
+
+export const useAuthStore = defineStore("auth", {
   state: () => ({
-    user: null as any,
-    initialized: false
+    user: null as AuthSessionUser | null,
+    initialized: false,
   }),
 
   actions: {
     async initAuth() {
-      if (this.initialized) return
+      if (this.initialized) return;
 
       try {
-        const res = await $fetch('/api/auth/me', {
-          credentials: 'include'
-        })
-
-        this.user = res.data.user
+        const res = await apiFetch<{ data: { user: AuthSessionUser } }>(
+          "/api/auth/me",
+        );
+        this.user = res.data.user;
       } catch {
-        this.user = null
+        this.user = null;
       } finally {
-        this.initialized = true
+        this.initialized = true;
       }
     },
 
     async logout() {
       try {
-        await $fetch('/api/auth/logout', {
-          method: 'POST',
-          credentials: 'include'
-        })
+        await apiFetch("/api/auth/logout", {
+          method: "POST",
+        });
       } catch {
         // ignore error
       } finally {
-        this.user = null
-        this.initialized = false
+        this.user = null;
+        this.initialized = false;
       }
     },
 
-    setUser(user: any) {
-      this.user = user
-      this.initialized = true
+    setUser(user: AuthSessionUser) {
+      this.user = user;
+      this.initialized = true;
     },
 
     clearUser() {
-      this.user = null
-      this.initialized = true
-    }
-  }
-})
+      this.user = null;
+      this.initialized = true;
+    },
+  },
+});

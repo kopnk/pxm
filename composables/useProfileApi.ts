@@ -1,55 +1,62 @@
+import { apiFetch } from "~/utils/apiFetch";
+import type { ProfileUser } from "~/stores/profile";
+
+type ApiEnvelope<T> = {
+  success: boolean;
+  message?: string;
+  data: T;
+};
+
 export const useProfileApi = () => {
-  const updateProfile = async (payload: Record<string, any>) => {
-    const { data, error } = await useFetch("/api/profile", {
-      method: "PUT",
-      body: payload,
-      credentials: "include",
-    });
+  const profileStore = useProfileStore();
 
-    if (error.value) {
-      throw new Error(
-        error.value.data?.message ||
-        error.value.message ||
-        "Update failed"
-      );
+  const fetchProfile = async (force = false) => {
+    if (profileStore.loaded && profileStore.profile && !force) {
+      return profileStore.profile;
     }
 
-    if (!data.value?.success) {
-      throw new Error(data.value?.message || "Update failed");
+    try {
+      const res = await apiFetch<ApiEnvelope<ProfileUser>>("/api/profile");
+      profileStore.setProfile(res.data);
+      return res.data;
+    } catch (e) {
+      profileStore.clear();
+      throw e;
     }
-
-    return data.value;
   };
 
-  // 🔧 HANYA BAGIAN INI YANG DISESUAIKAN
+  const updateProfile = async (payload: Record<string, unknown>) => {
+    const res = await apiFetch<ApiEnvelope<unknown>>("/api/profile", {
+      method: "PUT",
+      body: payload,
+    });
+
+    if (!res.success) {
+      throw new Error("Update failed");
+    }
+
+    return res;
+  };
+
   const changePassword = async (payload: {
     currentPassword: string;
     newPassword: string;
     confirmPassword: string;
   }) => {
-    const { data, error } = await useFetch(
+    const res = await apiFetch<ApiEnvelope<unknown>>(
       "/api/profile/change-password",
       {
         method: "POST",
         body: payload,
-        credentials: "include",
-      }
+      },
     );
 
-    if (error.value) {
-      throw new Error(
-        error.value.data?.message ||
-        error.value.message ||
-        "Change password failed"
-      );
+    if (!res.success) {
+      throw new Error(res.message || "Change password failed");
     }
 
-    if (!data.value?.success) {
-      throw new Error(data.value?.message || "Change password failed");
-    }
-
-    return data.value;
+    return res;
   };
 
-  return { updateProfile, changePassword };
+  return { fetchProfile, updateProfile, changePassword };
 };

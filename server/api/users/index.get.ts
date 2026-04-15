@@ -1,34 +1,37 @@
-import { defineEventHandler, getQuery } from "h3";
+import { defineEventHandler, getQuery, createError } from "h3";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, count, desc, sql } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
+import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { toLocalTime } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
+
   const forbidden = requireRole(event, ["admin", "superadmin"]);
   if (forbidden) return forbidden;
 
-  const authRole = event.context.user.role;
+  const actor = event.context.user;
+  if (!actor) {
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
+  }
+
   const query = getQuery(event);
+  const { page, limit, offset } = buildPagination(query);
 
-  const page = Number(query.page ?? 1);
-  const limit = Number(query.limit ?? 10);
-  const offset = (page - 1) * limit;
-
-  const filters = [];
+  const conditions = [];
 
   if (query.role) {
-    filters.push(eq(users.role, String(query.role)));
+    conditions.push(eq(users.role, String(query.role)));
   }
 
   if (query.isActive !== undefined) {
-    filters.push(eq(users.isActive, query.isActive === "true"));
+    conditions.push(eq(users.isActive, query.isActive === "true"));
   }
 
   if (query.search) {
-    filters.push(
+    conditions.push(
       ilike(
         sql`concat(${users.firstName}, ' ', ${users.lastName})`,
         `%${query.search}%`
@@ -36,11 +39,18 @@ export default defineEventHandler(async (event) => {
     );
   }
 
-  const whereClause = filters.length ? and(...filters) : undefined;
+  const where = conditions.length ? and(...conditions) : undefined;
 
-  // 🔥 FIELD SELECTION BERDASARKAN ROLE
+  const totalResult = await db
+    .select({ value: count() })
+    .from(users)
+    .where(where);
+
+  const total = Number(totalResult[0]?.value ?? 0);
+  const totalPages = buildTotalPages(total, limit);
+
   const selectFields =
-    authRole === "superadmin"
+    actor.role === "superadmin"
       ? {
           id: users.id,
           email: users.email,
@@ -67,35 +77,26 @@ export default defineEventHandler(async (event) => {
           updatedAt: users.updatedAt,
         };
 
-  const items = await db
+  const rows = await db
     .select(selectFields)
     .from(users)
-    .where(whereClause)
+    .where(where)
+    .orderBy(desc(users.createdAt))
     .limit(limit)
     .offset(offset);
 
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(users)
-    .where(whereClause);
-
-  const total = Number(totalResult[0].count);
+  const items = rows.map((u) => ({
+    ...u,
+    createdAt: toLocalTime(u.createdAt),
+    updatedAt: toLocalTime(u.updatedAt),
+    lastLoginAt: u.lastLoginAt ? toLocalTime(u.lastLoginAt) : null,
+  }));
 
   return successResponse(event, "Users retrieved", {
-    items: items.map((u) => ({
-      ...u,
-      createdAt: toLocalTime(u.createdAt),
-      updatedAt: toLocalTime(u.updatedAt),
-      lastLoginAt: u.lastLoginAt
-        ? toLocalTime(u.lastLoginAt)
-        : null,
-    })),
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
+    items,
+    page,
+    limit,
+    total,
+    totalPages,
   });
 });
-
