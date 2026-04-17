@@ -92,7 +92,7 @@ export async function buildPartnerPoPdfBuffer(
   const doc = new PDFDocument({
     size: "A4",
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-    info: { Title: `PO ${meta.poNumber}`, Author: "PMS" },
+    info: { Title: `PO ${meta.poNumber}`, Author: "PXM" },
   });
 
   const chunks: Buffer[] = [];

@@ -7,7 +7,7 @@
           class="text-brand text-decoration-none fw-bold"
           aria-label="Brand"
         >
-          PMS
+          PXM
         </NuxtLink>
 
         <small class="text-muted"> © 2026 - ngopi </small>

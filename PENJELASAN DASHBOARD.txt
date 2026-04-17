@@ -1,4 +1,4 @@
-# Penjelasan Dashboard PMS untuk Manajemen
+# Penjelasan Dashboard PXM untuk Manajemen
 
 Dokumen ini adalah pegangan singkat untuk menjelaskan bagaimana dashboard dibuat, angka berasal dari mana, dan cara membacanya saat review kinerja proyek.
 

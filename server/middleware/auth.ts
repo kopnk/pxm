@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     return;
   }
 
-  const sessionId = getCookie(event, "pms_session");
+  const sessionId = getCookie(event, "pxm_session");
   if (!sessionId) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }

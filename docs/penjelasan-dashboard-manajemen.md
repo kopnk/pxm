@@ -1,4 +1,4 @@
-# Penjelasan Dashboard PMS untuk Manajemen
+# Penjelasan Dashboard PXM untuk Manajemen
 
 Dokumen ini menjelaskan dashboard di halaman `pages/index.vue` dengan bahasa non-teknis tapi tetap akurat ke implementasi script saat ini.
 

@@ -48,7 +48,7 @@ export async function buildPartnerInvoicePdfBuffer(
   const doc = new PDFDocument({
     size: "A4",
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-    info: { Title: `Kwitansi ${meta.invoiceNumber}`, Author: "PMS" },
+    info: { Title: `Kwitansi ${meta.invoiceNumber}`, Author: "PXM" },
   });
 
   const chunks: Buffer[] = [];

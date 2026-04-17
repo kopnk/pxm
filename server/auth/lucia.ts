@@ -13,7 +13,7 @@ export const lucia = new Lucia(adapter, {
   sessionExpiresIn: new TimeSpan(3, "h"),
 
   sessionCookie: {
-    name: "pms_session",
+    name: "pxm_session",
     expires: true, // 🔥 PERSISTENT COOKIE
     attributes: {
       secure: process.env.NODE_ENV === "production",

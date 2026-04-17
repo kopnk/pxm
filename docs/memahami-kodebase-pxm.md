@@ -1,6 +1,6 @@
-# Memahami Kodebase PMS (Nuxt 4 Fullstack)
+# Memahami Kodebase PXM (Nuxt 4 Fullstack)
 
-Dokumen ini adalah peta teknis PMS agar Anda bisa cepat paham:
+Dokumen ini adalah peta teknis PXM agar Anda bisa cepat paham:
 - struktur folder,
 - alur data dari UI sampai database,
 - pola coding yang wajib diikuti,
@@ -10,7 +10,7 @@ Dokumen ini adalah peta teknis PMS agar Anda bisa cepat paham:
 
 ## 1) Gambaran Arsitektur Singkat
 
-PMS memakai pola **Frontend SPA + API internal Nuxt (Nitro) + PostgreSQL**.
+PXM memakai pola **Frontend SPA + API internal Nuxt (Nitro) + PostgreSQL**.
 
 | Lapisan | Lokasi | Peran |
 |---|---|---|
@@ -80,7 +80,7 @@ Inti yang perlu diingat: **komponen UI tidak menampung logika berat**, semua dip
 
 ---
 
-## 4) Pola Frontend yang Dipakai di PMS
+## 4) Pola Frontend yang Dipakai di PXM
 
 ### 4.1 Halaman (`pages/`)
 - `index.vue` umumnya list/table + filter + pagination.

@@ -1,4 +1,4 @@
-You are an AI coding assistant working on a Nuxt 4 fullstack project (PMS).
+You are an AI coding assistant working on a Nuxt 4 fullstack project (PXM).
 
 STRICT RULES:
 

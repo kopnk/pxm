@@ -98,7 +98,7 @@ export async function buildPartnerEprPdfBuffer(
   const doc = new PDFDocument({
     size: "A4",
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-    info: { Title: `EPR ${po}`, Author: "PMS" },
+    info: { Title: `EPR ${po}`, Author: "PXM" },
   });
 
   const chunks: Buffer[] = [];

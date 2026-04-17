@@ -35,7 +35,7 @@ export async function buildPartnerBastPdfBuffer(
   const doc = new PDFDocument({
     size: "A4",
     margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-    info: { Title: `BAST ${meta.bastNumber}`, Author: "PMS" },
+    info: { Title: `BAST ${meta.bastNumber}`, Author: "PXM" },
   });
 
   const chunks: Buffer[] = [];
