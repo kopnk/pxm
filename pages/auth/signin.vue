@@ -52,7 +52,9 @@ const submit = async () => {
   <div class="signin-wrapper d-flex align-items-center justify-content-center">
     <div class="card signin-card shadow-sm">
       <div class="card-body p-4">
-        <h4 class="text-center mb-4 fw-bold text-brand">PMS</h4>
+        <div class="text-center mb-4">
+          <img src="/pxm.png" alt="PXM" height="78" />
+        </div>
 
         <form @submit.prevent="submit">
           <!-- Email -->

@@ -23,7 +23,9 @@ const avatarUrl = computed(() =>
   <nav class="navbar navbar-expand-lg navbar-dark header">
     <div class="container">
       <!-- BRAND / LOGO -->
-      <NuxtLink to="/" class="navbar-brand fw-bold text-white"> PMS </NuxtLink>
+      <NuxtLink to="/" class="navbar-brand d-flex align-items-center fw-bold">
+        PXM
+      </NuxtLink>
 
       <!-- TOGGLER (MOBILE) -->
       <button

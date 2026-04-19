@@ -33,9 +33,9 @@ const { getProjectFiles, uploadProjectFile, deleteProjectFile } =
   useProjectFilesApi();
 const { loading, handle } = useFormHandler();
 
-const projects = ref<{ id: string; projectName?: string; poNumber?: string }[]>(
-  [],
-);
+const projects = ref<
+  { id: string; projectName?: string; poNumber?: string; poDate?: string | null }[]
+>([]);
 const clientsList = ref<{ id: string; name?: string | null }[]>([]);
 const partnersList = ref<{ id: string; name?: string | null }[]>([]);
 const details = ref<
@@ -112,6 +112,17 @@ const clientTotalPreview = computed(() => {
   return bc + tout;
 });
 
+const clientInvoicePdfHref = computed(() => {
+  const invoice = form.invoiceNumberClient?.trim();
+  const clientId = form.clientId?.trim();
+  if (!invoice || !clientId) return "#";
+  const query = new URLSearchParams({
+    invoice,
+    clientId,
+  });
+  return `/api/reports/client-invoice-pdf?${query.toString()}`;
+});
+
 const fmtMoney = (v: number | null) => {
   if (v === null) return "—";
   return new Intl.NumberFormat("en-US", {
@@ -156,10 +167,18 @@ const loadDetails = async (projectId: string) => {
   details.value = res.data.items ?? [];
 };
 
+const syncClientPoFromProject = () => {
+  if (form.flowDirection !== "out") return;
+  const project = selectedProject.value;
+  form.poNumberClient = project?.poNumber ?? "";
+  form.poDateClient = project?.poDate ?? "";
+};
+
 watch(
   () => form.projectId,
   async (pid) => {
     await loadDetails(pid);
+    syncClientPoFromProject();
   },
 );
 
@@ -186,6 +205,7 @@ onMounted(async () => {
   };
   applyFinancialRowToForm(res.data, form);
   await loadDetails(form.projectId);
+  syncClientPoFromProject();
   const docs = await getProjectFiles({
     refTable: "project_financials",
     refId: id,
@@ -723,11 +743,16 @@ const removeDoc = async (category: string) => {
 
       <div class="col-md-4">
         <label class="form-label">Client PO</label>
-        <input v-model="form.poNumberClient" class="form-control" />
+        <input v-model="form.poNumberClient" class="form-control" disabled />
       </div>
       <div class="col-md-4">
         <label class="form-label">Client PO Date</label>
-        <input v-model="form.poDateClient" type="date" class="form-control" />
+        <input
+          v-model="form.poDateClient"
+          type="date"
+          class="form-control"
+          disabled
+        />
       </div>
       <div class="col-md-4">
         <label class="form-label">Client PO File</label>
@@ -761,6 +786,19 @@ const removeDoc = async (category: string) => {
       <div class="col-md-4">
         <label class="form-label">Client Invoice</label>
         <input v-model="form.invoiceNumberClient" class="form-control" />
+        <div class="data-meta mt-1">
+          <a
+            v-if="form.invoiceNumberClient?.trim() && form.clientId?.trim()"
+            :href="clientInvoicePdfHref"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Print INV
+          </a>
+          <span v-else class="text-muted">
+            Select client and enter invoice number to open PDF
+          </span>
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Client Invoice Date</label>

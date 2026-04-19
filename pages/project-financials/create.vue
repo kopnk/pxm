@@ -78,6 +78,17 @@ const clientTotalPreview = computed(() => {
   return bc + tout;
 });
 
+const clientInvoicePdfHref = computed(() => {
+  const invoice = form.invoiceNumberClient?.trim();
+  const clientId = form.clientId?.trim();
+  if (!invoice || !clientId) return "#";
+  const query = new URLSearchParams({
+    invoice,
+    clientId,
+  });
+  return `/api/reports/client-invoice-pdf?${query.toString()}`;
+});
+
 function syncTaxOutPercentFromDetailSeed() {
   const bc = pfClientLineBase(form.qtyClient, form.unitPriceClient);
   const seed = detailTaxOutAmountSeed.value;
@@ -572,6 +583,19 @@ const docFileLabel = (category: string) =>
       <div class="col-md-4">
         <label class="form-label">Client Invoice</label>
         <input v-model="form.invoiceNumberClient" class="form-control" />
+        <div class="data-meta mt-1">
+          <a
+            v-if="form.invoiceNumberClient?.trim() && form.clientId?.trim()"
+            :href="clientInvoicePdfHref"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Print Client Invoice
+          </a>
+          <span v-else class="text-muted">
+            Select client and enter invoice number to open PDF
+          </span>
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Client Invoice Date</label>

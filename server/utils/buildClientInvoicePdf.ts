@@ -2,25 +2,26 @@ import PDFDocument from "pdfkit";
 import { pfListLineBase } from "~/composables/useProjectFinancialsDisplay";
 import { formatDateToIdText } from "~/utils/formatDateToIdText";
 
-export type PartnerInvoicePdfLine = {
+export type ClientInvoicePdfLine = {
   detailSiteId: string | null;
   detailSiteName: string | null;
   detailMaterialName: string | null;
-  qtyPartner: unknown;
-  unitPricePartner: unknown;
+  qtyClient: unknown;
+  unitPriceClient: unknown;
 };
 
-export type PartnerInvoicePdfMeta = {
+export type ClientInvoicePdfMeta = {
   invoiceNumber: string;
   invoiceDate: string | null;
-  poNumberPartner: string | null;
-  poDatePartner: string | null;
+  poNumberClient: string | null;
+  poDateClient: string | null;
   projectName: string | null;
-  partnerName: string | null;
-  partnerBankName: string | null;
-  partnerBankAccount: string | null;
-  partnerCity: string | null;
+  clientName: string | null;
+  clientBankName: string | null;
+  clientBankAccount: string | null;
+  clientCity: string | null;
   signatoryName: string | null;
+  signatoryTitle: string | null;
 };
 
 const MARGIN = 44;
@@ -41,9 +42,14 @@ function pageBounds(doc: InstanceType<typeof PDFDocument>) {
   return { ml, mr, mb, mw };
 }
 
-export async function buildPartnerInvoicePdfBuffer(
-  lines: PartnerInvoicePdfLine[],
-  meta: PartnerInvoicePdfMeta,
+function normalizeInvoiceCity(city: string | null) {
+  if (!city) return "Jakarta";
+  return city.toLowerCase().startsWith("jakarta") ? "Jakarta" : city;
+}
+
+export async function buildClientInvoicePdfBuffer(
+  lines: ClientInvoicePdfLine[],
+  meta: ClientInvoicePdfMeta,
 ): Promise<Buffer> {
   const doc = new PDFDocument({
     size: "A4",
@@ -67,16 +73,16 @@ export async function buildPartnerInvoicePdfBuffer(
   });
   y = doc.y + 14;
 
-  const labelW = 74;
+  const labelW = 90;
   const valueX = ml + labelW;
   doc.font("Helvetica").fontSize(10);
   doc.text("PO Date", ml, y, { width: labelW });
-  doc.text(`: ${formatDateToIdText(meta.poDatePartner)}`, valueX, y, {
+  doc.text(`: ${formatDateToIdText(meta.poDateClient)}`, valueX, y, {
     width: mw - labelW,
   });
   y = doc.y + 2;
   doc.text("No PO", ml, y, { width: labelW });
-  doc.text(`: ${meta.poNumberPartner || "—"}`, valueX, y, { width: mw - labelW });
+  doc.text(`: ${meta.poNumberClient || "—"}`, valueX, y, { width: mw - labelW });
   y = doc.y + 2;
   doc.text("No Invoice", ml, y, { width: labelW });
   doc.text(`: ${meta.invoiceNumber || "—"}`, valueX, y, { width: mw - labelW });
@@ -112,7 +118,7 @@ export async function buildPartnerInvoicePdfBuffer(
 
     const desc =
       `${line.detailMaterialName || "Pekerjaan"} ${line.detailSiteId || "—"} ${line.detailSiteName || "—"}`.trim();
-    const total = pfListLineBase(line.qtyPartner, line.unitPricePartner);
+    const total = pfListLineBase(line.qtyClient, line.unitPriceClient);
     if (total != null) grandTotal += total;
 
     doc.text(String(idx + 1), colNo, y, { width: 28, align: "center" });
@@ -147,20 +153,32 @@ export async function buildPartnerInvoicePdfBuffer(
   doc.text("Payment can be transferred to:", ml, y, { width: mw });
   y = doc.y + 1;
   doc.text(
-    `Account: ${meta.partnerBankAccount || "—"} ${meta.partnerBankName || "—"} a.n ${meta.partnerName || "—"}`,
+    "Account: 1234567890 Mandiri a.n Kopindosat",
     ml,
     y,
     { width: mw },
   );
   y = doc.y + 18;
 
-  doc.text(`${meta.partnerCity || "—"}, ${formatDateToIdText(meta.invoiceDate)}`, mr - 220, y, {
-    width: 220,
-    align: "right",
-  });
+  const invoiceCity = normalizeInvoiceCity(meta.clientCity);
+  doc.text(
+    `${invoiceCity}, ${formatDateToIdText(meta.invoiceDate)}`,
+    mr - 220,
+    y,
+    {
+      width: 220,
+      align: "right",
+    },
+  );
   y += 84;
   doc.font("Helvetica").fontSize(10);
   doc.text(meta.signatoryName || "__________________________", mr - 220, y, {
+    width: 220,
+    align: "right",
+  });
+  y += 14;
+  doc.font("Helvetica").fontSize(9);
+  doc.text(meta.signatoryTitle || "", mr - 220, y, {
     width: 220,
     align: "right",
   });

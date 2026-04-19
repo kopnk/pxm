@@ -2,7 +2,7 @@
   <div class="dashboard-wrap">
     <div class="dashboard-head">
       <div>
-        <h2 class="dashboard-title">Project Performance Dashboard</h2>
+        <h2 class="dashboard-title">Projects eXecution Monitoring</h2>
         <p class="dashboard-subtitle">
           Data source: Projects, Details, Progress, Financials
         </p>

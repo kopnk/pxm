@@ -1,12 +1,12 @@
 import { createError, defineEventHandler, getQuery } from "h3";
 import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "~/server/db";
-import { partners } from "~/server/db/schema/partners";
+import { clients } from "~/server/db/schema/clients";
 import { projectDetails } from "~/server/db/schema/project_details";
 import { projectFinancials } from "~/server/db/schema/project_financials";
 import { projects } from "~/server/db/schema/projects";
 import { requireRole } from "~/server/utils/authorize";
-import { buildPartnerInvoicePdfBuffer } from "~/server/utils/buildPartnerInvoicePdf";
+import { buildClientInvoicePdfBuffer } from "~/server/utils/buildClientInvoicePdf";
 
 function safeFilename(value: string) {
   return value.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "KWITANSI";
@@ -18,47 +18,55 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event);
   const invoice = String(query.invoice ?? "").trim();
+  const clientId = String(query.clientId ?? "").trim();
   if (!invoice) {
     throw createError({
       statusCode: 400,
       statusMessage: "Query invoice is required",
     });
   }
+  const whereClause = clientId
+    ? and(
+        eq(projectFinancials.flowDirection, "out"),
+        eq(projectFinancials.invoiceNumberClient, invoice),
+        eq(projectFinancials.clientId, clientId),
+        ne(projectFinancials.status, "cancelled"),
+      )
+    : and(
+        eq(projectFinancials.flowDirection, "out"),
+        eq(projectFinancials.invoiceNumberClient, invoice),
+        ne(projectFinancials.status, "cancelled"),
+      );
 
   const rows = await db
     .select({
       detailSiteId: projectDetails.siteId,
       detailSiteName: projectDetails.siteName,
       detailMaterialName: projectDetails.materialName,
-      qtyPartner: projectFinancials.qtyPartner,
-      unitPricePartner: projectFinancials.unitPricePartner,
+      qtyClient: projectFinancials.qtyClient,
+      unitPriceClient: projectFinancials.unitPriceClient,
       projectName: projects.projectName,
-      poNumberPartner: projectFinancials.poNumberPartner,
-      poDatePartner: projectFinancials.poDatePartner,
-      invoiceDatePartner: projectFinancials.invoiceDatePartner,
-      partnerName: partners.name,
-      partnerBankName: partners.bankName,
-      partnerBankAccount: partners.bankAccount,
-      partnerAddressMeta: partners.addressMeta,
-      signatoryName: partners.signatoryName,
+      projectPoNumber: projects.poNumber,
+      projectPoDate: projects.poDate,
+      invoiceDateClient: projectFinancials.invoiceDateClient,
+      clientName: clients.name,
+      clientBankName: clients.bankName,
+      clientBankAccount: clients.bankAccount,
+      clientAddressMeta: clients.addressMeta,
+      signatoryName: clients.signatoryName,
+      signatoryTitle: clients.signatoryTitle,
     })
     .from(projectFinancials)
     .innerJoin(projects, eq(projectFinancials.projectId, projects.id))
     .innerJoin(projectDetails, eq(projectFinancials.projectDetailId, projectDetails.id))
-    .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
-    .where(
-      and(
-        eq(projectFinancials.flowDirection, "in"),
-        eq(projectFinancials.invoiceNumberPartner, invoice),
-        ne(projectFinancials.status, "cancelled"),
-      ),
-    )
+    .leftJoin(clients, eq(projectFinancials.clientId, clients.id))
+    .where(whereClause)
     .orderBy(asc(projectDetails.siteName), asc(projectDetails.siteId));
 
   if (!rows.length) {
     throw createError({
       statusCode: 404,
-      statusMessage: "No partner invoice lines found",
+      statusMessage: "No client invoice lines found",
     });
   }
 
@@ -66,32 +74,33 @@ export default defineEventHandler(async (event) => {
   if (!first) {
     throw createError({
       statusCode: 404,
-      statusMessage: "No partner invoice lines found",
+      statusMessage: "No client invoice lines found",
     });
   }
 
-  const pdfBuffer = await buildPartnerInvoicePdfBuffer(
+  const pdfBuffer = await buildClientInvoicePdfBuffer(
     rows.map((row) => ({
       detailSiteId: row.detailSiteId,
       detailSiteName: row.detailSiteName,
       detailMaterialName: row.detailMaterialName,
-      qtyPartner: row.qtyPartner,
-      unitPricePartner: row.unitPricePartner,
+      qtyClient: row.qtyClient,
+      unitPriceClient: row.unitPriceClient,
     })),
     {
       invoiceNumber: invoice,
-      invoiceDate: first.invoiceDatePartner,
-      poNumberPartner: first.poNumberPartner,
-      poDatePartner: first.poDatePartner,
+      invoiceDate: first.invoiceDateClient,
+      poNumberClient: first.projectPoNumber,
+      poDateClient: first.projectPoDate,
       projectName: first.projectName,
-      partnerName: first.partnerName,
-      partnerBankName: first.partnerBankName,
-      partnerBankAccount: first.partnerBankAccount,
-      partnerCity:
-        ((first.partnerAddressMeta as { city?: unknown } | null)?.city as
+      clientName: first.clientName,
+      clientBankName: first.clientBankName,
+      clientBankAccount: first.clientBankAccount,
+      clientCity:
+        ((first.clientAddressMeta as { city?: unknown } | null)?.city as
           | string
           | undefined) ?? null,
       signatoryName: first.signatoryName,
+      signatoryTitle: first.signatoryTitle,
     },
   );
 

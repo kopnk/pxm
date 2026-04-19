@@ -464,13 +464,22 @@ const {
   }
 
   .fin-stack .fin-line {
-    line-height: 1.35;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.35rem;
+    row-gap: 0.05rem;
+    line-height: 1.3;
   }
 
   .fin-stack .text-muted {
-    display: inline-block;
-    min-width: 3.25rem;
-    margin-right: 0.15rem;
+    display: inline;
+    min-width: auto;
+    margin-right: 0;
+  }
+
+  .fin-stack .fin-line > .text-muted:first-child {
+    min-width: 2.75rem;
   }
 }
 </style>
