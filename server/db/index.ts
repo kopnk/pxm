@@ -4,8 +4,15 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
+const connectionString = process.env.DATABASE_URL;
+if (typeof connectionString !== "string" || !connectionString.trim()) {
+  throw new Error(
+    "DATABASE_URL is missing or empty. Set it in .env and start PM2 with cwd=repo root (see ecosystem.config.cjs + dotenv)."
+  );
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
 });
 
 export const db = drizzle(pool, {
