@@ -8,6 +8,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { getNextDcnOutNumber } from "~/server/utils/dcnNumber";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -21,11 +22,19 @@ export default defineEventHandler(async (event) => {
   const body = parseBody(dcnCreateSchema, await readBody(event));
 
   const created = await db.transaction(async (tx) => {
+    const nextNumber =
+      body.flow === "out" && body.type
+        ? await getNextDcnOutNumber(tx, {
+            typeCode: body.type,
+            letterDate: body.letterDate,
+          })
+        : body.number;
+
     const rows = await tx
       .insert(dcn)
       .values({
         letterDate: body.letterDate,
-        number: body.number,
+        number: nextNumber,
         type: body.type ?? null,
         toAddress: body.toAddress ?? null,
         fromAddress: body.fromAddress ?? null,

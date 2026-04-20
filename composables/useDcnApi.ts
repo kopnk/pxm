@@ -27,14 +27,6 @@ export const DCN_OUT_TYPE_OPTIONS = [
   { value: "15", label: "Sertifikat" },
 ] as const;
 
-const DCN_NUMBER_PREFIX = "K310";
-
-function formatDcnNumber(sequence: number, typeCode: string, year: number): string {
-  const seq = String(Math.max(sequence, 1)).padStart(4, "0");
-  const yy = String(year).slice(-2);
-  return `${seq}.${DCN_NUMBER_PREFIX}.${typeCode}.${yy}`;
-}
-
 export const useDcnApi = () => {
   const store = useDcnStore();
 
@@ -100,34 +92,13 @@ export const useDcnApi = () => {
   };
 
   const getNextOutNumber = async (typeCode: string, letterDate: string) => {
-    const selectedYear = Number(String(letterDate).slice(0, 4));
-    const year = Number.isFinite(selectedYear) && selectedYear > 0
-      ? selectedYear
-      : new Date().getFullYear();
-
-    const res: any = await apiFetch("/api/dcn", {
+    const res: any = await apiFetch("/api/dcn/next-number", {
       query: {
-        page: 1,
-        limit: 500,
-        flow: "out",
         type: typeCode,
-        year,
+        letterDate,
       },
     });
-
-    const items = (res?.data?.items ?? []) as DcnItem[];
-    const yy = String(year).slice(-2);
-    const pattern = new RegExp(`^(\\d{4})\\.${DCN_NUMBER_PREFIX}\\.${typeCode}\\.${yy}$`);
-
-    let maxSeq = 0;
-    for (const item of items) {
-      const match = pattern.exec(item.number ?? "");
-      if (!match) continue;
-      const seq = Number(match[1]);
-      if (Number.isFinite(seq) && seq > maxSeq) maxSeq = seq;
-    }
-
-    return formatDcnNumber(maxSeq + 1, typeCode, year);
+    return String(res?.data?.number ?? "");
   };
 
   return {

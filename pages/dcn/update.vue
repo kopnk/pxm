@@ -32,6 +32,7 @@ const isOutFlow = computed(() => form.flow === "out");
 const canShowNumber = computed(() =>
   form.flow === "in" || (form.flow === "out" && !!form.type),
 );
+let loadingDetail = true;
 
 const loadDetail = async () => {
   if (!id) {
@@ -57,6 +58,15 @@ const loadDetail = async () => {
 };
 
 await loadDetail();
+loadingDetail = false;
+
+const regenerateOutNumber = async () => {
+  if (!isOutFlow.value || !form.type || !form.letterDate) {
+    notify.warning("Flow out, type, and letter date are required.");
+    return;
+  }
+  form.number = await getNextOutNumber(form.type, form.letterDate);
+};
 
 watch(
   () => form.flow,
@@ -67,13 +77,15 @@ watch(
   },
 );
 
-const regenerateOutNumber = async () => {
-  if (!isOutFlow.value || !form.type || !form.letterDate) {
-    notify.warning("Flow out, type, and letter date are required.");
-    return;
-  }
-  form.number = await getNextOutNumber(form.type, form.letterDate);
-};
+watch(
+  () => [form.flow, form.type, form.letterDate] as const,
+  async ([flow]) => {
+    if (loadingDetail) return;
+    if (flow !== "out") return;
+    if (!form.type || !form.letterDate) return;
+    form.number = await getNextOutNumber(form.type, form.letterDate);
+  },
+);
 
 const submit = async () => {
   if (!form.letterDate) {
