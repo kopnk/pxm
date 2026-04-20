@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const { page, limit, offset } = buildPagination(query);
 
+  const globalSearch = query.search?.toString().trim();
   const project = query.project?.toString().trim();
   const detail = query.detail?.toString().trim();
   const stageFilter = query.stage?.toString().trim();
@@ -41,24 +42,37 @@ export default defineEventHandler(async (event) => {
 
   const conditions = [];
 
-  if (project) {
-    const pattern = `%${project}%`;
+  if (globalSearch) {
+    const pattern = `%${globalSearch}%`;
     conditions.push(
       or(
         ilike(projects.projectName, pattern),
         ilike(projects.poNumber, pattern),
+        ilike(projectDetails.siteName, pattern),
+        ilike(projectDetails.materialName, pattern),
+        ilike(projectDetails.systemkey, pattern),
       ),
     );
-  }
+  } else {
+    if (project) {
+      const pattern = `%${project}%`;
+      conditions.push(
+        or(
+          ilike(projects.projectName, pattern),
+          ilike(projects.poNumber, pattern),
+        ),
+      );
+    }
 
-  if (detail) {
-    conditions.push(
-      or(
-        ilike(projectDetails.siteName, `%${detail}%`),
-        ilike(projectDetails.materialName, `%${detail}%`),
-        ilike(projectDetails.systemkey, `%${detail}%`),
-      ),
-    );
+    if (detail) {
+      conditions.push(
+        or(
+          ilike(projectDetails.siteName, `%${detail}%`),
+          ilike(projectDetails.materialName, `%${detail}%`),
+          ilike(projectDetails.systemkey, `%${detail}%`),
+        ),
+      );
+    }
   }
 
   if (stageFilter) {

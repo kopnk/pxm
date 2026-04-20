@@ -13,6 +13,7 @@ export const useProjectProgressApi = () => {
   const getProjectProgress = async (params?: {
     page?: number;
     limit?: number;
+    search?: string;
     project?: string;
     detail?: string;
     stage?: string;
@@ -27,6 +28,7 @@ export const useProjectProgressApi = () => {
         query: {
           page: params?.page ?? store.page,
           limit: params?.limit ?? store.limit,
+          search: params?.search,
           project: params?.project,
           detail: params?.detail,
           stage: params?.stage,

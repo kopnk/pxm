@@ -85,7 +85,7 @@ const remove = async (id: string) => {
           <input
             v-model="search"
             class="form-control"
-            placeholder="Search name..."
+            placeholder="Search"
           />
         </div>
 

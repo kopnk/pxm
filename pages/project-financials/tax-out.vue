@@ -54,7 +54,7 @@ const formatCity = (value: unknown) => {
           <input
             v-model="search"
             class="form-control"
-            placeholder="Search PO, Project, Site, Material, Invoice, BAST, Balap…"
+            placeholder="Search"
           />
         </div>
         <div class="col-md-3">

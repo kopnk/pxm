@@ -98,7 +98,7 @@ const displayType = (value: string | null | undefined) => {
           <input
             v-model="search"
             class="form-control"
-            placeholder="Search Number, Address, Subject"
+            placeholder="Search"
           />
         </div>
 

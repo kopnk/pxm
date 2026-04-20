@@ -21,8 +21,7 @@ const canCreateProjectProgress = computed(
   () => canCreate.value && authStore.user?.role === "superadmin",
 );
 
-const project = ref("");
-const detail = ref("");
+const search = ref("");
 const stage = ref("");
 const status = ref("");
 
@@ -110,8 +109,7 @@ const fetchData = async () => {
     await getProjectProgress({
       page: store.page,
       limit: store.limit,
-      project: project.value || undefined,
-      detail: detail.value || undefined,
+      search: search.value || undefined,
       stage: stage.value || undefined,
       status: status.value || undefined,
     });
@@ -129,7 +127,7 @@ onMounted(async () => {
   await fetchData();
 });
 
-watch([project, detail, stage, status], () => {
+watch([search, stage, status], () => {
   store.setPage(1);
   fetchData();
 });
@@ -197,19 +195,11 @@ const showingEnd = computed(() =>
 
     <div class="card mb-3 border-0 shadow-sm">
       <div class="card-body row g-2">
-        <div class="col-md-3">
+        <div class="col-md-6">
           <input
-            v-model="project"
+            v-model="search"
             class="form-control form-control-sm"
-            placeholder="Filter: project name / PO number"
-          />
-        </div>
-
-        <div class="col-md-3">
-          <input
-            v-model="detail"
-            class="form-control form-control-sm"
-            placeholder="Filter: site / material / system key"
+            placeholder="Search"
           />
         </div>
 
@@ -217,7 +207,7 @@ const showingEnd = computed(() =>
           <input
             v-model="stage"
             class="form-control form-control-sm"
-            placeholder="Filter: stage code"
+            placeholder="Stage Code"
           />
         </div>
 
