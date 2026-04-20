@@ -1,10 +1,9 @@
 /**
- * PM2: set cwd to repo root so `dotenv/config` loads `.env`, and DATABASE_URL is a string for `pg`.
- * Usage (from repo root, after `npm run build`):
- *   pm2 delete pxm
- *   pm2 start ecosystem.config.cjs
- *   pm2 save
+ * PM2: cwd + explicit .env path so `pg` gets DATABASE_URL (fixes SASL "password must be a string").
+ * Always: pm2 delete pxm && pm2 start ecosystem.config.cjs  (restart alone keeps old flags)
  */
+const path = require("path");
+
 module.exports = {
   apps: [
     {
@@ -13,6 +12,9 @@ module.exports = {
       script: ".output/server/index.mjs",
       interpreter: "node",
       node_args: "-r dotenv/config",
+      env: {
+        DOTENV_CONFIG_PATH: path.join(__dirname, ".env"),
+      },
     },
   ],
 };
