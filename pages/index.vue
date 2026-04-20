@@ -27,7 +27,7 @@
           <input
             v-model="projectKeyword"
             class="form-control form-control-sm"
-            placeholder="Search project name or PO number"
+            placeholder="Search Project Name or PO number"
           />
         </div>
         <div class="col-lg-4">
@@ -69,9 +69,15 @@
         <div class="metric-value">{{ progressSiteCount }}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">PO Price (Incl Tax {{ poPriceTaxRateLabel }})</div>
-        <div class="metric-value">{{ formatCurrency(poPriceInclTaxDisplay) }}</div>
-        <div class="data-meta">Omzet (Excl PPN): {{ formatCurrency(omzetNet) }}</div>
+        <div class="metric-label">
+          PO Price (Incl Tax {{ poPriceTaxRateLabel }})
+        </div>
+        <div class="metric-value">
+          {{ formatCurrency(poPriceInclTaxDisplay) }}
+        </div>
+        <div class="data-meta">
+          Omzet (Excl PPN): {{ formatCurrency(omzetNet) }}
+        </div>
       </div>
     </div>
 
@@ -117,7 +123,10 @@
           <span>{{ formatCurrency(evNow) }}</span>
         </div>
         <div class="summary-item">
-          <span>AC <span class="summary-hint">(Qty x Unit Price Partner)</span></span>
+          <span
+            >AC
+            <span class="summary-hint">(Qty x Unit Price Partner)</span></span
+          >
           <span>{{ formatCurrency(acNow) }}</span>
         </div>
 
