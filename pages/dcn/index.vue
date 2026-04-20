@@ -54,14 +54,28 @@ const changePage = (page: number) => {
   void loadData(page);
 };
 
-const remove = async (id: string) => {
+const remove = async (
+  id: string,
+  number?: string | null,
+  letterDate?: string | null,
+) => {
   if (!canDelete.value) return;
-  await handle(async () => {
-    deletingId.value = id;
-    await deleteDcn(id);
-    await loadData(store.page);
-  }, toastSuccessDeleted("dcn"));
-  deletingId.value = null;
+  const dcnNumber = number?.trim() || "(no number)";
+  const dateLabel = letterDate?.trim() || "unknown date";
+  const confirmed = window.confirm(
+    `Delete DCN "${dcnNumber}" dated ${dateLabel}?`,
+  );
+  if (!confirmed) return;
+
+  try {
+    await handle(async () => {
+      deletingId.value = id;
+      await deleteDcn(id);
+      await loadData(store.page);
+    }, toastSuccessDeleted("dcn"));
+  } finally {
+    deletingId.value = null;
+  }
 };
 
 const flowBadgeClass = (value: string) =>
@@ -178,7 +192,7 @@ const displayType = (value: string | null | undefined) => {
                     <span
                       class="text-danger small fw-semibold"
                       style="cursor: pointer"
-                      @click.stop="remove(item.id)"
+                      @click.stop="remove(item.id, item.number, item.letterDate)"
                     >
                       {{ deletingId === item.id ? "..." : "x" }}
                     </span>

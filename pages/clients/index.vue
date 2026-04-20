@@ -41,10 +41,11 @@ watch(isActive, () => {
 });
 
 /* ================= ACTIONS ================= */
-const remove = async (id: string) => {
+const remove = async (id: string, clientName?: string | null) => {
   if (!canDelete.value) return;
 
-  const confirmed = confirm("Delete this client?");
+  const label = clientName?.trim() || "(no name)";
+  const confirmed = window.confirm(`Delete client "${label}"?`);
   if (!confirmed) return;
 
   await handle(async () => {
@@ -179,7 +180,7 @@ const changePage = (page: number) => {
                       v-if="canDelete"
                       class="text-danger fw-semibold"
                       style="cursor: pointer"
-                      @click.stop="remove(c.id)"
+                      @click.stop="remove(c.id, c.name)"
                     >
                       ×
                     </span>

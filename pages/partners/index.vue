@@ -54,8 +54,9 @@ const goEdit = (id: string) => {
   router.push({ path: "/partners/update", query: { id } });
 };
 
-const remove = async (id: string) => {
-  const confirmed = confirm("Delete this partner?");
+const remove = async (id: string, partnerName?: string | null) => {
+  const label = partnerName?.trim() || "(no name)";
+  const confirmed = window.confirm(`Delete partner "${label}"?`);
   if (!confirmed) return;
 
   await handle(async () => {
@@ -180,7 +181,7 @@ const remove = async (id: string) => {
                       v-if="canDelete"
                       class="text-danger fw-semibold"
                       style="cursor: pointer"
-                      @click.stop="remove(p.id)"
+                      @click.stop="remove(p.id, p.name)"
                     >
                       ×
                     </span>

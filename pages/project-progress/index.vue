@@ -28,6 +28,7 @@ const status = ref("");
 const loading = ref(false);
 const showDeleteModal = ref(false);
 const deleteTargetId = ref<string | null>(null);
+const deleteTargetLabel = ref("this project progress");
 
 const formatDateDMY = (val?: string | null) => {
   if (!val) return "—";
@@ -132,9 +133,10 @@ watch([search, stage, status], () => {
   fetchData();
 });
 
-const handleDelete = async (id: string) => {
+const handleDelete = async (id: string, siteName?: string | null) => {
   if (!canDelete.value) return;
   deleteTargetId.value = id;
+  deleteTargetLabel.value = siteName?.trim() || "this project progress";
   showDeleteModal.value = true;
 };
 
@@ -151,6 +153,7 @@ const performDelete = async () => {
 const cancelDelete = () => {
   showDeleteModal.value = false;
   deleteTargetId.value = null;
+  deleteTargetLabel.value = "this project progress";
 };
 
 const prevPage = () => {
@@ -348,7 +351,7 @@ const showingEnd = computed(() =>
                   <span
                     class="text-danger small fw-semibold"
                     style="cursor: pointer"
-                    @click.stop="handleDelete(item.id)"
+                    @click.stop="handleDelete(item.id, item.siteName)"
                   >
                     x
                   </span>
@@ -419,7 +422,11 @@ const showingEnd = computed(() =>
             ></button>
           </div>
           <div class="modal-body">
-            <p>Delete this project progress?</p>
+            <p>
+              Delete project progress for site
+              <strong>{{ deleteTargetLabel }}</strong
+              >?
+            </p>
           </div>
           <div class="modal-footer">
             <button
