@@ -16,7 +16,11 @@ export const lucia = new Lucia(adapter, {
     name: "pxm_session",
     expires: true, // 🔥 PERSISTENT COOKIE
     attributes: {
-      secure: process.env.NODE_ENV === "production",
+      /**
+       * `Secure` cookies are NOT sent over plain HTTP. VPS accessed as http://IP must use
+       * SESSION_COOKIE_SECURE unset/false. Use SESSION_COOKIE_SECURE=true when the site is HTTPS only.
+       */
+      secure: process.env.SESSION_COOKIE_SECURE === "true",
       sameSite: "strict", // 🔥 PENTING
       path: "/",
       httpOnly: true,
