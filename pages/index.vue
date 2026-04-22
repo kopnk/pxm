@@ -7,13 +7,10 @@
           Data source: Projects, Details, Progress, Financials
         </p>
       </div>
-      <button
-        class="btn btn-sm btn-outline-secondary"
-        :disabled="loading"
-        @click="loadDashboard"
-      >
-        {{ loading ? "Loading..." : "Refresh" }}
-      </button>
+      <div class="ws-indicator" :class="isConnected ? 'connected' : 'disconnected'">
+        <span class="ws-dot"></span>
+        <span>{{ isConnected ? "WS Connected" : "WS Disconnected" }}</span>
+      </div>
     </div>
 
     <div v-if="errorMessage" class="alert alert-danger py-2 px-3 mb-3">
@@ -172,7 +169,9 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "vue-chartjs";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useDashboardRefreshSocket } from "@/composables/useDashboardRefreshSocket";
+import { useNotify } from "@/composables/useNotify";
 
 type ProjectRow = {
   id: string;
@@ -238,6 +237,8 @@ ChartJS.register(
    ========================================================= */
 const loading = ref(false);
 const errorMessage = ref("");
+const notify = useNotify();
+const { isConnected, connect, disconnect } = useDashboardRefreshSocket();
 
 const projects = ref<ProjectRow[]>([]);
 const details = ref<ProjectDetailRow[]>([]);
@@ -801,7 +802,14 @@ const formatCurrency = (val: number) =>
 
 /* ENTRY POINT UI:
    Saat komponen selesai mount, langsung load data dashboard. */
-onMounted(loadDashboard);
+onMounted(async () => {
+  await loadDashboard();
+  connect(loadDashboard, (message) => notify.warning(message));
+});
+
+onUnmounted(() => {
+  disconnect();
+});
 
 watch([projectKeyword, regionFilter, subRegionFilter], () => {
   if (
@@ -842,6 +850,40 @@ watch([projectKeyword, regionFilter, subRegionFilter], () => {
   margin: 0.25rem 0 0;
   color: #6c757d;
   font-size: 0.9rem;
+}
+
+.ws-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid #ececec;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  background: #fff;
+}
+
+.ws-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.ws-indicator.connected {
+  color: #198754;
+}
+
+.ws-indicator.connected .ws-dot {
+  background: #198754;
+}
+
+.ws-indicator.disconnected {
+  color: #dc3545;
+}
+
+.ws-indicator.disconnected .ws-dot {
+  background: #dc3545;
 }
 
 .summary-grid {

@@ -380,27 +380,12 @@ const showingEnd = computed(() =>
         of {{ store.total }} entries
       </div>
 
-      <div v-if="store.totalPages > 1" class="btn-group btn-group-sm">
-        <button
-          type="button"
-          class="btn btn-outline-secondary"
-          :disabled="store.page === 1"
-          @click="prevPage"
-        >
-          Prev
-        </button>
-        <span class="btn btn-outline-secondary disabled">
-          Page {{ store.page }} of {{ store.totalPages }}
-        </span>
-        <button
-          type="button"
-          class="btn btn-outline-secondary"
-          :disabled="store.page >= store.totalPages"
-          @click="nextPage"
-        >
-          Next
-        </button>
-      </div>
+      <AppPagination
+        :current-page="store.page"
+        :total-pages="store.totalPages"
+        @prev="prevPage"
+        @next="nextPage"
+      />
     </div>
 
     <!-- Delete confirmation modal (simple, controlled) -->

@@ -168,25 +168,12 @@ const formatCity = (value: unknown) => {
       >
         No matching entries on this page
       </div>
-      <div v-if="store.totalPages > 1">
-        <button
-          class="btn btn-outline-secondary me-2"
-          :disabled="store.page === 1"
-          @click="prevPage"
-        >
-          Prev
-        </button>
-        <span class="me-2">
-          Page {{ store.page }} / {{ store.totalPages }}
-        </span>
-        <button
-          class="btn btn-outline-secondary"
-          :disabled="store.page >= store.totalPages"
-          @click="nextPage"
-        >
-          Next
-        </button>
-      </div>
+      <AppPagination
+        :current-page="store.page"
+        :total-pages="store.totalPages"
+        @prev="prevPage"
+        @next="nextPage"
+      />
     </div>
 
   </div>

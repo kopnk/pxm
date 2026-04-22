@@ -223,23 +223,12 @@ const displayType = (value: string | null | undefined) => {
         of {{ store.total }} entries
       </div>
 
-      <div v-if="store.totalPages > 1">
-        <button
-          class="btn btn-outline-secondary me-2"
-          :disabled="store.page === 1"
-          @click="changePage(store.page - 1)"
-        >
-          Prev
-        </button>
-        <span class="me-2">Page {{ store.page }} of {{ store.totalPages }}</span>
-        <button
-          class="btn btn-outline-secondary"
-          :disabled="store.page >= store.totalPages"
-          @click="changePage(store.page + 1)"
-        >
-          Next
-        </button>
-      </div>
+      <AppPagination
+        :current-page="store.page"
+        :total-pages="store.totalPages"
+        @prev="changePage(store.page - 1)"
+        @next="changePage(store.page + 1)"
+      />
     </div>
   </div>
 </template>

@@ -272,28 +272,12 @@ const {
         </div>
       </div>
 
-      <div v-if="store.meta.totalPages > 1">
-        <button
-          class="btn btn-outline-secondary me-2"
-          :disabled="store.meta.page === 1"
-          @click="prevPage"
-        >
-          Prev
-        </button>
-
-        <span class="me-2">
-          Page {{ store.meta.page }} of
-          {{ store.meta.totalPages }}
-        </span>
-
-        <button
-          class="btn btn-outline-secondary"
-          :disabled="store.meta.page >= store.meta.totalPages"
-          @click="nextPage"
-        >
-          Next
-        </button>
-      </div>
+      <AppPagination
+        :current-page="store.meta.page"
+        :total-pages="store.meta.totalPages"
+        @prev="prevPage"
+        @next="nextPage"
+      />
     </div>
 
     <!-- DELETE MODAL -->

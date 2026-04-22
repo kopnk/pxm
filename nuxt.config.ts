@@ -18,8 +18,11 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
 
-    nitro: {
+  nitro: {
     preset: "node-server",
+    experimental: {
+      websocket: true,
+    },
   },
 
   vite: {
