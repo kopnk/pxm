@@ -7,7 +7,10 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "db:baseline:local": "node scripts/drizzle-baseline-local.mjs",
+    "db:repair:local": "node scripts/drizzle-repair-local.mjs",
+    "db:migrate": "npx drizzle-kit migrate"
   },
   "dependencies": {
     "@lucia-auth/adapter-drizzle": "^1.1.0",

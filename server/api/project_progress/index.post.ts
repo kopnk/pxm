@@ -9,6 +9,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
 import { toLocalTime } from "~/server/utils/datetime";
+import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
     createProjectProgressSchema,
     await readBody(event),
   );
+  await validateStageDataKeys(body.stageData);
 
   const created = await db.transaction(async (tx) => {
     const existing = await tx

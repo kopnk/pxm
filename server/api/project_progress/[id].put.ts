@@ -12,6 +12,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
     updateProjectProgressSchema,
     await readBody(event),
   );
+  await validateStageDataKeys(body.stageData);
 
   const updated = await db.transaction(async (tx) => {
     const oldRows = await tx

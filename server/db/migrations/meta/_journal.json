@@ -36,6 +36,13 @@
       "when": 1776100000000,
       "tag": "0004_dcn",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777468200000,
+      "tag": "0005_add_caf_progress_stage",
+      "breakpoints": true
     }
   ]
 }

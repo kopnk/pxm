@@ -4,7 +4,7 @@ import { progressStage } from "~/server/db/schema/progress_stage";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
-import { and, eq, ilike, count, desc } from "drizzle-orm";
+import { and, eq, ilike, count, asc } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
 
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
     .select()
     .from(progressStage)
     .where(where)
-    .orderBy(desc(progressStage.sequence))
+    .orderBy(asc(progressStage.sequence))
     .limit(limit)
     .offset(offset);
 

@@ -181,6 +181,21 @@ const handleSubmit = async () => {
     throw new Error("Project and project detail are required");
   }
 
+  for (const s of stages.value) {
+    const current = row(s.code);
+    if (current.status === "approved" && !current.actual_approve_date) {
+      throw new Error(`Actual / approve date is required for stage ${s.name}`);
+    }
+    if (
+      current.status === "delayed" &&
+      !String(form.remarksDelay ?? "").trim()
+    ) {
+      throw new Error(
+        "Remarks delay is required when any stage status is delayed",
+      );
+    }
+  }
+
   await updateProjectProgress(id, {
     projectId: form.projectId,
     projectDetailId: form.projectDetailId,
