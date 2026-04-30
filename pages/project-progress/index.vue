@@ -66,18 +66,12 @@ const stageDateCounts = computed(() => {
     counts[stage.code] = { plan: 0, actual: 0 };
   }
 
-  for (const item of store.items) {
-    const stageData = item.stageData ?? {};
-    for (const stage of stageColumns.value) {
-      const row = stageData[stage.code];
-      if (!row) continue;
-
-      const planDate = String(row.plan_submit_date ?? "").trim();
-      const actualDate = String(row.actual_approve_date ?? "").trim();
-
-      if (planDate) counts[stage.code].plan += 1;
-      if (actualDate) counts[stage.code].actual += 1;
+  for (const [code, value] of Object.entries(store.stageCounts ?? {})) {
+    if (!counts[code]) {
+      counts[code] = { plan: 0, actual: 0 };
     }
+    counts[code].plan = Number(value?.plan ?? 0);
+    counts[code].actual = Number(value?.actual ?? 0);
   }
 
   return counts;
@@ -217,10 +211,17 @@ const showingEnd = computed(() =>
         <div class="col-md-3">
           <select v-model="status" class="form-select form-select-sm">
             <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="delay">Delay</option>
-            <option value="closed">Closed</option>
-            <option value="cancelled">Cancelled</option>
+            <option disabled>-- Detail Status --</option>
+            <option value="detail:active">Active</option>
+            <option value="detail:delay">Delay</option>
+            <option value="detail:closed">Closed</option>
+            <option value="detail:cancelled">Cancelled</option>
+            <option disabled>-- Stage Status --</option>
+            <option value="stage:pending">Pending</option>
+            <option value="stage:submitted">Submitted</option>
+            <option value="stage:approved">Approved</option>
+            <option value="stage:delayed">Delayed</option>
+            <option value="stage:cancelled">Cancelled</option>
           </select>
         </div>
       </div>

@@ -75,26 +75,85 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  if (stageFilter) {
-    const pattern = `%${stageFilter}%`;
-    conditions.push(
-      sql`exists (
-        select 1 from jsonb_each(${projectProgress.stageData}) as st
-        where st.key ilike ${pattern}
-      )`,
-    );
-  }
+  const stagePattern = stageFilter ? `%${stageFilter}%` : null;
+  let stageStatusHandledWithStageFilter = false;
 
   if (statusFilter) {
-    const allowed = ["active", "delay", "closed", "cancelled"] as const;
-    if ((allowed as readonly string[]).includes(statusFilter)) {
+    const detailAllowed = ["active", "delay", "closed", "cancelled"] as const;
+    const stageAllowed = [
+      "pending",
+      "submitted",
+      "approved",
+      "delayed",
+      "cancelled",
+    ] as const;
+
+    if (statusFilter.startsWith("detail:")) {
+      const detailStatus = statusFilter.slice("detail:".length);
+      if ((detailAllowed as readonly string[]).includes(detailStatus)) {
+        conditions.push(
+          eq(
+            projectDetails.status,
+            detailStatus as (typeof detailAllowed)[number],
+          ),
+        );
+      }
+    } else if (statusFilter.startsWith("stage:")) {
+      const stageStatus = statusFilter.slice("stage:".length);
+      if ((stageAllowed as readonly string[]).includes(stageStatus)) {
+        if (stagePattern) {
+          stageStatusHandledWithStageFilter = true;
+          conditions.push(
+            sql`exists (
+              select 1 from jsonb_each(${projectProgress.stageData}) as st
+              where st.key ilike ${stagePattern}
+                and st.value ->> 'status' = ${stageStatus}
+            )`,
+          );
+        } else {
+          conditions.push(
+            sql`exists (
+              select 1 from jsonb_each(${projectProgress.stageData}) as st
+              where st.value ->> 'status' = ${stageStatus}
+            )`,
+          );
+        }
+      }
+    } else if ((detailAllowed as readonly string[]).includes(statusFilter)) {
       conditions.push(
         eq(
           projectDetails.status,
-          statusFilter as (typeof allowed)[number],
+          statusFilter as (typeof detailAllowed)[number],
         ),
       );
+    } else if ((stageAllowed as readonly string[]).includes(statusFilter)) {
+      if (stagePattern) {
+        stageStatusHandledWithStageFilter = true;
+        conditions.push(
+          sql`exists (
+            select 1 from jsonb_each(${projectProgress.stageData}) as st
+            where st.key ilike ${stagePattern}
+              and st.value ->> 'status' = ${statusFilter}
+          )`,
+        );
+      } else {
+        conditions.push(
+          sql`exists (
+            select 1 from jsonb_each(${projectProgress.stageData}) as st
+            where st.value ->> 'status' = ${statusFilter}
+          )`,
+        );
+      }
     }
+  }
+
+  if (stagePattern && !stageStatusHandledWithStageFilter) {
+    conditions.push(
+      sql`exists (
+        select 1 from jsonb_each(${projectProgress.stageData}) as st
+        where st.key ilike ${stagePattern}
+      )`,
+    );
   }
 
   const where = conditions.length ? and(...conditions) : undefined;
@@ -112,6 +171,37 @@ export default defineEventHandler(async (event) => {
   const totalPages = buildTotalPages(total, limit);
 
   /* ================= DATA ================= */
+
+  const stageRows = await db
+    .select({
+      stageData: projectProgress.stageData,
+    })
+    .from(projectProgress)
+    .leftJoin(projects, eq(projects.id, projectProgress.projectId))
+    .leftJoin(projectDetails, eq(projectDetails.id, projectProgress.projectDetailId))
+    .where(where);
+
+  const stageCounts: Record<string, { plan: number; actual: number }> = {};
+
+  for (const row of stageRows) {
+    const stageData = (row.stageData ?? {}) as Record<
+      string,
+      { plan_submit_date?: string | null; actual_approve_date?: string | null }
+    >;
+
+    for (const [code, value] of Object.entries(stageData)) {
+      if (!stageCounts[code]) {
+        stageCounts[code] = { plan: 0, actual: 0 };
+      }
+
+      if (String(value?.plan_submit_date ?? "").trim()) {
+        stageCounts[code].plan += 1;
+      }
+      if (String(value?.actual_approve_date ?? "").trim()) {
+        stageCounts[code].actual += 1;
+      }
+    }
+  }
 
   const rows = await db
     .select({
@@ -199,6 +289,7 @@ export default defineEventHandler(async (event) => {
 
   return successResponse(event, "Project progress retrieved", {
     items,
+    stageCounts,
     page,
     limit,
     total,

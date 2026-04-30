@@ -56,6 +56,7 @@ export interface ProjectProgressState {
   limit: number;
   total: number;
   totalPages: number;
+  stageCounts: Record<string, { plan: number; actual: number }>;
   loading: boolean;
 }
 
@@ -68,6 +69,7 @@ export const useProjectProgressStore = defineStore("projectProgress", {
     limit: 10,
     total: 0,
     totalPages: 0,
+    stageCounts: {},
     loading: false,
   }),
 
@@ -79,12 +81,14 @@ export const useProjectProgressStore = defineStore("projectProgress", {
       limit: number;
       total: number;
       totalPages: number;
+      stageCounts?: Record<string, { plan: number; actual: number }>;
     }) {
       this.items = [...payload.items];
       this.page = payload.page;
       this.limit = payload.limit;
       this.total = payload.total;
       this.totalPages = payload.totalPages;
+      this.stageCounts = payload.stageCounts ?? {};
     },
 
     setItems(items: ProjectProgressItem[]) {
@@ -117,6 +121,7 @@ export const useProjectProgressStore = defineStore("projectProgress", {
       this.limit = 10;
       this.total = 0;
       this.totalPages = 0;
+      this.stageCounts = {};
       this.loading = false;
     },
   },

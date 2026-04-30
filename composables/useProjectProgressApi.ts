@@ -51,6 +51,7 @@ export const useProjectProgressApi = () => {
         limit,
         total,
         totalPages,
+        stageCounts: res.data.stageCounts ?? {},
       });
 
     } finally {
