@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useProjectFinancialsListPage } from "@/composables/useProjectFinancialsListPage";
+import { useProjectFinancialsTaxSectionExport } from "@/composables/useProjectFinancialsTaxSectionExport";
 import {
   pfFormatIdDate,
   pfListLineBase,
@@ -18,6 +19,16 @@ const {
   getRowNumber,
 } = useProjectFinancialsListPage();
 
+const { exporting, downloadExcel } =
+  useProjectFinancialsTaxSectionExport("tax-out");
+
+const onExportExcel = () => {
+  void downloadExcel({
+    search: search.value,
+    status: status.value,
+  });
+};
+
 const taxOutRows = computed(() =>
   store.items.filter((item) => {
     if (item.flowDirection !== "out") return false;
@@ -31,6 +42,13 @@ const sectionShowingStart = computed(() =>
   sectionRowCount.value === 0 ? 0 : 1,
 );
 const sectionShowingEnd = computed(() => sectionRowCount.value);
+
+const sectionTotalDpp = computed(() =>
+  store.loading ? null : store.listTotals.taxOutSection.dppIdr,
+);
+const sectionTotalTaxOut = computed(() =>
+  store.loading ? null : store.listTotals.taxOutSection.taxIdr,
+);
 
 const formatCity = (value: unknown) => {
   if (!value || typeof value !== "object") return "—";
@@ -49,25 +67,50 @@ const formatCity = (value: unknown) => {
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div class="card-body row g-2">
-        <div class="col-md-4">
-          <input
-            v-model="search"
-            class="form-control"
-            placeholder="Search"
-          />
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pf-tax-filter-one-line"
+      >
+        <input
+          v-model="search"
+          type="search"
+          class="form-control form-control-sm pf-tax-filter-search"
+          placeholder="PO, invoice, client, project, site…"
+        />
+        <select
+          v-model="status"
+          class="form-select form-select-sm flex-shrink-0 pf-tax-filter-status"
+        >
+          <option
+            v-for="option in statusOptions"
+            :key="option.value === '' ? 'all' : option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <div
+          class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto pf-tax-filter-totals"
+          role="group"
+          aria-label="Filtered totals"
+        >
+          <span class="text-nowrap">
+            <span class="label-prefix">Total Dpp</span>
+            <span class="fw-semibold">{{ formatCurrencyIdr(sectionTotalDpp) }}</span>
+          </span>
+          <span class="text-nowrap">
+            <span class="label-prefix">Total Tax Out</span>
+            <span class="fw-semibold">{{ formatCurrencyIdr(sectionTotalTaxOut) }}</span>
+          </span>
         </div>
-        <div class="col-md-3">
-          <select v-model="status" class="form-select">
-            <option
-              v-for="option in statusOptions"
-              :key="option.value === '' ? 'all' : option.value"
-              :value="option.value"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-        </div>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0"
+          :disabled="exporting"
+          aria-label="Download Excel for current search and status filters"
+          @click="onExportExcel"
+        >
+          {{ exporting ? "…" : "Excel" }}
+        </button>
       </div>
     </div>
 
@@ -180,6 +223,26 @@ const formatCity = (value: unknown) => {
 </template>
 
 <style scoped lang="scss">
+.pf-tax-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pf-tax-filter-search {
+  min-width: 0;
+  flex: 1 1 24rem;
+  max-width: 48rem;
+}
+
+.pf-tax-filter-status {
+  width: 10.5rem;
+  min-width: 10.5rem;
+}
+
+.pf-tax-filter-totals {
+  white-space: nowrap;
+}
+
 .table-scroll-x {
   width: 100%;
   overflow-x: auto;

@@ -10,15 +10,8 @@ import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
 
-import {
-  and,
-  or,
-  eq,
-  ilike,
-  count,
-  desc,
-  sql,
-} from "drizzle-orm";
+import { eq, count, desc } from "drizzle-orm";
+import { buildProjectProgressListWhere } from "~/server/utils/projectProgressListWhere";
 
 export default defineEventHandler(async (event) => {
 
@@ -38,125 +31,13 @@ export default defineEventHandler(async (event) => {
   const stageFilter = query.stage?.toString().trim();
   const statusFilter = query.status?.toString().trim();
 
-  /* ================= WHERE ================= */
-
-  const conditions = [];
-
-  if (globalSearch) {
-    const pattern = `%${globalSearch}%`;
-    conditions.push(
-      or(
-        ilike(projects.projectName, pattern),
-        ilike(projects.poNumber, pattern),
-        ilike(projectDetails.siteName, pattern),
-        ilike(projectDetails.materialName, pattern),
-        ilike(projectDetails.systemkey, pattern),
-      ),
-    );
-  } else {
-    if (project) {
-      const pattern = `%${project}%`;
-      conditions.push(
-        or(
-          ilike(projects.projectName, pattern),
-          ilike(projects.poNumber, pattern),
-        ),
-      );
-    }
-
-    if (detail) {
-      conditions.push(
-        or(
-          ilike(projectDetails.siteName, `%${detail}%`),
-          ilike(projectDetails.materialName, `%${detail}%`),
-          ilike(projectDetails.systemkey, `%${detail}%`),
-        ),
-      );
-    }
-  }
-
-  const stagePattern = stageFilter ? `%${stageFilter}%` : null;
-  let stageStatusHandledWithStageFilter = false;
-
-  if (statusFilter) {
-    const detailAllowed = ["active", "delay", "closed", "cancelled"] as const;
-    const stageAllowed = [
-      "pending",
-      "submitted",
-      "approved",
-      "delayed",
-      "cancelled",
-    ] as const;
-
-    if (statusFilter.startsWith("detail:")) {
-      const detailStatus = statusFilter.slice("detail:".length);
-      if ((detailAllowed as readonly string[]).includes(detailStatus)) {
-        conditions.push(
-          eq(
-            projectDetails.status,
-            detailStatus as (typeof detailAllowed)[number],
-          ),
-        );
-      }
-    } else if (statusFilter.startsWith("stage:")) {
-      const stageStatus = statusFilter.slice("stage:".length);
-      if ((stageAllowed as readonly string[]).includes(stageStatus)) {
-        if (stagePattern) {
-          stageStatusHandledWithStageFilter = true;
-          conditions.push(
-            sql`exists (
-              select 1 from jsonb_each(${projectProgress.stageData}) as st
-              where st.key ilike ${stagePattern}
-                and st.value ->> 'status' = ${stageStatus}
-            )`,
-          );
-        } else {
-          conditions.push(
-            sql`exists (
-              select 1 from jsonb_each(${projectProgress.stageData}) as st
-              where st.value ->> 'status' = ${stageStatus}
-            )`,
-          );
-        }
-      }
-    } else if ((detailAllowed as readonly string[]).includes(statusFilter)) {
-      conditions.push(
-        eq(
-          projectDetails.status,
-          statusFilter as (typeof detailAllowed)[number],
-        ),
-      );
-    } else if ((stageAllowed as readonly string[]).includes(statusFilter)) {
-      if (stagePattern) {
-        stageStatusHandledWithStageFilter = true;
-        conditions.push(
-          sql`exists (
-            select 1 from jsonb_each(${projectProgress.stageData}) as st
-            where st.key ilike ${stagePattern}
-              and st.value ->> 'status' = ${statusFilter}
-          )`,
-        );
-      } else {
-        conditions.push(
-          sql`exists (
-            select 1 from jsonb_each(${projectProgress.stageData}) as st
-            where st.value ->> 'status' = ${statusFilter}
-          )`,
-        );
-      }
-    }
-  }
-
-  if (stagePattern && !stageStatusHandledWithStageFilter) {
-    conditions.push(
-      sql`exists (
-        select 1 from jsonb_each(${projectProgress.stageData}) as st
-        where st.key ilike ${stagePattern}
-      )`,
-    );
-  }
-
-  const where = conditions.length ? and(...conditions) : undefined;
+  const where = buildProjectProgressListWhere({
+    search: globalSearch || undefined,
+    project: globalSearch ? undefined : project || undefined,
+    detail: globalSearch ? undefined : detail || undefined,
+    stage: stageFilter || undefined,
+    status: statusFilter || undefined,
+  });
 
   /* ================= COUNT ================= */
 

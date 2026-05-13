@@ -5,12 +5,13 @@ import { projectProgress } from "~/server/db/schema/project_progress";
 import { projectFinancials } from "~/server/db/schema/project_financials";
 import { clients } from "~/server/db/schema/clients";
 
-import { and, or, ilike, eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql } from "drizzle-orm";
 
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
+import { buildProjectsListWhere } from "~/server/utils/projectsListWhere";
 
 export default defineEventHandler(async (event) => {
 
@@ -25,42 +26,12 @@ export default defineEventHandler(async (event) => {
   const { page, limit, offset } = buildPagination(query);
 
   const search = query.search?.toString().trim();
-  const status = query.status?.toString();
+  const status = query.status?.toString().trim();
 
-  /* ================= WHERE ================= */
-
-  const conditions = [];
-
-  if (search) {
-
-    const keyword = `%${search}%`;
-
-    conditions.push(
-      or(
-        ilike(projects.projectName, keyword),
-        ilike(projects.poNumber, keyword),
-        ilike(projects.prScNumber, keyword),
-        ilike(projects.contractNumber, keyword),
-        ilike(projects.pm, keyword),
-        ilike(projects.status, keyword),
-        ilike(clients.name, keyword),
-        sql`${projects.poDate}::text ILIKE ${keyword}`,
-        sql`${projects.deliveryDate}::text ILIKE ${keyword}`,
-        sql`${projects.komDate}::text ILIKE ${keyword}`,
-        sql`${projects.subTotal}::text ILIKE ${keyword}`,
-        sql`${projects.discount}::text ILIKE ${keyword}`,
-        sql`${projects.netPrice}::text ILIKE ${keyword}`,
-        sql`${projects.vatAmount}::text ILIKE ${keyword}`,
-        sql`${projects.grandTotal}::text ILIKE ${keyword}`,
-      )
-    );
-  }
-
-  if (status) {
-    conditions.push(eq(projects.status, status));
-  }
-
-  const where = conditions.length ? and(...conditions) : undefined;
+  const where = buildProjectsListWhere({
+    search: search || undefined,
+    status: status || undefined,
+  });
 
   /* ================= COUNT ================= */
 

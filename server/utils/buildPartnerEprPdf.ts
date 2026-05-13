@@ -5,7 +5,7 @@ import {
   pfListLineBase,
   pfParseNum,
   pfPartnerTaxRupiahForDisplay,
-} from "~/composables/useProjectFinancialsDisplay";
+} from "~/lib/projectFinancialsMath";
 import { formatDateToIdText } from "~/utils/formatDateToIdText";
 
 export type PartnerEprPdfLine = {

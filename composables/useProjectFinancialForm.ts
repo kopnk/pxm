@@ -23,17 +23,7 @@ export function pfClientLineBase(
   return pfPartnerLineBase(qty, unitPrice);
 }
 
-/** Nilai rupiah dari % terhadap base (4 desimal, selaras kolom numeric tax di DB) */
-export function pfAmountFromPercent(
-  base: number | null,
-  percent: number | null | undefined,
-): number | null {
-  if (base == null || base <= 0) return null;
-  if (percent == null) return null;
-  const p = Number(percent);
-  if (!Number.isFinite(p)) return null;
-  return Math.round((base * p) / 100 * 1e4) / 1e4;
-}
+export { pfAmountFromPercent } from "../lib/projectFinancialsMath";
 
 /** Persentase tersirat dari nilai rupiah tersimpan (untuk form edit) */
 export function pfPercentFromAmount(

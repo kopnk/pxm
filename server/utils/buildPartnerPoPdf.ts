@@ -5,7 +5,7 @@ import { join } from "node:path";
 import {
   pfPartnerLineTotal,
   pfParseNum,
-} from "~/composables/useProjectFinancialsDisplay";
+} from "~/lib/projectFinancialsMath";
 
 export type PartnerPoPdfLine = {
   detailSiteId: string | null;

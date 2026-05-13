@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useProjectDetailsListPage } from "@/composables/useProjectDetailsListPage";
+import { useProjectDetailsExport } from "@/composables/useProjectDetailsExport";
 
 const {
   store,
@@ -23,6 +24,15 @@ const {
   getRowNumber,
   getStatusBadgeClass,
 } = useProjectDetailsListPage();
+
+const { exporting, downloadExcel } = useProjectDetailsExport();
+
+const onExportExcel = () => {
+  void downloadExcel({
+    search: search.value,
+    status: status.value,
+  });
+};
 </script>
 
 <template>
@@ -42,24 +52,39 @@ const {
       </NuxtLink>
     </div>
 
-    <!-- FILTER (SAMA DENGAN CLIENTS) -->
+    <!-- FILTER -->
     <div class="card mb-3 border-0 shadow-sm">
-      <div class="card-body row g-2">
-        <div class="col-md-4">
-          <input v-model="search" class="form-control" placeholder="Search" />
-        </div>
-
-        <div class="col-md-3">
-          <select v-model="status" class="form-select">
-            <option
-              v-for="option in statusOptions"
-              :key="option.value"
-              :value="option.value"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-        </div>
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pd-filter-one-line"
+      >
+        <input
+          v-model="search"
+          type="search"
+          class="form-control form-control-sm pd-filter-search"
+          placeholder="Site, material, PO, region…"
+        />
+        <select
+          v-model="status"
+          class="form-select form-select-sm flex-shrink-0 pd-filter-status"
+        >
+          <option
+            v-for="option in statusOptions"
+            :key="option.value === '' ? 'all' : option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
+          :disabled="exporting"
+          aria-label="Download Excel for current search and status filters"
+          @click="onExportExcel"
+        >
+          {{ exporting ? "…" : "Excel" }}
+        </button>
       </div>
     </div>
 
@@ -288,6 +313,22 @@ const {
 </template>
 
 <style scoped>
+.pd-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pd-filter-search {
+  min-width: 0;
+  flex: 1 1 24rem;
+  max-width: 48rem;
+}
+
+.pd-filter-status {
+  width: 10.5rem;
+  min-width: 10.5rem;
+}
+
 /* REMARK:
    `table-scroll-x` memastikan lebar halaman tetap aman.
    Jika kolom tabel lebih banyak dari viewport, scroll hanya di dalam wrapper ini. */

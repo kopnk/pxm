@@ -27,12 +27,31 @@ export const useProjectFinancialsApi = () => {
         },
       });
 
+      const t = res.data.totals;
+      const pickSection = (raw: unknown) => {
+        const obj =
+          raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+        return {
+          dppIdr: Number(obj?.dppIdr) || 0,
+          taxIdr: Number(obj?.taxIdr) || 0,
+        };
+      };
       store.setProjectFinancials({
         items: res.data.items,
         page: res.data.page,
         limit: res.data.limit,
         total: res.data.total,
         totalPages: res.data.totalPages,
+        listTotals:
+          t && typeof t === "object"
+            ? {
+                partnerLineIdr: Number(t.partnerLineIdr) || 0,
+                clientLineIdr: Number(t.clientLineIdr) || 0,
+                taxInSection: pickSection(t.taxInSection),
+                taxOutSection: pickSection(t.taxOutSection),
+                pphSection: pickSection(t.pphSection),
+              }
+            : undefined,
       });
 
     } finally {

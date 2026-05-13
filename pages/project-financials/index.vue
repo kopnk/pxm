@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useProjectFinancialsListPage } from "@/composables/useProjectFinancialsListPage";
+import { useProjectFinancialsExport } from "@/composables/useProjectFinancialsExport";
 import {
   pfPartnerLineTotal,
   pfClientLineTotal,
@@ -35,6 +36,12 @@ const {
   formatFinancialStatusLabel,
   deleteModalLabel,
 } = useProjectFinancialsListPage();
+
+const { exporting, downloadExcel } = useProjectFinancialsExport();
+
+const onExportExcel = () => {
+  void downloadExcel({ search: search.value, status: status.value });
+};
 </script>
 
 <template>
@@ -53,25 +60,51 @@ const {
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div class="card-body row g-2">
-        <div class="col-md-4">
-          <input
-            v-model="search"
-            class="form-control"
-            placeholder="Search"
-          />
-        </div>
-        <div class="col-md-3">
-          <select v-model="status" class="form-select">
-            <option
-              v-for="option in statusOptions"
-              :key="option.value === '' ? 'all' : option.value"
-              :value="option.value"
-            >
-              {{ option.label }}
-            </option>
-          </select>
-        </div>
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 gap-sm-3 py-2 px-2 pf-filter-one-line"
+      >
+        <input
+          v-model="search"
+          type="search"
+          class="form-control form-control-sm flex-grow-1 flex-shrink-1 pf-filter-search"
+          placeholder="PO, project, site, partner, client, invoice, PO partner/client…"
+        />
+        <select
+          v-model="status"
+          class="form-select form-select-sm flex-shrink-0 pf-filter-status"
+        >
+          <option
+            v-for="option in statusOptions"
+            :key="option.value === '' ? 'all' : option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
+        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
+        <span class="text-nowrap flex-shrink-0 small text-muted">
+          Total Partner
+          <span class="fw-semibold text-body ms-1">{{
+            formatCurrencyIdr(store.listTotals.partnerLineIdr)
+          }}</span>
+        </span>
+        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
+        <span class="text-nowrap flex-shrink-0 small text-muted">
+          Total Client
+          <span class="fw-semibold text-body ms-1">{{
+            formatCurrencyIdr(store.listTotals.clientLineIdr)
+          }}</span>
+        </span>
+        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
+          :disabled="exporting"
+          aria-label="Download Excel for current search and status filters"
+          @click="onExportExcel"
+        >
+          {{ exporting ? "…" : "Excel" }}
+        </button>
       </div>
     </div>
 
@@ -468,5 +501,19 @@ const {
   .fin-stack .fin-line > .text-muted:first-child {
     min-width: 2.75rem;
   }
+}
+
+.pf-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pf-filter-search {
+  min-width: 7.5rem;
+}
+
+.pf-filter-status {
+  width: 9.25rem;
+  min-width: 9.25rem;
 }
 </style>

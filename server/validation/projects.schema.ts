@@ -28,3 +28,9 @@ export const queryProjectSchema = z.object({
   search: z.string().optional(),
   status: z.enum(["active", "closed", "cancelled"]).optional(),
 });
+
+/** Query untuk `GET /api/projects/export` (sama filter seperti list). */
+export const projectsExportQueryZ = z.object({
+  search: z.string().max(500).optional(),
+  status: z.enum(["active", "closed", "cancelled"]).optional(),
+});

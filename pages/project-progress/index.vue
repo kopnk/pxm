@@ -8,6 +8,7 @@ import { useProgressStageStore } from "@/stores/progressStage";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { useAuthStore } from "@/stores/auth";
+import { useProjectProgressExport } from "@/composables/useProjectProgressExport";
 
 const store = useProjectProgressStore();
 
@@ -20,6 +21,16 @@ const { handle } = useFormHandler();
 const canCreateProjectProgress = computed(
   () => canCreate.value && authStore.user?.role === "superadmin",
 );
+
+const { exporting, downloadExcel } = useProjectProgressExport();
+
+const onExportExcel = () => {
+  void downloadExcel({
+    search: search.value,
+    stage: stage.value,
+    status: status.value,
+  });
+};
 
 const search = ref("");
 const stage = ref("");
@@ -191,39 +202,47 @@ const showingEnd = computed(() =>
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div class="card-body row g-2">
-        <div class="col-md-6">
-          <input
-            v-model="search"
-            class="form-control form-control-sm"
-            placeholder="Search"
-          />
-        </div>
-
-        <div class="col-md-3">
-          <input
-            v-model="stage"
-            class="form-control form-control-sm"
-            placeholder="Stage Code"
-          />
-        </div>
-
-        <div class="col-md-3">
-          <select v-model="status" class="form-select form-select-sm">
-            <option value="">All Status</option>
-            <option disabled>-- Detail Status --</option>
-            <option value="detail:active">Active</option>
-            <option value="detail:delay">Delay</option>
-            <option value="detail:closed">Closed</option>
-            <option value="detail:cancelled">Cancelled</option>
-            <option disabled>-- Stage Status --</option>
-            <option value="stage:pending">Pending</option>
-            <option value="stage:submitted">Submitted</option>
-            <option value="stage:approved">Approved</option>
-            <option value="stage:delayed">Delayed</option>
-            <option value="stage:cancelled">Cancelled</option>
-          </select>
-        </div>
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pp-filter-one-line"
+      >
+        <input
+          v-model="search"
+          type="search"
+          class="form-control form-control-sm pp-filter-search"
+          placeholder="Project, PO, site…"
+        />
+        <input
+          v-model="stage"
+          class="form-control form-control-sm flex-shrink-0 pp-filter-stage"
+          placeholder="Stage"
+        />
+        <select
+          v-model="status"
+          class="form-select form-select-sm flex-shrink-0 pp-filter-status"
+        >
+          <option value="">All Status</option>
+          <option disabled>-- Detail Status --</option>
+          <option value="detail:active">Active</option>
+          <option value="detail:delay">Delay</option>
+          <option value="detail:closed">Closed</option>
+          <option value="detail:cancelled">Cancelled</option>
+          <option disabled>-- Stage Status --</option>
+          <option value="stage:pending">Pending</option>
+          <option value="stage:submitted">Submitted</option>
+          <option value="stage:approved">Approved</option>
+          <option value="stage:delayed">Delayed</option>
+          <option value="stage:cancelled">Cancelled</option>
+        </select>
+        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true"></span>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
+          :disabled="exporting"
+          aria-label="Download Excel for current search and filters"
+          @click="onExportExcel"
+        >
+          {{ exporting ? "…" : "Excel" }}
+        </button>
       </div>
     </div>
 
@@ -433,6 +452,28 @@ const showingEnd = computed(() =>
 </template>
 
 <style scoped>
+/* Satu baris: search boleh menyusut (min-width:0); baris bisa scroll horizontal di layar sempit */
+.pp-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pp-filter-search {
+  min-width: 0;
+  flex: 1 1 24rem;
+  max-width: 48rem;
+}
+
+.pp-filter-stage {
+  width: 8.5rem;
+  min-width: 8.5rem;
+}
+
+.pp-filter-status {
+  width: 10.5rem;
+  min-width: 10.5rem;
+}
+
 .progress-table-wrap {
   border-radius: 0.375rem;
 }

@@ -133,6 +133,26 @@
       </div>
     </div>
 
+    <div class="card stage-pipeline-card border-0 shadow-sm">
+      <h3 class="section-title">Progress Site Planned - Actual</h3>
+      <div v-if="stagesLoading" class="data-meta py-3 text-center">
+        Memuat master stage…
+      </div>
+      <div
+        v-else-if="!hasPipelineStages"
+        class="data-meta py-3 text-center"
+      >
+        <template v-if="stagesLoadError">{{ stagesLoadError }}</template>
+        <template v-else>Tidak ada stage aktif.</template>
+      </div>
+      <div v-else class="stage-pipeline-chart-wrap">
+        <Line
+          :data="stagePipelineChart"
+          :options="dashboardStageChartOptions"
+        />
+      </div>
+    </div>
+
     <div v-if="activePanel" class="fullscreen" @click="activePanel = null">
       <div class="fullscreen-content" @click.stop>
         <h3 class="mb-3 fw-bold">{{ panelTitle }}</h3>
@@ -172,6 +192,10 @@ import { Line } from "vue-chartjs";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useDashboardRefreshSocket } from "@/composables/useDashboardRefreshSocket";
 import { useNotify } from "@/composables/useNotify";
+import {
+  useDashboardProgressStageChart,
+  dashboardStageChartOptions,
+} from "@/composables/useDashboardProgressStageChart";
 
 type ProjectRow = {
   id: string;
@@ -355,6 +379,14 @@ const filteredFinancialRows = computed(() => {
     return filteredDetailIds.value.has(row.projectDetailId);
   });
 });
+
+const {
+  loadProgressStages,
+  stagePipelineChart,
+  hasPipelineStages,
+  stagesLoadError,
+  stagesLoading,
+} = useDashboardProgressStageChart(filteredProgressRows);
 
 /* =========================================================
    FLOW 3/6 - KPI TURUNAN (COMPUTED)
@@ -569,6 +601,7 @@ async function loadDashboard() {
     progressRows.value = pr;
     financialRows.value = f;
 
+    await loadProgressStages();
     rebuildSeries();
   } catch (err: any) {
     errorMessage.value =
@@ -1017,6 +1050,17 @@ watch([projectKeyword, regionFilter, subRegionFilter], () => {
 .fullscreen-chart-wrap {
   position: relative;
   height: calc(100% - 2.25rem);
+}
+
+.stage-pipeline-card {
+  flex-shrink: 0;
+}
+
+.stage-pipeline-chart-wrap {
+  position: relative;
+  min-height: 300px;
+  height: 320px;
+  margin-top: 0.35rem;
 }
 
 @media (max-width: 992px) {

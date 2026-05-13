@@ -87,3 +87,18 @@ export const createProjectFinancialSchema = projectFinancialSchemaBase.superRefi
 
 export const updateProjectFinancialSchema =
   projectFinancialSchemaBase.partial();
+
+/** Query `GET /api/project_financials/export` (filter sama seperti list). */
+export const projectFinancialsExportQueryZ = z.object({
+  search: z.string().max(500).optional(),
+  status: financialStatusZ.optional(),
+  projectId: z.string().uuid().optional(),
+  projectDetailId: z.string().uuid().optional(),
+});
+
+/** Query export tax-in / tax-out / pph (search + status saja). */
+export const projectFinancialsTaxSectionExportQueryZ =
+  projectFinancialsExportQueryZ.pick({
+    search: true,
+    status: true,
+  });

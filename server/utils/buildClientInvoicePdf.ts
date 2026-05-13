@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit";
-import { pfListLineBase } from "~/composables/useProjectFinancialsDisplay";
+import { pfListLineBase } from "~/lib/projectFinancialsMath";
 import { formatDateToIdText } from "~/utils/formatDateToIdText";
 
 export type ClientInvoicePdfLine = {

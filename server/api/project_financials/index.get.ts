@@ -8,7 +8,18 @@ import { partners } from "~/server/db/schema/partners";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
-import { and, eq, ilike, or, count, desc, getTableColumns } from "drizzle-orm";
+import {
+  sqlClientListLineContribution,
+  sqlPartnerListLineContribution,
+  sqlPphSectionDppContribution,
+  sqlPphSectionTaxContribution,
+  sqlTaxInSectionDppContribution,
+  sqlTaxInSectionTaxContribution,
+  sqlTaxOutSectionDppContribution,
+  sqlTaxOutSectionTaxContribution,
+} from "~/server/utils/projectFinancialsListTotalsSql";
+import { buildProjectFinancialsListWhere } from "~/server/utils/projectFinancialsListWhere";
+import { count, desc, eq, getTableColumns, sql } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
 
@@ -18,55 +29,14 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const { page, limit, offset } = buildPagination(query);
 
-  const conditions = [];
-
-  if (query.projectId) {
-    conditions.push(eq(projectFinancials.projectId, String(query.projectId)));
-  }
-
-  if (query.projectDetailId) {
-    conditions.push(eq(projectFinancials.projectDetailId, String(query.projectDetailId)));
-  }
-
-  if (query.search) {
-    const s = `%${String(query.search)}%`;
-    conditions.push(
-      or(
-        ilike(projectFinancials.bastNumber, s),
-        ilike(projectFinancials.balapNumber, s),
-        ilike(projectFinancials.invoiceNumberPartner, s),
-        ilike(projectFinancials.invoiceNumberClient, s),
-        ilike(projectFinancials.docNumber, s),
-        ilike(projects.poNumber, s),
-        ilike(projects.projectName, s),
-        ilike(projectDetails.materialName, s),
-        ilike(projectDetails.siteName, s),
-        ilike(projectDetails.systemkey, s),
-        ilike(projectDetails.siteId, s),
-      ),
-    );
-  }
-
-  if (query.status) {
-    const st = String(query.status);
-    const allowed = [
-      "draft",
-      "issued",
-      "approved",
-      "paid",
-      "cancelled",
-    ] as const;
-    if ((allowed as readonly string[]).includes(st)) {
-      conditions.push(
-        eq(
-          projectFinancials.status,
-          st as (typeof allowed)[number],
-        ),
-      );
-    }
-  }
-
-  const where = conditions.length ? and(...conditions) : undefined;
+  const where = buildProjectFinancialsListWhere({
+    projectId: query.projectId ? String(query.projectId) : undefined,
+    projectDetailId: query.projectDetailId
+      ? String(query.projectDetailId)
+      : undefined,
+    search: query.search ? String(query.search) : undefined,
+    status: query.status ? String(query.status) : undefined,
+  });
 
   const joinChain = db
     .select({ value: count() })
@@ -83,6 +53,53 @@ export default defineEventHandler(async (event) => {
   const totalResult = await joinChain;
   const total = Number(totalResult[0]?.value ?? 0);
   const totalPages = buildTotalPages(total, limit);
+
+  const totalsJoin = db
+    .select({
+      sumPartnerLines: sql<string>`coalesce(sum(${sqlPartnerListLineContribution}), 0)`.as(
+        "sum_partner_lines",
+      ),
+      sumClientLines: sql<string>`coalesce(sum(${sqlClientListLineContribution}), 0)`.as(
+        "sum_client_lines",
+      ),
+      sumTaxInSectionDpp: sql<string>`coalesce(sum(${sqlTaxInSectionDppContribution}), 0)`.as(
+        "sum_tax_in_section_dpp",
+      ),
+      sumTaxInSectionTax: sql<string>`coalesce(sum(${sqlTaxInSectionTaxContribution}), 0)`.as(
+        "sum_tax_in_section_tax",
+      ),
+      sumTaxOutSectionDpp: sql<string>`coalesce(sum(${sqlTaxOutSectionDppContribution}), 0)`.as(
+        "sum_tax_out_section_dpp",
+      ),
+      sumTaxOutSectionTax: sql<string>`coalesce(sum(${sqlTaxOutSectionTaxContribution}), 0)`.as(
+        "sum_tax_out_section_tax",
+      ),
+      sumPphSectionDpp: sql<string>`coalesce(sum(${sqlPphSectionDppContribution}), 0)`.as(
+        "sum_pph_section_dpp",
+      ),
+      sumPphSectionTax: sql<string>`coalesce(sum(${sqlPphSectionTaxContribution}), 0)`.as(
+        "sum_pph_section_tax",
+      ),
+    })
+    .from(projectFinancials)
+    .leftJoin(projects, eq(projectFinancials.projectId, projects.id))
+    .leftJoin(
+      projectDetails,
+      eq(projectFinancials.projectDetailId, projectDetails.id),
+    )
+    .leftJoin(clients, eq(projectFinancials.clientId, clients.id))
+    .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
+    .where(where);
+
+  const totalsRow = await totalsJoin;
+  const partnerLineTotalFiltered = Number(totalsRow[0]?.sumPartnerLines ?? 0);
+  const clientLineTotalFiltered = Number(totalsRow[0]?.sumClientLines ?? 0);
+  const taxInSectionDppFiltered = Number(totalsRow[0]?.sumTaxInSectionDpp ?? 0);
+  const taxInSectionTaxFiltered = Number(totalsRow[0]?.sumTaxInSectionTax ?? 0);
+  const taxOutSectionDppFiltered = Number(totalsRow[0]?.sumTaxOutSectionDpp ?? 0);
+  const taxOutSectionTaxFiltered = Number(totalsRow[0]?.sumTaxOutSectionTax ?? 0);
+  const pphSectionDppFiltered = Number(totalsRow[0]?.sumPphSectionDpp ?? 0);
+  const pphSectionTaxFiltered = Number(totalsRow[0]?.sumPphSectionTax ?? 0);
 
   const rows = await db
     .select({
@@ -121,5 +138,21 @@ export default defineEventHandler(async (event) => {
     limit,
     total,
     totalPages,
+    totals: {
+      partnerLineIdr: partnerLineTotalFiltered,
+      clientLineIdr: clientLineTotalFiltered,
+      taxInSection: {
+        dppIdr: taxInSectionDppFiltered,
+        taxIdr: taxInSectionTaxFiltered,
+      },
+      taxOutSection: {
+        dppIdr: taxOutSectionDppFiltered,
+        taxIdr: taxOutSectionTaxFiltered,
+      },
+      pphSection: {
+        dppIdr: pphSectionDppFiltered,
+        taxIdr: pphSectionTaxFiltered,
+      },
+    },
   });
 });

@@ -80,12 +80,30 @@ export interface ProjectFinancialItem {
   updatedAt: string | null;
 }
 
+export interface ProjectFinancialsListSectionTotals {
+  dppIdr: number;
+  taxIdr: number;
+}
+
+export interface ProjectFinancialsListTotals {
+  partnerLineIdr: number;
+  clientLineIdr: number;
+  /** Total Dpp & Tax In untuk section halaman `tax-in` (mengikuti filter search/status). */
+  taxInSection: ProjectFinancialsListSectionTotals;
+  /** Total Dpp & Tax Out untuk section halaman `tax-out` (mengikuti filter search/status). */
+  taxOutSection: ProjectFinancialsListSectionTotals;
+  /** Total Dpp & PPH untuk section halaman `pph` (mengikuti filter search/status). */
+  pphSection: ProjectFinancialsListSectionTotals;
+}
+
 export interface ProjectFinancialsState {
   items: ProjectFinancialItem[];
   page: number;
   limit: number;
   total: number;
   totalPages: number;
+  /** Jumlah kolom Total partner / klien untuk seluruh baris yang cocok filter (bukan hanya halaman ini). */
+  listTotals: ProjectFinancialsListTotals;
   loading: boolean;
 }
 
@@ -100,6 +118,13 @@ export const useProjectFinancialsStore = defineStore(
       limit: 10,
       total: 0,
       totalPages: 0,
+      listTotals: {
+        partnerLineIdr: 0,
+        clientLineIdr: 0,
+        taxInSection: { dppIdr: 0, taxIdr: 0 },
+        taxOutSection: { dppIdr: 0, taxIdr: 0 },
+        pphSection: { dppIdr: 0, taxIdr: 0 },
+      },
       loading: false,
     }),
 
@@ -112,12 +137,20 @@ export const useProjectFinancialsStore = defineStore(
         limit: number;
         total: number;
         totalPages: number;
+        listTotals?: ProjectFinancialsListTotals;
       }) {
         this.items = [...payload.items]; // force reactivity
         this.page = payload.page;
         this.limit = payload.limit;
         this.total = payload.total;
         this.totalPages = payload.totalPages;
+        this.listTotals = payload.listTotals ?? {
+          partnerLineIdr: 0,
+          clientLineIdr: 0,
+          taxInSection: { dppIdr: 0, taxIdr: 0 },
+          taxOutSection: { dppIdr: 0, taxIdr: 0 },
+          pphSection: { dppIdr: 0, taxIdr: 0 },
+        };
       },
 
       setItems(items: ProjectFinancialItem[]) {
@@ -152,6 +185,13 @@ export const useProjectFinancialsStore = defineStore(
         this.limit = 10;
         this.total = 0;
         this.totalPages = 0;
+        this.listTotals = {
+          partnerLineIdr: 0,
+          clientLineIdr: 0,
+          taxInSection: { dppIdr: 0, taxIdr: 0 },
+          taxOutSection: { dppIdr: 0, taxIdr: 0 },
+          pphSection: { dppIdr: 0, taxIdr: 0 },
+        };
         this.loading = false;
       },
     },

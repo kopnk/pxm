@@ -11,7 +11,7 @@ import {
   signPartnerPoAccess,
   verifyPartnerPoAccess,
 } from "~/server/utils/partnerPoPdfAccess";
-import { pfFormatIdDate } from "~/composables/useProjectFinancialsDisplay";
+import { pfFormatIdDate } from "~/lib/projectFinancialsMath";
 
 function safeFilename(po: string) {
   return po.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "PO";

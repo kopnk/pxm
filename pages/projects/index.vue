@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useProjectsListPage } from "@/composables/useProjectsListPage";
+import { useProjectsExport } from "@/composables/useProjectsExport";
 
 definePageMeta({});
 
@@ -25,6 +26,15 @@ const {
   getRowNumber,
   formatCurrency,
 } = useProjectsListPage();
+
+const { exporting, downloadExcel } = useProjectsExport();
+
+const onExportExcel = () => {
+  void downloadExcel({
+    search: searchFilter.value,
+    status: statusFilter.value,
+  });
+};
 </script>
 
 <template>
@@ -42,24 +52,37 @@ const {
 
     <!-- FILTER -->
     <div class="card mb-3 border-0 shadow-sm">
-      <div class="card-body row g-2">
-        <div class="col-md-4">
-          <input
-            v-model="searchFilter"
-            type="text"
-            class="form-control"
-            placeholder="Search"
-          />
-        </div>
-
-        <div class="col-md-3">
-          <select v-model="statusFilter" class="form-select">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="closed">Closed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 projects-filter-one-line"
+      >
+        <input
+          v-model="searchFilter"
+          type="search"
+          class="form-control form-control-sm projects-filter-search"
+          placeholder="Project, PO, PR/SC, client…"
+        />
+        <select
+          v-model="statusFilter"
+          class="form-select form-select-sm flex-shrink-0 projects-filter-status"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="closed">Closed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <span
+          class="text-secondary user-select-none flex-shrink-0"
+          aria-hidden="true"
+        ></span>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
+          :disabled="exporting"
+          aria-label="Download Excel for current search and status filters"
+          @click="onExportExcel"
+        >
+          {{ exporting ? "…" : "Excel" }}
+        </button>
       </div>
     </div>
 
@@ -113,7 +136,8 @@ const {
                       {{ item.projectName }}
                     </span>
                     <div class="data-meta mt-1">
-                      <span class="label-prefix">PO</span>{{ item.poNumber || "-" }}
+                      <span class="label-prefix">PO</span
+                      >{{ item.poNumber || "-" }}
                     </div>
                   </td>
                   <td>{{ item.poDate }}</td>
@@ -121,7 +145,9 @@ const {
                   <td>{{ item.komDate }}</td>
                   <td class="text-end">{{ formatCurrency(item.hpp) }}</td>
                   <td class="text-end">{{ formatCurrency(item.dpp) }}</td>
-                  <td class="text-end">{{ Number(item.mrg || 0).toFixed(2) }}%</td>
+                  <td class="text-end">
+                    {{ Number(item.mrg || 0).toFixed(2) }}%
+                  </td>
 
                   <td class="text-end">
                     {{ formatCurrency(item.subTotal) }}
@@ -210,7 +236,9 @@ const {
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                               <span class="data-label fw-normal mb-0">MRG</span>
-                              <span>{{ Number(item.mrg || 0).toFixed(2) }}%</span>
+                              <span
+                                >{{ Number(item.mrg || 0).toFixed(2) }}%</span
+                              >
                             </div>
 
                             <div class="d-flex justify-content-between mb-2">
@@ -336,6 +364,22 @@ const {
 </template>
 
 <style scoped lang="scss">
+.projects-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.projects-filter-search {
+  min-width: 0;
+  flex: 1 1 24rem;
+  max-width: 48rem;
+}
+
+.projects-filter-status {
+  width: 10.5rem;
+  min-width: 10.5rem;
+}
+
 .table-users {
   th,
   td {
