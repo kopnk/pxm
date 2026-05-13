@@ -96,7 +96,7 @@ const displayType = (value: string | null | undefined) => {
 </script>
 
 <template>
-  <div class="container py-4">
+  <div class="container-fluid py-4 px-3">
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
