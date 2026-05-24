@@ -3,6 +3,7 @@ import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { projectProgress } from "~/server/db/schema/project_progress";
 import { projects } from "~/server/db/schema/projects";
 import { projectDetails } from "~/server/db/schema/project_details";
+import { buildSearchOr } from "~/server/utils/searchAmountSql";
 
 export type ProjectProgressListFilterInput = {
   search?: string;
@@ -36,14 +37,26 @@ export function buildProjectProgressListWhere(
   const statusFilter = input.status?.trim();
 
   if (globalSearch) {
-    const pattern = `%${globalSearch}%`;
-    const sOr = or(
-      ilike(projects.projectName, pattern),
-      ilike(projects.poNumber, pattern),
-      ilike(projectDetails.siteName, pattern),
-      ilike(projectDetails.materialName, pattern),
-      ilike(projectDetails.systemkey, pattern),
-    );
+    const sOr = buildSearchOr(globalSearch, {
+      ilike: [
+        projects.projectName,
+        projects.poNumber,
+        projects.contractNumber,
+        projectDetails.siteName,
+        projectDetails.materialName,
+        projectDetails.systemkey,
+        projectDetails.siteId,
+        projectDetails.neId,
+        projectDetails.materialId,
+      ],
+      asText: [
+        projectDetails.lineNumber,
+        projectDetails.quantity,
+        projectDetails.unitPrice,
+        projectDetails.totalPrice,
+        projectProgress.stageData,
+      ],
+    });
     if (sOr) conditions.push(sOr);
   } else {
     if (project) {

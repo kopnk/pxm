@@ -18,17 +18,8 @@ import {
 import { projectDetailsExportQueryZ } from "~/server/validation/project_details.schema";
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
-
-const MAX_EXPORT_ROWS = 8000;
-
-function firstQuery(
-  v: string | string[] | undefined,
-): string | undefined {
-  if (v == null) return undefined;
-  const x = Array.isArray(v) ? v[0] : v;
-  const t = String(x).trim();
-  return t === "" ? undefined : t;
-}
+import { buildTotalPages } from "~/server/utils/pagination";
+import { firstQuery } from "~/server/utils/firstQuery";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -40,6 +31,8 @@ export default defineEventHandler(async (event) => {
     projectId: firstQuery(raw.projectId),
     status: firstQuery(raw.status),
     cityKabId: firstQuery(raw.cityKabId),
+    page: firstQuery(raw.page),
+    limit: firstQuery(raw.limit),
   });
 
   if (!parsed.success) {
@@ -67,12 +60,9 @@ export default defineEventHandler(async (event) => {
     .where(where);
 
   const total = Number(countRow[0]?.value ?? 0);
-  if (total > MAX_EXPORT_ROWS) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Too many rows (${total}). Narrow search or filters (max ${MAX_EXPORT_ROWS}).`,
-    });
-  }
+  const page = q.page ?? 1;
+  const limit = q.limit ?? 10;
+  const offset = (page - 1) * limit;
 
   const rows = await db
     .select({
@@ -112,7 +102,9 @@ export default defineEventHandler(async (event) => {
     .leftJoin(pdSub, eq(pdCity.parentId, pdSub.id))
     .leftJoin(pdRegion, eq(pdSub.parentId, pdRegion.id))
     .where(where)
-    .orderBy(desc(projectDetails.createdAt), desc(projectDetails.id));
+    .orderBy(desc(projectDetails.createdAt), desc(projectDetails.id))
+    .limit(limit)
+    .offset(offset);
 
   const exportRows: ProjectDetailExportRow[] = rows.map((row) => ({
     contractNumber: row.contractNumber,
@@ -150,6 +142,13 @@ export default defineEventHandler(async (event) => {
 
   return successResponse(event, "Project details export matrix ready", {
     matrix,
-    suggestedFileName: `project-details-${dateLabel}.xlsx`,
+    suggestedFileName: `project-details-p${page}-${dateLabel}.xlsx`,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: buildTotalPages(total, limit),
+      exportedLines: exportRows.length,
+    },
   });
 });

@@ -41,11 +41,13 @@ export const createProjectProgressSchema = z.object({
 export const updateProjectProgressSchema =
   createProjectProgressSchema.partial();
 
-/** Query untuk `GET /api/project_progress/export` (sama filter seperti list). */
+/** Query untuk `GET /api/project_progress/export` (filter list + pagination; tanpa flow). */
 export const projectProgressExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   stage: z.string().max(120).optional(),
   status: z.string().max(120).optional(),
   project: z.string().max(200).optional(),
   detail: z.string().max(200).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
 });

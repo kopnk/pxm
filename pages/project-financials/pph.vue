@@ -17,7 +17,7 @@ const {
   nextPage,
   formatCurrencyIdr,
   getRowNumber,
-} = useProjectFinancialsListPage();
+} = useProjectFinancialsListPage({ flowDirection: "in" });
 
 const { exporting, downloadExcel } = useProjectFinancialsTaxSectionExport("pph");
 
@@ -25,6 +25,8 @@ const onExportExcel = () => {
   void downloadExcel({
     search: search.value,
     status: status.value,
+    page: store.page,
+    limit: store.limit,
   });
 };
 

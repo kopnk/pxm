@@ -54,6 +54,13 @@ export const projectFinancials = pgTable(
     docNumber: text("doc_number"),
     docDate: date("doc_date"),
 
+    vbNumber: text("vb_number"),
+    vbDate: date("vb_date"),
+    mcmNumber: text("mcm_number"),
+    mcmDate: date("mcm_date"),
+    paidNumber: text("paid_number"),
+    paidDate: date("paid_date"),
+
     taxIn: numeric("tax_in", { precision: 18, scale: 4 }),
     taxOut: numeric("tax_out", { precision: 18, scale: 4 }),
     pph: numeric("pph", { precision: 18, scale: 4 }),
@@ -104,8 +111,13 @@ export const projectFinancials = pgTable(
       .references(() => users.id)
       .notNull(),
 
-    createdAt: timestamp("created_at").defaultNow(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => ({
     idxProject: index("idx_financial_project").on(table.projectId),

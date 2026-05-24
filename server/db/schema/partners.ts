@@ -30,6 +30,11 @@ export const partners = pgTable("partners", {
   rating: numeric("rating", { precision: 2, scale: 1 }),
   isActive: boolean("is_active").default(true),
 
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

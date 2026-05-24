@@ -12,6 +12,7 @@ import {
 
 import { and, eq, ne } from "drizzle-orm";
 import { dbTime } from "~/server/utils/dbTime";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
@@ -260,7 +261,7 @@ export default defineEventHandler(async (event) => {
     event,
     "Project detail updated",
     {
-      ...updated,
+      ...mapLocalTimestamps(updated),
       quantity: updated.quantity != null ? Number(updated.quantity) : null,
       unitPrice: updated.unitPrice != null ? Number(updated.unitPrice) : null,
       totalPrice: updated.totalPrice != null ? Number(updated.totalPrice) : null,

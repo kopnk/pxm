@@ -1,6 +1,6 @@
 import { defineEventHandler, readBody, createError } from "h3";
 import { db } from "~/server/db";
-import { projectProgress } from "~/server/db/schema/project_progress";
+import { projectProgress, type StageData } from "~/server/db/schema/project_progress";
 import { projectDetails } from "~/server/db/schema/project_details";
 
 import { eq } from "drizzle-orm";
@@ -12,7 +12,12 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
+import {
+  syncOutFlowFinancialAfterProgressSave,
+  reconcilePaidSyncForProjectDetail,
+} from "~/server/utils/syncProjectFinancialPaidWithProgress";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -143,8 +148,21 @@ export default defineEventHandler(async (event) => {
       newData: updatedRow,
     });
 
+    if (updatedRow) {
+      await syncOutFlowFinancialAfterProgressSave(tx, {
+        projectDetailId: updatedRow.projectDetailId,
+        projectProgressId: updatedRow.id,
+        stageData: (updatedRow.stageData ?? {}) as StageData,
+      });
+      await reconcilePaidSyncForProjectDetail(tx, updatedRow.projectDetailId);
+    }
+
     return updatedRow;
   });
 
-  return successResponse(event, "Project progress updated", updated);
+  return successResponse(
+    event,
+    "Project progress updated",
+    mapLocalTimestamps(updated),
+  );
 });

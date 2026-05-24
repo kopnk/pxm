@@ -4,6 +4,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useDcnApi, DCN_OUT_TYPE_OPTIONS } from "@/composables/useDcnApi";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 const auth = useAuthStore();
 const { store, getDcns, deleteDcn } = useDcnApi();
@@ -186,8 +187,8 @@ const displayType = (value: string | null | undefined) => {
                   </span>
                 </td>
                 <td>
-                  <div class="data-meta">Created: {{ item.createdAt || "—" }}</div>
-                  <div class="data-meta">Updated: {{ item.updatedAt || "—" }}</div>
+                  <div class="data-meta">Created: {{ formatListTimestamp(item.createdAt) }}</div>
+                  <div class="data-meta">Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                   <div v-if="canDelete" class="mt-1">
                     <span
                       class="text-danger small fw-semibold"

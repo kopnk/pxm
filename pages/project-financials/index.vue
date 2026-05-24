@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useProjectFinancialsListPage } from "@/composables/useProjectFinancialsListPage";
 import { useProjectFinancialsExport } from "@/composables/useProjectFinancialsExport";
 import {
@@ -9,6 +10,7 @@ import {
   pfPartnerTaxRupiahForDisplay,
   pfClientTaxRupiahForDisplay,
 } from "@/composables/useProjectFinancialsDisplay";
+import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 
 const {
   store,
@@ -17,7 +19,11 @@ const {
   canDelete,
   search,
   status,
+  flowDirection,
   statusOptions,
+  flowDirectionOptions,
+  showPartnerLineTotal,
+  showClientLineTotal,
   deletingId,
   deleteTarget,
   showDeleteModal,
@@ -39,8 +45,129 @@ const {
 
 const { exporting, downloadExcel } = useProjectFinancialsExport();
 
+const TABLE_COL_COUNT = 12;
+
+const isInFlowFilter = computed(() => flowDirection.value === "in");
+const isOutFlowFilter = computed(() => flowDirection.value === "out");
+
+const poColumnLabel = computed(() => {
+  if (isInFlowFilter.value) return "PO Partner";
+  if (isOutFlowFilter.value) return "PO Client";
+  return "PO";
+});
+
+const invoiceColumnLabel = computed(() => {
+  if (isInFlowFilter.value) return "Invoice Partner";
+  if (isOutFlowFilter.value) return "Invoice Client";
+  return "Invoice";
+});
+
+const fpColumnLabel = computed(() => {
+  if (isInFlowFilter.value) return "Tax In (FP)";
+  if (isOutFlowFilter.value) return "Tax Out (FP)";
+  return "FP";
+});
+
+const partyColumnLabel = computed(() => {
+  if (isInFlowFilter.value) return "Partner";
+  if (isOutFlowFilter.value) return "Client";
+  return "Party";
+});
+
+const isRowIn = (item: ProjectFinancialItem) => item.flowDirection === "in";
+
+const rowQty = (item: ProjectFinancialItem) =>
+  isRowIn(item) ? item.qtyPartner : item.qtyClient;
+
+const rowDpp = (item: ProjectFinancialItem) =>
+  isRowIn(item)
+    ? pfListLineBase(item.qtyPartner, item.unitPricePartner)
+    : pfListLineBase(item.qtyClient, item.unitPriceClient);
+
+const rowPph = (item: ProjectFinancialItem) =>
+  pfPartnerTaxRupiahForDisplay(
+    item.qtyPartner,
+    item.unitPricePartner,
+    item.pph,
+  );
+
+const rowTaxIn = (item: ProjectFinancialItem) =>
+  pfPartnerTaxRupiahForDisplay(
+    item.qtyPartner,
+    item.unitPricePartner,
+    item.taxIn,
+  );
+
+const rowTaxOut = (item: ProjectFinancialItem) =>
+  pfClientTaxRupiahForDisplay(
+    item.qtyClient,
+    item.unitPriceClient,
+    item.taxOut,
+  );
+
+const rowTotal = (item: ProjectFinancialItem) =>
+  isRowIn(item)
+    ? pfPartnerLineTotal(
+        item.qtyPartner,
+        item.unitPricePartner,
+        item.pph,
+        item.taxIn,
+      )
+    : pfClientLineTotal(item.qtyClient, item.unitPriceClient, item.taxOut);
+
+const rowPoNumber = (item: ProjectFinancialItem) =>
+  isRowIn(item) ? item.poNumberPartner : item.poNumberClient;
+
+const rowPoDate = (item: ProjectFinancialItem) =>
+  pfFormatIdDate(isRowIn(item) ? item.poDatePartner : item.poDateClient);
+
+const rowInvoiceNumber = (item: ProjectFinancialItem) =>
+  isRowIn(item) ? item.invoiceNumberPartner : item.invoiceNumberClient;
+
+const rowInvoiceDate = (item: ProjectFinancialItem) =>
+  pfFormatIdDate(
+    isRowIn(item) ? item.invoiceDatePartner : item.invoiceDateClient,
+  );
+
+const rowFpNumber = (item: ProjectFinancialItem) =>
+  isRowIn(item) ? item.fpNumberPartner : item.fpNumberClient;
+
+const rowFpDate = (item: ProjectFinancialItem) =>
+  pfFormatIdDate(isRowIn(item) ? item.fpDatePartner : item.fpDateClient);
+
+const rowPartyName = (item: ProjectFinancialItem) =>
+  isRowIn(item) ? item.partnerName : item.clientName;
+
+const docPrimary = (value: string | null | undefined) =>
+  value?.trim() ? value.trim() : "—";
+
+const paidDocBlock = (
+  label: string,
+  no: string | null | undefined,
+  date: string | null | undefined,
+) => ({
+  label,
+  no: docPrimary(no),
+  date: pfFormatIdDate(date),
+});
+
+const rowPaidBlocks = (item: ProjectFinancialItem) => {
+  if (isRowIn(item)) {
+    return [
+      paidDocBlock("VB", item.vbNumber, item.vbDate),
+      paidDocBlock("MCM", item.mcmNumber, item.mcmDate),
+    ];
+  }
+  return [paidDocBlock("Paid", item.paidNumber, item.paidDate)];
+};
+
 const onExportExcel = () => {
-  void downloadExcel({ search: search.value, status: status.value });
+  void downloadExcel({
+    search: search.value,
+    status: status.value,
+    page: store.page,
+    limit: store.limit,
+  });
 };
 </script>
 
@@ -81,15 +208,37 @@ const onExportExcel = () => {
             {{ option.label }}
           </option>
         </select>
+        <select
+          v-model="flowDirection"
+          class="form-select form-select-sm flex-shrink-0 pf-filter-flow"
+        >
+          <option
+            v-for="option in flowDirectionOptions"
+            :key="option.value === '' ? 'all-flow' : option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
         <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
+        <span
+          v-if="showPartnerLineTotal"
+          class="text-nowrap flex-shrink-0 small text-muted"
+        >
           Total Partner
           <span class="fw-semibold text-body ms-1">{{
             formatCurrencyIdr(store.listTotals.partnerLineIdr)
           }}</span>
         </span>
-        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
+        <span
+          v-if="showPartnerLineTotal && showClientLineTotal"
+          class="text-secondary user-select-none flex-shrink-0"
+          aria-hidden="true"
+        >|</span>
+        <span
+          v-if="showClientLineTotal"
+          class="text-nowrap flex-shrink-0 small text-muted"
+        >
           Total Client
           <span class="fw-semibold text-body ms-1">{{
             formatCurrencyIdr(store.listTotals.clientLineIdr)
@@ -100,7 +249,7 @@ const onExportExcel = () => {
           type="button"
           class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
           :disabled="exporting"
-          aria-label="Download Excel for current search and status filters"
+          aria-label="Download Excel for current search, status, and page"
           @click="onExportExcel"
         >
           {{ exporting ? "…" : "Excel" }}
@@ -116,22 +265,30 @@ const onExportExcel = () => {
           >
             <thead class="table-light">
               <tr>
-                <th class="text-center text-nowrap" style="width: 50px">No</th>
-                <th>Description</th>
-                <th>Detail</th>
-                <th class="col-partner">Partner Details</th>
-                <th class="col-client">Client Details</th>
-                <th style="min-width: 140px">Status</th>
+                <th class="text-center text-nowrap fin-col-no">No</th>
+                <th class="fin-desc">Description</th>
+                <th class="fin-site">Detail</th>
+                <th class="fin-col-qty text-end">Qty</th>
+                <th class="fin-col-amount text-end">Amount</th>
+                <th class="fin-col-doc">{{ poColumnLabel }}</th>
+                <th class="fin-col-doc">{{ invoiceColumnLabel }}</th>
+                <th class="fin-col-doc">{{ fpColumnLabel }}</th>
+                <th class="fin-col-balap">Balap / BAST</th>
+                <th class="fin-col-paid">Paid</th>
+                <th class="fin-col-party">{{ partyColumnLabel }}</th>
+                <th class="fin-col-status">Status</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="store.loading">
-                <td colspan="6" class="text-center py-3">Loading…</td>
+                <td :colspan="TABLE_COL_COUNT" class="text-center py-3">
+                  Loading…
+                </td>
               </tr>
 
               <template v-else>
                 <tr v-for="(item, idx) in store.items" :key="item.id">
-                  <td class="text-center data-meta">
+                  <td class="text-center data-meta fin-col-no">
                     {{ getRowNumber(idx) }}
                   </td>
                   <td class="fin-desc">
@@ -163,184 +320,100 @@ const onExportExcel = () => {
                       >{{ item.detailSystemkey || "—" }}
                     </div>
                     <div class="data-meta">
-                      <span class="label-prefix">NI</span
-                      >—
+                      <span class="label-prefix">NI</span>—
                     </div>
                   </td>
-                  <td class="fin-stack small col-partner">
-                    <template v-if="item.flowDirection === 'in'">
-                      <div class="fin-line">
-                        <span class="text-muted">Qty</span>
-                        {{ formatQty(item.qtyPartner) }}
-                        <span class="text-muted ms-2">Price</span>
-                        {{ formatCurrencyIdr(item.unitPricePartner) }}
+                  <td class="fin-col-qty text-end">
+                    <div>{{ formatQty(rowQty(item)) }}</div>
+                    <div class="data-meta">{{ item.detailUom || "—" }}</div>
+                  </td>
+                  <td class="fin-col-amount text-end fin-amount-stack">
+                    <div>
+                      <span class="label-prefix">{{
+                        isRowIn(item) ? "HPP" : "DPP"
+                      }}</span>
+                      <span>{{ formatCurrencyIdr(rowDpp(item)) }}</span>
+                    </div>
+                    <template v-if="isRowIn(item)">
+                      <div>
+                        <span class="label-prefix">PPH</span>
+                        <span>{{ formatCurrencyIdr(rowPph(item)) }}</span>
                       </div>
-                      <div class="fin-line data-meta">
-                        <span class="text-muted">Line base</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfListLineBase(
-                              item.qtyPartner,
-                              item.unitPricePartner,
-                            ),
-                          )
-                        }}
-                        <span class="ms-1">(Qty × Price)</span>
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">PPH</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfPartnerTaxRupiahForDisplay(
-                              item.qtyPartner,
-                              item.unitPricePartner,
-                              item.pph,
-                            ),
-                          )
-                        }}
-                        <span class="text-muted ms-2">Tax In</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfPartnerTaxRupiahForDisplay(
-                              item.qtyPartner,
-                              item.unitPricePartner,
-                              item.taxIn,
-                            ),
-                          )
-                        }}
-                      </div>
-                      <div class="fin-line fw-semibold">
-                        <span class="text-muted">Total</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfPartnerLineTotal(
-                              item.qtyPartner,
-                              item.unitPricePartner,
-                              item.pph,
-                              item.taxIn,
-                            ),
-                          )
-                        }}
-                      </div>
-                      <hr class="my-1 opacity-25" />
-                      <div class="fin-line">
-                        <span class="text-muted">PO</span>
-                        {{ item.poNumberPartner || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.poDatePartner) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">Invoice</span>
-                        {{ item.invoiceNumberPartner || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.invoiceDatePartner) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">FP</span>
-                        {{ item.fpNumberPartner || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.fpDatePartner) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">Balap</span>
-                        {{ item.balapNumber || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.balapDate) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">BAST</span>
-                        {{ item.bastNumber || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.bastDate) }}
-                      </div>
-                      <div class="fin-line mt-1">
-                        <span class="text-muted">Partner</span>
-                        {{ item.partnerName || "—" }}
+                      <div>
+                        <span class="label-prefix">Tax In</span>
+                        <span>{{ formatCurrencyIdr(rowTaxIn(item)) }}</span>
                       </div>
                     </template>
+                    <div v-else>
+                      <span class="label-prefix">Tax Out</span>
+                      <span>{{ formatCurrencyIdr(rowTaxOut(item)) }}</span>
+                    </div>
+                    <div class="fw-semibold">
+                      <span class="label-prefix">Total</span>
+                      <span>{{ formatCurrencyIdr(rowTotal(item)) }}</span>
+                    </div>
                   </td>
-                  <td class="fin-stack small col-client">
-                    <template v-if="item.flowDirection === 'out'">
-                      <div class="fin-line">
-                        <span class="text-muted">Qty</span>
-                        {{ formatQty(item.qtyClient) }}
-                        <span class="text-muted ms-2">Price</span>
-                        {{ formatCurrencyIdr(item.unitPriceClient) }}
-                      </div>
-                      <div class="fin-line data-meta">
-                        <span class="text-muted">Line base</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfListLineBase(
-                              item.qtyClient,
-                              item.unitPriceClient,
-                            ),
-                          )
-                        }}
-                        <span class="ms-1">(Qty × Price)</span>
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">Tax Out</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfClientTaxRupiahForDisplay(
-                              item.qtyClient,
-                              item.unitPriceClient,
-                              item.taxOut,
-                            ),
-                          )
-                        }}
-                      </div>
-                      <div class="fin-line fw-semibold">
-                        <span class="text-muted">Total</span>
-                        {{
-                          formatCurrencyIdr(
-                            pfClientLineTotal(
-                              item.qtyClient,
-                              item.unitPriceClient,
-                              item.taxOut,
-                            ),
-                          )
-                        }}
-                      </div>
-                      <hr class="my-1 opacity-25" />
-                      <div class="fin-line">
-                        <span class="text-muted">PO</span>
-                        {{ item.poNumberClient || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.poDateClient) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">Invoice</span>
-                        {{ item.invoiceNumberClient || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.invoiceDateClient) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">FP</span>
-                        {{ item.fpNumberClient || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.fpDateClient) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">BAST</span>
-                        {{ item.bastNumber || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.bastDate) }}
-                      </div>
-                      <div class="fin-line">
-                        <span class="text-muted">Balap</span>
-                        {{ item.balapNumber || "—" }}
-                        <span class="text-muted ms-2">Date</span>
-                        {{ pfFormatIdDate(item.balapDate) }}
-                      </div>
-                      <div class="fin-line mt-1">
-                        <span class="text-muted">Client</span>
-                        {{ item.clientName || "—" }}
-                      </div>
-                    </template>
+                  <td class="fin-col-doc fin-doc-cell">
+                    <div class="fin-doc-no">{{ docPrimary(rowPoNumber(item)) }}</div>
+                    <div class="data-meta">{{ rowPoDate(item) }}</div>
                   </td>
-                  <td>
+                  <td class="fin-col-doc fin-doc-cell">
+                    <div class="fin-doc-no">
+                      {{ docPrimary(rowInvoiceNumber(item)) }}
+                    </div>
+                    <div class="data-meta">{{ rowInvoiceDate(item) }}</div>
+                  </td>
+                  <td class="fin-col-doc fin-doc-cell">
+                    <div class="fin-doc-no">{{ docPrimary(rowFpNumber(item)) }}</div>
+                    <div class="data-meta">{{ rowFpDate(item) }}</div>
+                  </td>
+                  <td class="fin-col-balap fin-doc-cell">
+                    <div>
+                      <span class="label-prefix">Balap</span>
+                      <span>{{ docPrimary(item.balapNumber) }}</span>
+                    </div>
+                    <div class="data-meta">{{ pfFormatIdDate(item.balapDate) }}</div>
+                    <div class="mt-1">
+                      <span class="label-prefix">BAST</span>
+                      <span>{{ docPrimary(item.bastNumber) }}</span>
+                    </div>
+                    <div class="data-meta">{{ pfFormatIdDate(item.bastDate) }}</div>
+                  </td>
+                  <td class="fin-col-paid fin-doc-cell">
+                    <div
+                      v-for="(block, paidIdx) in rowPaidBlocks(item)"
+                      :key="block.label"
+                      :class="{ 'mt-1': paidIdx > 0 }"
+                    >
+                      <div v-if="block.no !== '—'">
+                        <span class="label-prefix">{{ block.label }}</span>
+                        <span>{{ block.no }}</span>
+                      </div>
+                      <div
+                        v-else
+                        class="data-meta"
+                      >
+                        <span class="label-prefix">{{ block.label }}</span>
+                        {{ block.date }}
+                      </div>
+                      <div
+                        v-if="block.no !== '—'"
+                        class="data-meta"
+                      >
+                        {{ block.date }}
+                      </div>
+                    </div>
+                  </td>
+                  <td class="fin-col-party">
+                    <div class="fw-semibold">{{ rowPartyName(item) || "—" }}</div>
+                    <div
+                      v-if="flowDirection === ''"
+                      class="data-meta text-capitalize"
+                    >
+                      {{ item.flowDirection === "in" ? "In flow" : "Out flow" }}
+                    </div>
+                  </td>
+                  <td class="fin-col-status">
                     <div>
                       <span
                         class="badge"
@@ -371,7 +444,7 @@ const onExportExcel = () => {
               </template>
 
               <tr v-if="!store.loading && store.items.length === 0">
-                <td colspan="6" class="text-center text-muted py-3">
+                <td :colspan="TABLE_COL_COUNT" class="text-center text-muted py-3">
                   No data available
                 </td>
               </tr>
@@ -460,22 +533,20 @@ const onExportExcel = () => {
 }
 
 .table-financials {
-  min-width: 1100px;
+  min-width: 1720px;
 
   th {
     vertical-align: middle;
     font-size: 0.8rem;
   }
 
-  .col-partner,
-  .col-client {
-    min-width: 280px;
-    max-width: 340px;
+  .fin-col-no {
+    width: 50px;
   }
 
   .fin-desc {
-    min-width: 160px;
-    max-width: 220px;
+    min-width: 180px;
+    max-width: 240px;
   }
 
   .fin-site {
@@ -483,23 +554,51 @@ const onExportExcel = () => {
     max-width: 200px;
   }
 
-  .fin-stack .fin-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 0.35rem;
-    row-gap: 0.05rem;
-    line-height: 1.3;
+  .fin-col-qty {
+    min-width: 72px;
   }
 
-  .fin-stack .text-muted {
+  .fin-col-amount {
+    min-width: 168px;
+  }
+
+  .fin-col-doc {
+    min-width: 132px;
+  }
+
+  .fin-col-balap {
+    min-width: 168px;
+  }
+
+  .fin-col-paid {
+    min-width: 148px;
+  }
+
+  .fin-col-party {
+    min-width: 120px;
+  }
+
+  .fin-col-status {
+    min-width: 140px;
+  }
+
+  .fin-doc-no {
+    font-weight: 600;
+    color: #212529;
+    line-height: 1.35;
+  }
+
+  .fin-doc-cell .data-meta {
+    margin-bottom: 0;
+  }
+
+  .fin-amount-stack > div {
+    line-height: 1.45;
+    white-space: nowrap;
+  }
+
+  .fin-amount-stack .label-prefix {
     display: inline;
-    min-width: auto;
-    margin-right: 0;
-  }
-
-  .fin-stack .fin-line > .text-muted:first-child {
-    min-width: 2.75rem;
   }
 }
 
@@ -513,6 +612,11 @@ const onExportExcel = () => {
 }
 
 .pf-filter-status {
+  width: 9.25rem;
+  min-width: 9.25rem;
+}
+
+.pf-filter-flow {
   width: 9.25rem;
   min-width: 9.25rem;
 }

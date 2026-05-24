@@ -1,9 +1,10 @@
 import type { SQL } from "drizzle-orm";
-import { and, or, eq, ilike, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { projectDetails } from "~/server/db/schema/project_details";
 import { projects } from "~/server/db/schema/projects";
 import { regions } from "~/server/db/schema/regions";
+import { buildSearchOr } from "~/server/utils/searchAmountSql";
 
 /** Alias konsisten untuk join region (list + export). */
 export const pdCity = alias(regions, "pd_city");
@@ -31,30 +32,34 @@ export function buildProjectDetailsListWhere(
   const cityKabId = input.cityKabId?.trim();
 
   if (search) {
-    const sOr = or(
-      ilike(projectDetails.systemkey, `%${search}%`),
-      ilike(projectDetails.neId, `%${search}%`),
-      ilike(projectDetails.materialName, `%${search}%`),
-      ilike(projectDetails.materialId, `%${search}%`),
-      ilike(projectDetails.siteId, `%${search}%`),
-      ilike(projectDetails.siteName, `%${search}%`),
-      ilike(projectDetails.picArea, `%${search}%`),
-      ilike(projectDetails.uom, `%${search}%`),
-      ilike(projectDetails.status, `%${search}%`),
-      ilike(projectDetails.remarksProjectsDetails, `%${search}%`),
-      ilike(projectDetails.remarksDelay, `%${search}%`),
-      ilike(projectDetails.remarksCancel, `%${search}%`),
-      ilike(projects.projectName, `%${search}%`),
-      ilike(projects.poNumber, `%${search}%`),
-      sql`${projectDetails.lineNumber}::text ILIKE ${`%${search}%`}`,
-      sql`${projectDetails.quantity}::text ILIKE ${`%${search}%`}`,
-      sql`${projectDetails.unitPrice}::text ILIKE ${`%${search}%`}`,
-      sql`${projectDetails.totalPrice}::text ILIKE ${`%${search}%`}`,
-      sql`${projectDetails.taxOut}::text ILIKE ${`%${search}%`}`,
-      ilike(pdCity.name, `%${search}%`),
-      ilike(pdSub.name, `%${search}%`),
-      ilike(pdRegion.name, `%${search}%`),
-    );
+    const sOr = buildSearchOr(search, {
+      ilike: [
+        projectDetails.systemkey,
+        projectDetails.neId,
+        projectDetails.materialName,
+        projectDetails.materialId,
+        projectDetails.siteId,
+        projectDetails.siteName,
+        projectDetails.picArea,
+        projectDetails.uom,
+        projectDetails.status,
+        projectDetails.remarksProjectsDetails,
+        projectDetails.remarksDelay,
+        projectDetails.remarksCancel,
+        projects.projectName,
+        projects.poNumber,
+        pdCity.name,
+        pdSub.name,
+        pdRegion.name,
+      ],
+      asText: [
+        projectDetails.lineNumber,
+        projectDetails.quantity,
+        projectDetails.unitPrice,
+        projectDetails.totalPrice,
+        projectDetails.taxOut,
+      ],
+    });
     if (sOr) conditions.push(sOr);
   }
 

@@ -15,17 +15,8 @@ import {
 import { projectProgressExportQueryZ } from "~/server/validation/project_progress.schema";
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
-
-const MAX_EXPORT_ROWS = 8000;
-
-function firstQuery(
-  v: string | string[] | undefined,
-): string | undefined {
-  if (v == null) return undefined;
-  const x = Array.isArray(v) ? v[0] : v;
-  const t = String(x).trim();
-  return t === "" ? undefined : t;
-}
+import { buildTotalPages } from "~/server/utils/pagination";
+import { firstQuery } from "~/server/utils/firstQuery";
 
 function formatStageDataForExport(raw: unknown): ProjectProgressExportRow["stageData"] {
   return Object.fromEntries(
@@ -60,6 +51,8 @@ export default defineEventHandler(async (event) => {
     status: firstQuery(raw.status),
     project: firstQuery(raw.project),
     detail: firstQuery(raw.detail),
+    page: firstQuery(raw.page),
+    limit: firstQuery(raw.limit),
   });
 
   if (!parsed.success) {
@@ -94,12 +87,9 @@ export default defineEventHandler(async (event) => {
     .where(where);
 
   const total = Number(countRow[0]?.value ?? 0);
-  if (total > MAX_EXPORT_ROWS) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Too many rows (${total}). Narrow search or filters (max ${MAX_EXPORT_ROWS}).`,
-    });
-  }
+  const page = q.page ?? 1;
+  const limit = q.limit ?? 10;
+  const offset = (page - 1) * limit;
 
   const rows = await db
     .select({
@@ -143,7 +133,9 @@ export default defineEventHandler(async (event) => {
     .leftJoin(sub, eq(city.parentId, sub.id))
     .leftJoin(region, eq(sub.parentId, region.id))
     .where(where)
-    .orderBy(desc(projectProgress.createdAt), desc(projectProgress.id));
+    .orderBy(desc(projectProgress.createdAt), desc(projectProgress.id))
+    .limit(limit)
+    .offset(offset);
 
   const exportRows: ProjectProgressExportRow[] = rows.map((row) => ({
     contractNumber: row.contractNumber,
@@ -175,6 +167,13 @@ export default defineEventHandler(async (event) => {
 
   return successResponse(event, "Project progress export matrix ready", {
     matrix,
-    suggestedFileName: `project-progress-${dateLabel}.xlsx`,
+    suggestedFileName: `project-progress-p${page}-${dateLabel}.xlsx`,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: buildTotalPages(total, limit),
+      exportedLines: exportRows.length,
+    },
   });
 });

@@ -24,6 +24,7 @@ export interface ProjectFinancialItem {
   detailSystemkey?: string | null;
   detailSiteId?: string | null;
   detailSiteName?: string | null;
+  detailUom?: string | null;
 
   /** Dari left join `clients` */
   clientName?: string | null;
@@ -43,6 +44,13 @@ export interface ProjectFinancialItem {
   docType?: string | null;
   docNumber?: string | null;
   docDate?: string | null;
+
+  vbNumber?: string | null;
+  vbDate?: string | null;
+  mcmNumber?: string | null;
+  mcmDate?: string | null;
+  paidNumber?: string | null;
+  paidDate?: string | null;
 
   // partner/client invoice fields
   bastNumber?: string | null;
@@ -105,6 +113,12 @@ export interface ProjectFinancialsState {
   /** Jumlah kolom Total partner / klien untuk seluruh baris yang cocok filter (bukan hanya halaman ini). */
   listTotals: ProjectFinancialsListTotals;
   loading: boolean;
+  filters: {
+    search: string;
+    status: string;
+    /** "" = all flow, "in" | "out" = filtered */
+    flowDirection: string;
+  };
 }
 
 /* ================= STORE ================= */
@@ -126,6 +140,11 @@ export const useProjectFinancialsStore = defineStore(
         pphSection: { dppIdr: 0, taxIdr: 0 },
       },
       loading: false,
+      filters: {
+        search: "",
+        status: "",
+        flowDirection: "in",
+      },
     }),
 
     actions: {
@@ -177,6 +196,19 @@ export const useProjectFinancialsStore = defineStore(
         this.loading = value;
       },
 
+      setFilters(
+        filters: Partial<{
+          search: string;
+          status: string;
+          flowDirection: string;
+        }>,
+      ) {
+        this.filters = {
+          ...this.filters,
+          ...filters,
+        };
+      },
+
       /* ===== RESET ===== */
 
       reset() {
@@ -193,6 +225,11 @@ export const useProjectFinancialsStore = defineStore(
           pphSection: { dppIdr: 0, taxIdr: 0 },
         };
         this.loading = false;
+        this.filters = {
+          search: "",
+          status: "",
+          flowDirection: "in",
+        };
       },
     },
   }

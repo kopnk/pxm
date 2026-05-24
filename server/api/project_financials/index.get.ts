@@ -8,6 +8,7 @@ import { partners } from "~/server/db/schema/partners";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
+import { toLocalTime } from "~/server/utils/datetime";
 import {
   sqlClientListLineContribution,
   sqlPartnerListLineContribution,
@@ -36,6 +37,9 @@ export default defineEventHandler(async (event) => {
       : undefined,
     search: query.search ? String(query.search) : undefined,
     status: query.status ? String(query.status) : undefined,
+    flowDirection: query.flowDirection
+      ? String(query.flowDirection)
+      : undefined,
   });
 
   const joinChain = db
@@ -110,6 +114,7 @@ export default defineEventHandler(async (event) => {
       detailSystemkey: projectDetails.systemkey,
       detailSiteId: projectDetails.siteId,
       detailSiteName: projectDetails.siteName,
+      detailUom: projectDetails.uom,
       clientName: clients.name,
       clientNpwp: clients.npwp,
       clientAddressText: clients.addressText,
@@ -133,7 +138,11 @@ export default defineEventHandler(async (event) => {
     .offset(offset);
 
   return successResponse(event, "Project financials retrieved", {
-    items: rows.map((i) => ({ ...i })),
+    items: rows.map((row) => ({
+      ...row,
+      createdAt: toLocalTime(row.createdAt),
+      updatedAt: toLocalTime(row.updatedAt),
+    })),
     page,
     limit,
     total,

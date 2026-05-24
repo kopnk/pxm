@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, createError } from "h3";
 import { alias } from "drizzle-orm/pg-core";
-import { count, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "~/server/db";
 import { projectFinancials } from "~/server/db/schema/project_financials";
 import { projects } from "~/server/db/schema/projects";
@@ -14,20 +14,16 @@ import {
   buildProjectFinancialsExportAoa,
   type ProjectFinancialExportRow,
 } from "~/server/utils/buildProjectFinancialsExportAoa";
+import {
+  mergeProjectFinancialsExportByDetail,
+  paginateMergedExportRows,
+} from "~/server/utils/mergeProjectFinancialsExportByDetail";
 import { projectFinancialsExportQueryZ } from "~/server/validation/project_financials.schema";
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
+import { firstQuery } from "~/server/utils/firstQuery";
 
-const MAX_EXPORT_ROWS = 8000;
-
-function firstQuery(
-  v: string | string[] | undefined,
-): string | undefined {
-  if (v == null) return undefined;
-  const x = Array.isArray(v) ? v[0] : v;
-  const t = String(x).trim();
-  return t === "" ? undefined : t;
-}
+const MAX_EXPORT_MERGED_ROWS = 8000;
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin", "staff"]);
@@ -39,6 +35,8 @@ export default defineEventHandler(async (event) => {
     status: firstQuery(raw.status),
     projectId: firstQuery(raw.projectId),
     projectDetailId: firstQuery(raw.projectDetailId),
+    page: firstQuery(raw.page),
+    limit: firstQuery(raw.limit),
   });
 
   if (!parsed.success) {
@@ -60,28 +58,10 @@ export default defineEventHandler(async (event) => {
   const sub = alias(regions, "pf_export_sub");
   const region = alias(regions, "pf_export_region");
 
-  const countRow = await db
-    .select({ value: count() })
-    .from(projectFinancials)
-    .leftJoin(projects, eq(projectFinancials.projectId, projects.id))
-    .leftJoin(
-      projectDetails,
-      eq(projectFinancials.projectDetailId, projectDetails.id),
-    )
-    .leftJoin(clients, eq(projectFinancials.clientId, clients.id))
-    .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
-    .where(where);
-
-  const total = Number(countRow[0]?.value ?? 0);
-  if (total > MAX_EXPORT_ROWS) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Too many rows (${total}). Narrow search or filters (max ${MAX_EXPORT_ROWS}).`,
-    });
-  }
-
   const rows = await db
     .select({
+      projectDetailId: projectFinancials.projectDetailId,
+      createdAt: projectFinancials.createdAt,
       flowDirection: projectFinancials.flowDirection,
       status: projectFinancials.status,
       note: projectFinancials.note,
@@ -106,6 +86,12 @@ export default defineEventHandler(async (event) => {
       balapDate: projectFinancials.balapDate,
       bastNumber: projectFinancials.bastNumber,
       bastDate: projectFinancials.bastDate,
+      vbNumber: projectFinancials.vbNumber,
+      vbDate: projectFinancials.vbDate,
+      mcmNumber: projectFinancials.mcmNumber,
+      mcmDate: projectFinancials.mcmDate,
+      paidNumber: projectFinancials.paidNumber,
+      paidDate: projectFinancials.paidDate,
       contractNumber: projects.contractNumber,
       projectPoNumber: projects.poNumber,
       poDate: projects.poDate,
@@ -148,17 +134,32 @@ export default defineEventHandler(async (event) => {
     .where(where)
     .orderBy(desc(projectFinancials.createdAt), desc(projectFinancials.id));
 
-  const matrix = buildProjectFinancialsExportAoa(
+  const mergedAll = mergeProjectFinancialsExportByDetail(
     rows as ProjectFinancialExportRow[],
   );
+
+  if (mergedAll.length > MAX_EXPORT_MERGED_ROWS) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Too many project detail lines (${mergedAll.length}). Narrow search or status filter (max ${MAX_EXPORT_MERGED_ROWS}).`,
+    });
+  }
+
+  const page = q.page ?? 1;
+  const limit = q.limit ?? 10;
+  const mergedPage = paginateMergedExportRows(mergedAll, page, limit);
+
+  const matrix = buildProjectFinancialsExportAoa(mergedPage);
   const dateLabel = toLocalDate(Date.now()) ?? "export";
 
-  /**
-   * File .xlsx dibuat di browser (composable), bukan di Nitro — paket `xlsx`
-   * di server memicu ERR_UNSUPPORTED_ESM_URL_SCHEME (`d:`) di Windows.
-   */
   return successResponse(event, "Project financials export matrix ready", {
     matrix,
-    suggestedFileName: `project-financials-${dateLabel}.xlsx`,
+    suggestedFileName: `project-financials-p${page}-${dateLabel}.xlsx`,
+    meta: {
+      page,
+      limit,
+      totalMergedLines: mergedAll.length,
+      exportedLines: mergedPage.length,
+    },
   });
 });

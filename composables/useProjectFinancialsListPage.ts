@@ -5,6 +5,7 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
+import { formatListTimestamp as formatListTimestampWib } from "@/utils/formatListTimestamp";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 
 const FINANCIAL_STATUS_LABELS: Record<string, string> = {
@@ -15,7 +16,10 @@ const FINANCIAL_STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-export const useProjectFinancialsListPage = () => {
+export const useProjectFinancialsListPage = (options?: {
+  /** Override flow filter saat halaman section (tax-in / tax-out / pph). */
+  flowDirection?: "in" | "out";
+}) => {
   const store = useProjectFinancialsStore();
   const { getProjectFinancials, deleteProjectFinancial } =
     useProjectFinancialsApi();
@@ -23,8 +27,25 @@ export const useProjectFinancialsListPage = () => {
   const { handle } = useFormHandler();
   const notify = useNotify();
 
-  const search = ref("");
-  const status = ref("");
+  if (options?.flowDirection) {
+    store.setFilters({ flowDirection: options.flowDirection });
+  }
+
+  const search = computed({
+    get: () => store.filters.search,
+    set: (value: string) => store.setFilters({ search: value }),
+  });
+
+  const status = computed({
+    get: () => store.filters.status,
+    set: (value: string) => store.setFilters({ status: value }),
+  });
+
+  const flowDirection = computed({
+    get: () => store.filters.flowDirection,
+    set: (value: string) => store.setFilters({ flowDirection: value }),
+  });
+
   const fetchError = ref<string | null>(null);
   const deletingId = ref<string | null>(null);
   const deleteTargetId = ref<string | null>(null);
@@ -37,6 +58,12 @@ export const useProjectFinancialsListPage = () => {
     { value: "approved", label: "Approved" },
     { value: "paid", label: "Paid" },
     { value: "cancelled", label: "Cancelled" },
+  ];
+
+  const flowDirectionOptions = [
+    { value: "in", label: "In Flow" },
+    { value: "out", label: "Out Flow" },
+    { value: "", label: "All Flow" },
   ];
 
   const deleteTarget = computed(
@@ -66,8 +93,6 @@ export const useProjectFinancialsListPage = () => {
       await getProjectFinancials({
         page,
         limit: store.limit,
-        search: search.value || undefined,
-        status: status.value || undefined,
       });
     } catch (err: unknown) {
       fetchError.value = getErrorMessage(err);
@@ -82,9 +107,16 @@ export const useProjectFinancialsListPage = () => {
     void fetchData(1).catch(() => {});
   });
 
-  watch([search, status], () => {
-    void fetchData(1).catch(() => {});
-  });
+  watch(
+    () => [
+      store.filters.search,
+      store.filters.status,
+      store.filters.flowDirection,
+    ],
+    () => {
+      void fetchData(1).catch(() => {});
+    },
+  );
 
   const prevPage = () => {
     if (store.page > 1) {
@@ -154,21 +186,6 @@ export const useProjectFinancialsListPage = () => {
     }).format(n);
   };
 
-  const formatListTimestamp = (v: string | null | undefined) => {
-    if (v == null || v === "") return "—";
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) {
-      return String(v).replace("T", " ").slice(0, 19);
-    }
-    return d.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const getRowNumber = (index: number) =>
     (store.page - 1) * store.limit + index + 1;
 
@@ -193,6 +210,13 @@ export const useProjectFinancialsListPage = () => {
     );
   };
 
+  const showPartnerLineTotal = computed(
+    () => store.filters.flowDirection !== "out",
+  );
+  const showClientLineTotal = computed(
+    () => store.filters.flowDirection !== "in",
+  );
+
   return {
     store,
     canCreate,
@@ -200,7 +224,11 @@ export const useProjectFinancialsListPage = () => {
     canDelete,
     search,
     status,
+    flowDirection,
+    showPartnerLineTotal,
+    showClientLineTotal,
     statusOptions,
+    flowDirectionOptions,
     fetchError,
     deletingId,
     deleteTarget,
@@ -215,7 +243,7 @@ export const useProjectFinancialsListPage = () => {
     performDelete,
     formatCurrencyIdr,
     formatQty,
-    formatListTimestamp,
+    formatListTimestamp: formatListTimestampWib,
     getRowNumber,
     getFinancialStatusBadgeClass,
     formatFinancialStatusLabel,

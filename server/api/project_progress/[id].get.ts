@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
+import { reconcilePaidSyncForProjectDetail } from "~/server/utils/syncProjectFinancialPaidWithProgress";
 
 export default defineEventHandler(async (event) => {
 
@@ -47,10 +48,31 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const row = hit.progress;
-  const remarksProjectsDetails = hit.remarksProjectsDetails ?? null;
-  const remarksDelay = hit.remarksDelay ?? null;
-  const remarksCancel = hit.remarksCancel ?? null;
+  await db.transaction(async (tx) => {
+    await reconcilePaidSyncForProjectDetail(tx, hit.progress.projectDetailId);
+  });
+
+  const refreshed = await db
+    .select({
+      progress: projectProgress,
+      remarksProjectsDetails: projectDetails.remarksProjectsDetails,
+      remarksDelay: projectDetails.remarksDelay,
+      remarksCancel: projectDetails.remarksCancel,
+    })
+    .from(projectProgress)
+    .leftJoin(
+      projectDetails,
+      eq(projectDetails.id, projectProgress.projectDetailId),
+    )
+    .where(eq(projectProgress.id, id))
+    .limit(1);
+
+  const refreshedHit = refreshed[0] ?? hit;
+
+  const row = refreshedHit.progress;
+  const remarksProjectsDetails = refreshedHit.remarksProjectsDetails ?? null;
+  const remarksDelay = refreshedHit.remarksDelay ?? null;
+  const remarksCancel = refreshedHit.remarksCancel ?? null;
 
   /* ================= FORMAT STAGE JSON ================= */
 

@@ -8,7 +8,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { updateProjectSchema } from "~/server/validation/projects.schema";
 import { dbTime } from "~/server/utils/dbTime";
-import { toLocalDate } from "~/server/utils/datetime";
+import { mapLocalTimestamps, toLocalDate } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
 
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
 
   /* ================= RESPONSE ================= */
   return successResponse(event, "Project updated", {
-    ...updated,
+    ...mapLocalTimestamps(updated),
     subTotal: Number(updated.subTotal),
     discount: Number(updated.discount),
     netPrice: Number(updated.netPrice),

@@ -1,53 +1,35 @@
-import { ref } from "vue";
 import { apiFetch } from "~/utils/apiFetch";
-import { useNotify } from "@/composables/useNotify";
-
-type ExportApiBody = {
-  data: {
-    matrix: (string | number)[][];
-    suggestedFileName: string;
-  };
-};
+import { useProjectFinancialsStore } from "@/stores/projectFinancials";
+import { useExcelMatrixExport } from "@/composables/useExcelMatrixExport";
 
 export function useProjectFinancialsExport() {
-  const exporting = ref(false);
-  const notify = useNotify();
+  const store = useProjectFinancialsStore();
+  const { exporting, runExport } = useExcelMatrixExport();
 
-  const downloadExcel = async (params: { search: string; status: string }) => {
-    exporting.value = true;
-    try {
-      const s = params.search.trim();
-      const st = params.status.trim();
-      const res = (await apiFetch("/api/project_financials/export", {
-        query: {
-          search: s || undefined,
-          status: st || undefined,
-        },
-      })) as ExportApiBody;
-
-      const matrix = res.data?.matrix;
-      const suggestedFileName = res.data?.suggestedFileName;
-      if (!Array.isArray(matrix) || matrix.length === 0) {
-        notify.error("Export returned no data");
-        return;
-      }
-
-      const XLSX = await import("xlsx");
-      const sheet = XLSX.utils.aoa_to_sheet(matrix);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, sheet, "Project financials");
-      XLSX.writeFile(wb, suggestedFileName || "project-financials.xlsx");
-    } catch (e: unknown) {
-      const err = e as { data?: { message?: string }; message?: string };
-      const msg =
-        err?.data?.message ||
-        err?.message ||
-        "Failed to export Excel";
-      notify.error(msg);
-    } finally {
-      exporting.value = false;
-    }
-  };
+  const downloadExcel = (params?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    runExport(
+      async () => {
+        const s = (params?.search ?? store.filters.search).trim();
+        const st = (params?.status ?? store.filters.status).trim();
+        return apiFetch("/api/project_financials/export", {
+          query: {
+            search: s || undefined,
+            status: st || undefined,
+            page: params?.page ?? store.page,
+            limit: params?.limit ?? store.limit,
+          },
+        });
+      },
+      {
+        sheetName: "Project financials",
+        fallbackFileName: "project-financials.xlsx",
+      },
+    );
 
   return { exporting, downloadExcel };
 }

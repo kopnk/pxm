@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProjectsListPage } from "@/composables/useProjectsListPage";
 import { useProjectsExport } from "@/composables/useProjectsExport";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 definePageMeta({});
 
@@ -33,6 +34,8 @@ const onExportExcel = () => {
   void downloadExcel({
     search: searchFilter.value,
     status: statusFilter.value,
+    page: store.meta.page,
+    limit: store.meta.limit,
   });
 };
 </script>
@@ -167,8 +170,8 @@ const onExportExcel = () => {
                     </span>
 
                     <div class="data-meta mt-1">
-                      <div>Created: {{ item.createdAt || "-" }}</div>
-                      <div>Updated: {{ item.updatedAt || "-" }}</div>
+                      <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
+                      <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                     </div>
 
                     <span
@@ -210,10 +213,10 @@ const onExportExcel = () => {
                           </div>
 
                           <div class="data-meta mt-3">
-                            Created: {{ item.createdAt || "-" }}
+                            Created: {{ formatListTimestamp(item.createdAt) }}
                           </div>
                           <div class="data-meta">
-                            Updated: {{ item.updatedAt || "-" }}
+                            Updated: {{ formatListTimestamp(item.updatedAt) }}
                           </div>
                         </div>
 

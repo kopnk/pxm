@@ -30,6 +30,14 @@ const projectFinancialSchemaBase = z.object({
   docType: optStr,
   docNumber: optStr,
   docDate: z.string().optional().nullable(),
+
+  vbNumber: optStr,
+  vbDate: z.string().optional().nullable(),
+  mcmNumber: optStr,
+  mcmDate: z.string().optional().nullable(),
+  paidNumber: optStr,
+  paidDate: z.string().optional().nullable(),
+
   taxIn: optNum,
   taxOut: optNum,
   pph: optNum,
@@ -88,17 +96,21 @@ export const createProjectFinancialSchema = projectFinancialSchemaBase.superRefi
 export const updateProjectFinancialSchema =
   projectFinancialSchemaBase.partial();
 
-/** Query `GET /api/project_financials/export` (filter sama seperti list). */
+/** Query `GET /api/project_financials/export` (search + status + pagination; merge per project detail). */
 export const projectFinancialsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   status: financialStatusZ.optional(),
   projectId: z.string().uuid().optional(),
   projectDetailId: z.string().uuid().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
 });
 
-/** Query export tax-in / tax-out / pph (search + status saja). */
+/** Query export tax-in / tax-out / pph (search + status + pagination; flow via section SQL). */
 export const projectFinancialsTaxSectionExportQueryZ =
   projectFinancialsExportQueryZ.pick({
     search: true,
     status: true,
+    page: true,
+    limit: true,
   });

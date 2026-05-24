@@ -10,7 +10,7 @@
           PXM
         </NuxtLink>
 
-        <small class="text-muted"> © 2026 - ngopi </small>
+        <small class="text-muted"> ©pxm 2026 - ngopi </small>
       </div>
     </div>
   </footer>

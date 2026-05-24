@@ -47,3 +47,17 @@ export function toLocalDate(date?: Date | string | null) {
 
   return `${pick(parts, "year")}-${pick(parts, "month")}-${pick(parts, "day")}`;
 }
+
+/** Map `createdAt` / `updatedAt` on a row to WIB strings for API responses. */
+export function mapLocalTimestamps<
+  T extends {
+    createdAt?: Date | string | null;
+    updatedAt?: Date | string | null;
+  },
+>(row: T) {
+  return {
+    ...row,
+    createdAt: toLocalTime(row.createdAt),
+    updatedAt: toLocalTime(row.updatedAt),
+  };
+}

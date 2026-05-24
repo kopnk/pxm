@@ -858,12 +858,9 @@ watch([projectKeyword, regionFilter, subRegionFilter], () => {
 
 <style scoped>
 .dashboard-wrap {
-  height: calc(100vh - 70px);
-  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  overflow: auto;
 }
 
 .dashboard-head {

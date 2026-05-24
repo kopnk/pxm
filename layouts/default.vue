@@ -18,13 +18,6 @@
   overflow: hidden; /* ⛔ body tidak scroll */
 }
 
-/* HEADER STICKY */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 1100;
-}
-
 /* FOOTER STICKY */
 footer {
   position: sticky;
@@ -32,10 +25,12 @@ footer {
   z-index: 1100;
 }
 
-/* CONTENT SCROLL AREA */
+/* CONTENT SCROLL AREA — z-index di bawah navbar agar dropdown tidak ketimpa */
 .main-scroll {
   flex: 1;
-  overflow: auto; /* ✅ scroll vertikal & horizontal */
+  position: relative;
+  z-index: 0;
+  overflow: auto;
   padding: 1rem 1.25rem;
   background: #fafafa;
 }

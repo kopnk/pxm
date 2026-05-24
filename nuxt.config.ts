@@ -16,6 +16,11 @@ export default defineNuxtConfig({
     '~/assets/scss/main.scss'
   ],
 
+  app: {
+    /** Fade singkat antar halaman (CSS di main.scss, tanpa lib tambahan). */
+    pageTransition: { name: 'pxm-page', mode: 'default' },
+  },
+
   devtools: { enabled: true },
 
   nitro: {

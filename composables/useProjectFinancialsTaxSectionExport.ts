@@ -1,13 +1,7 @@
-import { ref } from "vue";
 import { apiFetch } from "~/utils/apiFetch";
-import { useNotify } from "@/composables/useNotify";
-
-type ExportApiBody = {
-  data: {
-    matrix: (string | number)[][];
-    suggestedFileName: string;
-  };
-};
+import { useProjectFinancialsStore } from "@/stores/projectFinancials";
+import { useExcelMatrixExport } from "@/composables/useExcelMatrixExport";
+import { normalizeFinancialStatus } from "@/utils/exportFilters";
 
 const ENDPOINTS = {
   "tax-in": "/api/project_financials/export-tax-in",
@@ -17,68 +11,44 @@ const ENDPOINTS = {
 
 export type ProjectFinancialsTaxSectionExportKey = keyof typeof ENDPOINTS;
 
-const FINANCIAL_STATUSES = [
-  "draft",
-  "issued",
-  "approved",
-  "paid",
-  "cancelled",
-] as const;
-
-function normalizeFinancialStatus(
-  s: string,
-): (typeof FINANCIAL_STATUSES)[number] | undefined {
-  const t = s.trim();
-  return (FINANCIAL_STATUSES as readonly string[]).includes(t)
-    ? (t as (typeof FINANCIAL_STATUSES)[number])
-    : undefined;
-}
+const SHEET_NAMES: Record<ProjectFinancialsTaxSectionExportKey, string> = {
+  "tax-in": "Tax in",
+  "tax-out": "Tax out",
+  pph: "PPH",
+};
 
 export function useProjectFinancialsTaxSectionExport(
   section: ProjectFinancialsTaxSectionExportKey,
 ) {
-  const exporting = ref(false);
-  const notify = useNotify();
+  const store = useProjectFinancialsStore();
+  const { exporting, runExport } = useExcelMatrixExport();
 
-  const downloadExcel = async (params: { search: string; status: string }) => {
-    exporting.value = true;
-    try {
-      const s = params.search.trim();
-      const st = normalizeFinancialStatus(params.status);
-      const res = (await apiFetch(ENDPOINTS[section], {
-        query: {
-          search: s || undefined,
-          status: st,
-        },
-      })) as ExportApiBody;
-
-      const matrix = res.data?.matrix;
-      const suggestedFileName = res.data?.suggestedFileName;
-      if (!Array.isArray(matrix) || matrix.length === 0) {
-        notify.error("Export returned no data");
-        return;
-      }
-
-      const XLSX = await import("xlsx");
-      const sheet = XLSX.utils.aoa_to_sheet(matrix);
-      const wb = XLSX.utils.book_new();
-      const sheetName =
-        section === "tax-in"
-          ? "Tax in"
-          : section === "tax-out"
-            ? "Tax out"
-            : "PPH";
-      XLSX.utils.book_append_sheet(wb, sheet, sheetName);
-      XLSX.writeFile(wb, suggestedFileName || "export.xlsx");
-    } catch (e: unknown) {
-      const err = e as { data?: { message?: string }; message?: string };
-      const msg =
-        err?.data?.message || err?.message || "Failed to export Excel";
-      notify.error(msg);
-    } finally {
-      exporting.value = false;
-    }
-  };
+  const downloadExcel = (params?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    runExport(
+      async () => {
+        const s = (params?.search ?? store.filters.search).trim();
+        const st = normalizeFinancialStatus(
+          params?.status ?? store.filters.status,
+        );
+        return apiFetch(ENDPOINTS[section], {
+          query: {
+            search: s || undefined,
+            status: st,
+            page: params?.page ?? store.page,
+            limit: params?.limit ?? store.limit,
+          },
+        });
+      },
+      {
+        sheetName: SHEET_NAMES[section],
+        fallbackFileName: `project-financials-${section}.xlsx`,
+      },
+    );
 
   return { exporting, downloadExcel };
 }

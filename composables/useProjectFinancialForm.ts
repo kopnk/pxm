@@ -64,6 +64,13 @@ export type ProjectFinancialFormModel = {
   balapNumber: string;
   balapDate: string | null;
 
+  vbNumber: string;
+  vbDate: string | null;
+  mcmNumber: string;
+  mcmDate: string | null;
+  paidNumber: string;
+  paidDate: string | null;
+
   poNumberPartner: string;
   poDatePartner: string | null;
   invoiceNumberPartner: string;
@@ -103,6 +110,12 @@ export function emptyProjectFinancialForm(): ProjectFinancialFormModel {
     bastDate: null,
     balapNumber: "",
     balapDate: null,
+    vbNumber: "",
+    vbDate: null,
+    mcmNumber: "",
+    mcmDate: null,
+    paidNumber: "",
+    paidDate: null,
     poNumberPartner: "",
     poDatePartner: null,
     invoiceNumberPartner: "",
@@ -159,6 +172,13 @@ export function buildProjectFinancialPayload(form: ProjectFinancialFormModel) {
     bastDate: form.bastDate || null,
     balapNumber: form.balapNumber || null,
     balapDate: form.balapDate || null,
+
+    vbNumber: isInFlow ? form.vbNumber || null : null,
+    vbDate: isInFlow ? form.vbDate || null : null,
+    mcmNumber: isInFlow ? form.mcmNumber || null : null,
+    mcmDate: isInFlow ? form.mcmDate || null : null,
+    paidNumber: isOutFlow ? form.paidNumber || null : null,
+    paidDate: isOutFlow ? form.paidDate || null : null,
 
     poNumberPartner: isInFlow ? form.poNumberPartner || null : null,
     poDatePartner: isInFlow ? form.poDatePartner || null : null,
@@ -221,6 +241,13 @@ export function applyFinancialRowToForm(
   form.bastDate = row.bastDate ? str(row.bastDate).slice(0, 10) : null;
   form.balapNumber = str(row.balapNumber);
   form.balapDate = row.balapDate ? str(row.balapDate).slice(0, 10) : null;
+
+  form.vbNumber = str(row.vbNumber);
+  form.vbDate = row.vbDate ? str(row.vbDate).slice(0, 10) : null;
+  form.mcmNumber = str(row.mcmNumber);
+  form.mcmDate = row.mcmDate ? str(row.mcmDate).slice(0, 10) : null;
+  form.paidNumber = str(row.paidNumber);
+  form.paidDate = row.paidDate ? str(row.paidDate).slice(0, 10) : null;
 
   form.poNumberPartner = str(row.poNumberPartner);
   form.poDatePartner = row.poDatePartner

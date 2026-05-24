@@ -372,8 +372,8 @@ const removeDoc = async (category: string) => {
       </div>
     </FormSection>
 
-    <FormSection title="Flow &amp; Document">
-      <div class="col-md-3">
+    <FormSection title="Flow">
+      <div class="col-md-4">
         <label class="form-label">Flow</label>
         <select v-model="form.flowDirection" class="form-select" disabled>
           <option value="in">In (Partner Side)</option>
@@ -382,26 +382,6 @@ const removeDoc = async (category: string) => {
         <div class="form-text">
           Flow is locked on update to keep In/Out lines separated.
         </div>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Doc Type</label>
-        <select v-model="form.docType" class="form-select">
-          <option value="invoice">Invoice</option>
-          <option value="payment">Payment</option>
-          <option value="po">PO</option>
-          <option value="pr">PR</option>
-          <option value="tax">Tax</option>
-          <option value="vb">VB</option>
-          <option value="mcm">MCM</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Doc Number</label>
-        <input v-model="form.docNumber" class="form-control" />
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Doc Date</label>
-        <input v-model="form.docDate" type="date" class="form-control" />
       </div>
     </FormSection>
 
@@ -688,6 +668,23 @@ const removeDoc = async (category: string) => {
         </div>
       </div>
 
+      <div class="col-md-4">
+        <label class="form-label">VB Number</label>
+        <input v-model="form.vbNumber" class="form-control" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">VB Date</label>
+        <input v-model="form.vbDate" type="date" class="form-control" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">MCM Number</label>
+        <input v-model="form.mcmNumber" class="form-control" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">MCM Date</label>
+        <input v-model="form.mcmDate" type="date" class="form-control" />
+      </div>
+
       <div class="col-md-12">
         <label class="form-label">Partner</label>
         <select v-model="form.partnerId" class="form-select" required>
@@ -946,6 +943,18 @@ const removeDoc = async (category: string) => {
           >
             {{ deletingCategory === "bast" ? "..." : "🗑" }}
           </button>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Paid Number</label>
+        <input v-model="form.paidNumber" class="form-control" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Paid Date</label>
+        <input v-model="form.paidDate" type="date" class="form-control" />
+        <div class="form-text">
+          Disinkronkan dengan stage PAID (Actual) di Project Progress untuk line ini.
         </div>
       </div>
 

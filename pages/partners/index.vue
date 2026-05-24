@@ -6,6 +6,7 @@ import { usePartnersApi } from "@/composables/usePartnersApi";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 const router = useRouter();
 const store = usePartnersStore();
@@ -174,8 +175,8 @@ const remove = async (id: string, partnerName?: string | null) => {
                       </span>
                     </div>
                     <div class="data-meta mt-1">
-                      <div>Created: {{ p.createdAt || "—" }}</div>
-                      <div>Updated: {{ p.updatedAt || "—" }}</div>
+                      <div>Created: {{ formatListTimestamp(p.createdAt) }}</div>
+                      <div>Updated: {{ formatListTimestamp(p.updatedAt) }}</div>
                     </div>
                     <span
                       v-if="canDelete"

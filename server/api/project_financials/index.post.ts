@@ -7,7 +7,11 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { numToPgString } from "~/server/utils/pgNumeric";
+import {
+  syncProgressAfterOutFlowFinancialSave,
+} from "~/server/utils/syncProjectFinancialPaidWithProgress";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin"]);
@@ -41,6 +45,12 @@ export default defineEventHandler(async (event) => {
       docType: body.docType ?? null,
       docNumber: body.docNumber ?? null,
       docDate: body.docDate ?? null,
+      vbNumber: body.vbNumber ?? null,
+      vbDate: body.vbDate ?? null,
+      mcmNumber: body.mcmNumber ?? null,
+      mcmDate: body.mcmDate ?? null,
+      paidNumber: body.paidNumber ?? null,
+      paidDate: body.paidDate ?? null,
       taxIn: numToPgString(body.taxIn),
       taxOut: numToPgString(body.taxOut),
       pph: numToPgString(body.pph),
@@ -92,8 +102,19 @@ export default defineEventHandler(async (event) => {
       newData: createdRow,
     });
 
+    await syncProgressAfterOutFlowFinancialSave(tx, {
+      projectDetailId: createdRow.projectDetailId,
+      flowDirection: createdRow.flowDirection,
+      paidDate: createdRow.paidDate,
+    });
+
     return createdRow;
   });
 
-  return successResponse(event, "Project financial created", created, 201);
+  return successResponse(
+    event,
+    "Project financial created",
+    mapLocalTimestamps(created),
+    201,
+  );
 });

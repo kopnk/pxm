@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const auth = useAuthStore();
+const route = useRoute();
 const user = computed(() => auth.user);
 
 const { logout } = useAppLogout();
@@ -17,17 +18,19 @@ const avatarUrl = computed(() =>
     ? "https://wbzgjchzffmgybtblxbj.supabase.co/storage/v1/object/public/avatars/default/default.jpg"
     : user.value.avatarUrl,
 );
+
+const taxesMenuActive = computed(() =>
+  /^\/project-financials\/(tax-in|tax-out|pph)/.test(route.path),
+);
 </script>
 
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark header">
     <div class="container">
-      <!-- BRAND / LOGO -->
       <NuxtLink to="/" class="navbar-brand d-flex align-items-center fw-bold">
         PXM
       </NuxtLink>
 
-      <!-- TOGGLER (MOBILE) -->
       <button
         class="navbar-toggler"
         type="button"
@@ -40,62 +43,68 @@ const avatarUrl = computed(() =>
         <span class="navbar-toggler-icon"></span>
       </button>
 
-      <!-- MENU -->
       <div class="collapse navbar-collapse" id="mainNavbar">
-        <!-- LEFT MENU -->
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/projects" active-class="active">
-              Projects
+            <NuxtLink class="nav-link pxm-nav-link" to="/projects" active-class="active">
+              <NavIcon name="projects" />
+              <span>Projects</span>
             </NuxtLink>
           </li>
           <li class="nav-item">
             <NuxtLink
-              class="nav-link"
+              class="nav-link pxm-nav-link"
               to="/project-details"
               active-class="active"
             >
-              Details
+              <NavIcon name="details" />
+              <span>Details</span>
             </NuxtLink>
           </li>
           <li class="nav-item">
             <NuxtLink
-              class="nav-link"
+              class="nav-link pxm-nav-link"
               to="/project-progress"
               active-class="active"
             >
-              Progress
+              <NavIcon name="progress" />
+              <span>Progress</span>
             </NuxtLink>
           </li>
           <li class="nav-item">
             <NuxtLink
-              class="nav-link"
+              class="nav-link pxm-nav-link"
               to="/project-financials"
               active-class="active"
             >
-              Financial
+              <NavIcon name="financial" />
+              <span>Financial</span>
             </NuxtLink>
           </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/clients" active-class="active">
-              Clients
+            <NuxtLink class="nav-link pxm-nav-link" to="/clients" active-class="active">
+              <NavIcon name="clients" />
+              <span>Clients</span>
             </NuxtLink>
           </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/partners" active-class="active">
-              Partners
+            <NuxtLink class="nav-link pxm-nav-link" to="/partners" active-class="active">
+              <NavIcon name="partners" />
+              <span>Partners</span>
             </NuxtLink>
           </li>
 
           <li class="nav-item dropdown">
             <a
-              class="nav-link dropdown-toggle"
+              class="nav-link pxm-nav-link dropdown-toggle"
+              :class="{ active: taxesMenuActive }"
               href="#"
               role="button"
               data-bs-toggle="dropdown"
               aria-expanded="false"
             >
-              Taxes
+              <NavIcon name="taxes" />
+              <span>Taxes</span>
             </a>
             <ul class="dropdown-menu">
               <li>
@@ -119,14 +128,14 @@ const avatarUrl = computed(() =>
             </ul>
           </li>
           <li class="nav-item">
-            <NuxtLink class="nav-link" to="/dcn" active-class="active">
-              DCN
+            <NuxtLink class="nav-link pxm-nav-link" to="/dcn" active-class="active">
+              <NavIcon name="dcn" />
+              <span>DCN</span>
             </NuxtLink>
           </li>
         </ul>
 
-        <!-- USER DROPDOWN -->
-        <div class="dropdown" v-if="user">
+        <div v-if="user" class="dropdown">
           <button
             class="btn btn-link nav-link dropdown-toggle d-flex align-items-center text-white text-decoration-none"
             data-bs-toggle="dropdown"
@@ -163,7 +172,6 @@ const avatarUrl = computed(() =>
               </NuxtLink>
             </li>
 
-            <!-- hanya superadmin -->
             <li v-if="user.role === 'superadmin'">
               <NuxtLink class="dropdown-item" to="/users"> Users </NuxtLink>
             </li>
@@ -185,3 +193,46 @@ const avatarUrl = computed(() =>
     </div>
   </nav>
 </template>
+
+<style scoped>
+.pxm-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+  border-radius: 0.35rem;
+  padding-inline: 0.65rem;
+}
+
+.pxm-nav-link.active {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pxm-nav-link:hover {
+    color: #fff9c4;
+    background-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .pxm-nav-link.active:hover {
+    color: #ffffff;
+  }
+}
+
+.navbar-brand {
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pxm-nav-link {
+    transition: none;
+  }
+}
+</style>

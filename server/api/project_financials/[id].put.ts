@@ -8,7 +8,11 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { mergePgNumeric } from "~/server/utils/pgNumeric";
+import {
+  syncProgressAfterOutFlowFinancialSave,
+} from "~/server/utils/syncProjectFinancialPaidWithProgress";
 
 function pickStr(
   bodyVal: string | null | undefined,
@@ -74,6 +78,13 @@ export default defineEventHandler(async (event) => {
         docType: pickStr(body.docType, oldData.docType),
         docNumber: pickStr(body.docNumber, oldData.docNumber),
         docDate: pickStr(body.docDate, oldData.docDate),
+
+        vbNumber: pickStr(body.vbNumber, oldData.vbNumber),
+        vbDate: pickStr(body.vbDate, oldData.vbDate),
+        mcmNumber: pickStr(body.mcmNumber, oldData.mcmNumber),
+        mcmDate: pickStr(body.mcmDate, oldData.mcmDate),
+        paidNumber: pickStr(body.paidNumber, oldData.paidNumber),
+        paidDate: pickStr(body.paidDate, oldData.paidDate),
 
         taxIn: mergePgNumeric(body.taxIn, oldData.taxIn),
         taxOut: mergePgNumeric(body.taxOut, oldData.taxOut),
@@ -152,8 +163,18 @@ export default defineEventHandler(async (event) => {
       newData: updatedRow,
     });
 
+    await syncProgressAfterOutFlowFinancialSave(tx, {
+      projectDetailId: updatedRow.projectDetailId,
+      flowDirection: updatedRow.flowDirection,
+      paidDate: updatedRow.paidDate,
+    });
+
     return updatedRow;
   });
 
-  return successResponse(event, "Project financial updated", updated);
+  return successResponse(
+    event,
+    "Project financial updated",
+    mapLocalTimestamps(updated),
+  );
 });

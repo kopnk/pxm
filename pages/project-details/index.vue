@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProjectDetailsListPage } from "@/composables/useProjectDetailsListPage";
 import { useProjectDetailsExport } from "@/composables/useProjectDetailsExport";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 const {
   store,
@@ -31,6 +32,8 @@ const onExportExcel = () => {
   void downloadExcel({
     search: search.value,
     status: status.value,
+    page: store.page,
+    limit: store.limit,
   });
 };
 </script>
@@ -207,8 +210,8 @@ const onExportExcel = () => {
                   </div>
 
                   <div class="small text-muted mt-1">
-                    <div>Created: {{ item.createdAt }}</div>
-                    <div>Updated: {{ item.updatedAt }}</div>
+                    <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
+                    <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                   </div>
 
                   <div v-if="canDelete" class="mt-1">

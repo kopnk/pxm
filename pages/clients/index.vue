@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 import { ref, watch, onMounted } from "vue";
 import { useClientsStore } from "@/stores/clients";
 import { useClientsApi } from "@/composables/useClientsApi";
@@ -173,8 +174,8 @@ const changePage = (page: number) => {
                       </span>
                     </div>
                     <div class="data-meta mt-1">
-                      <div>Created: {{ c.createdAt || "—" }}</div>
-                      <div>Updated: {{ c.updatedAt || "—" }}</div>
+                      <div>Created: {{ formatListTimestamp(c.createdAt) }}</div>
+                      <div>Updated: {{ formatListTimestamp(c.updatedAt) }}</div>
                     </div>
                     <span
                       v-if="canDelete"

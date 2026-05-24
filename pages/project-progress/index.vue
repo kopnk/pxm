@@ -9,6 +9,7 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { useAuthStore } from "@/stores/auth";
 import { useProjectProgressExport } from "@/composables/useProjectProgressExport";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 const store = useProjectProgressStore();
 
@@ -29,6 +30,8 @@ const onExportExcel = () => {
     search: search.value,
     stage: stage.value,
     status: status.value,
+    page: store.page,
+    limit: store.limit,
   });
 };
 
@@ -49,21 +52,6 @@ const formatDateDMY = (val?: string | null) => {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
-};
-
-const formatListTimestamp = (v: string | null | undefined) => {
-  if (v == null || v === "") return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) {
-    return String(v).replace("T", " ").slice(0, 19);
-  }
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 };
 
 const stageColumns = computed(() =>
@@ -247,33 +235,30 @@ const showingEnd = computed(() =>
     </div>
 
     <div class="card shadow-sm border-0">
-      <div
-        class="table-responsive progress-table-wrap"
-        style="max-height: min(70vh, 720px)"
-      >
-        <table class="table table-sm table-hover align-middle mb-0 progress-table">
-          <thead
-            class="table-light position-sticky top-0 z-1 shadow-sm"
-            style="z-index: 2"
+      <div class="card-body p-0">
+        <div class="table-scroll-x">
+          <table
+            class="table table-sm table-hover table-users align-middle mb-0 progress-table"
           >
-            <tr>
-              <th class="bg-light" style="width: 50px">No</th>
-              <th class="bg-light">Project</th>
-              <th class="bg-light">Detail</th>
-              <th
-                v-for="s in stageColumns"
-                :key="s.id"
-                class="bg-light small text-center progress-stage-col"
-              >
+            <thead class="table-light">
+              <tr>
+                <th style="width: 50px">No</th>
+                <th>Project</th>
+                <th>Detail</th>
+                <th
+                  v-for="s in stageColumns"
+                  :key="s.id"
+                  class="small text-center progress-stage-col"
+                >
                 <div class="fw-semibold">{{ s.name }}</div>
                 <div class="stage-header-caption text-muted">
                   plan ({{ stageDateCounts[s.code]?.plan ?? 0 }}) -
                   actual ({{ stageDateCounts[s.code]?.actual ?? 0 }})
                 </div>
               </th>
-              <th class="bg-light" style="min-width: 140px">Status</th>
-            </tr>
-          </thead>
+                <th style="min-width: 140px">Status</th>
+              </tr>
+            </thead>
 
           <tbody>
             <tr v-if="loading">
@@ -385,7 +370,8 @@ const showingEnd = computed(() =>
               </td>
             </tr>
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -474,8 +460,10 @@ const showingEnd = computed(() =>
   min-width: 10.5rem;
 }
 
-.progress-table-wrap {
-  border-radius: 0.375rem;
+.table-scroll-x {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .progress-table {
@@ -496,7 +484,7 @@ const showingEnd = computed(() =>
 }
 
 /* Pembatas antar kolom tahap (mudah bedakan plan–actual tiap stage) */
-.progress-table-wrap .progress-stage-col {
+.progress-stage-col {
   border-left: 2px solid var(--bs-border-color);
   padding-left: 0.65rem;
   padding-right: 0.65rem;

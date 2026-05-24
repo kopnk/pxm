@@ -18,17 +18,8 @@ import {
 import { projectFinancialsTaxSectionExportQueryZ } from "~/server/validation/project_financials.schema";
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
-
-const MAX_EXPORT_ROWS = 8000;
-
-function firstQuery(
-  v: string | string[] | undefined,
-): string | undefined {
-  if (v == null) return undefined;
-  const x = Array.isArray(v) ? v[0] : v;
-  const t = String(x).trim();
-  return t === "" ? undefined : t;
-}
+import { buildTotalPages } from "~/server/utils/pagination";
+import { firstQuery } from "~/server/utils/firstQuery";
 
 export async function handleProjectFinancialsTaxSectionExport(
   event: H3Event,
@@ -41,6 +32,8 @@ export async function handleProjectFinancialsTaxSectionExport(
   const parsed = projectFinancialsTaxSectionExportQueryZ.safeParse({
     search: firstQuery(raw.search),
     status: firstQuery(raw.status),
+    page: firstQuery(raw.page),
+    limit: firstQuery(raw.limit),
   });
 
   if (!parsed.success) {
@@ -71,12 +64,9 @@ export async function handleProjectFinancialsTaxSectionExport(
     .where(where);
 
   const total = Number(countRow[0]?.value ?? 0);
-  if (total > MAX_EXPORT_ROWS) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `Too many rows (${total}). Narrow search or filters (max ${MAX_EXPORT_ROWS}).`,
-    });
-  }
+  const page = q.page ?? 1;
+  const limit = q.limit ?? 10;
+  const offset = (page - 1) * limit;
 
   const rows = await db
     .select({
@@ -118,18 +108,25 @@ export async function handleProjectFinancialsTaxSectionExport(
     .leftJoin(clients, eq(projectFinancials.clientId, clients.id))
     .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
     .where(where)
-    .orderBy(desc(projectFinancials.createdAt), desc(projectFinancials.id));
+    .orderBy(desc(projectFinancials.createdAt), desc(projectFinancials.id))
+    .limit(limit)
+    .offset(offset);
 
-  const matrix = buildProjectFinancialsTaxSectionExportAoa(
-    kind,
-    rows as ProjectFinancialTaxSectionExportRow[],
-  );
+  const exportRows = rows as ProjectFinancialTaxSectionExportRow[];
+  const matrix = buildProjectFinancialsTaxSectionExportAoa(kind, exportRows);
   const dateLabel = toLocalDate(new Date()) ?? "export";
   const slug =
     kind === "taxIn" ? "tax-in" : kind === "taxOut" ? "tax-out" : "pph";
 
   return successResponse(event, "Project financials tax section export ready", {
     matrix,
-    suggestedFileName: `project-financials-${slug}-${dateLabel}.xlsx`,
+    suggestedFileName: `project-financials-${slug}-p${page}-${dateLabel}.xlsx`,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: buildTotalPages(total, limit),
+      exportedLines: exportRows.length,
+    },
   });
 }

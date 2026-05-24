@@ -1,6 +1,6 @@
 import { defineEventHandler, readBody, createError } from "h3";
 import { db } from "~/server/db";
-import { projectProgress } from "~/server/db/schema/project_progress";
+import { projectProgress, type StageData } from "~/server/db/schema/project_progress";
 import { projectDetails } from "~/server/db/schema/project_details";
 import { parseBody } from "~/server/utils/zod";
 import { createProjectProgressSchema } from "~/server/validation/project_progress.schema";
@@ -10,6 +10,9 @@ import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
 import { toLocalTime } from "~/server/utils/datetime";
 import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
+import {
+  syncOutFlowFinancialAfterProgressSave,
+} from "~/server/utils/syncProjectFinancialPaidWithProgress";
 import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
@@ -99,6 +102,12 @@ export default defineEventHandler(async (event) => {
       targetTable: "project_progress",
       targetId: createdRow.id,
       newData: createdRow,
+    });
+
+    await syncOutFlowFinancialAfterProgressSave(tx, {
+      projectDetailId: createdRow.projectDetailId,
+      projectProgressId: createdRow.id,
+      stageData: (createdRow.stageData ?? {}) as StageData,
     });
 
     return createdRow;

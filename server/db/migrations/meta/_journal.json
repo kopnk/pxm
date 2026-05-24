@@ -38,10 +38,24 @@
       "breakpoints": true
     },
     {
-      "idx": 5,
+      "idx": 6,
       "version": "7",
-      "when": 1777468200000,
-      "tag": "0005_add_caf_progress_stage",
+      "when": 1777550000000,
+      "tag": "0006_add_payment_ref_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777600000000,
+      "tag": "0007_project_financials_timestamptz",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777650000000,
+      "tag": "0008_partners_project_details_timestamptz",
       "breakpoints": true
     }
   ]

@@ -1,59 +1,37 @@
-import { ref } from "vue";
 import { apiFetch } from "~/utils/apiFetch";
-import { useNotify } from "@/composables/useNotify";
-
-type ExportApiBody = {
-  data: {
-    matrix: (string | number)[][];
-    suggestedFileName: string;
-  };
-};
+import { useProjectsStore } from "@/stores/projects";
+import { useExcelMatrixExport } from "@/composables/useExcelMatrixExport";
+import { normalizeProjectStatus } from "@/utils/exportFilters";
 
 export type ProjectsExportParams = {
-  search: string;
-  status: string;
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
 };
 
 export function useProjectsExport() {
-  const exporting = ref(false);
-  const notify = useNotify();
+  const store = useProjectsStore();
+  const { exporting, runExport } = useExcelMatrixExport();
 
-  const downloadExcel = async (params: ProjectsExportParams) => {
-    exporting.value = true;
-    try {
-      const s = params.search.trim();
-      const st = params.status.trim();
-      const res = (await apiFetch("/api/projects/export", {
-        query: {
-          search: s || undefined,
-          status:
-            st === "active" || st === "closed" || st === "cancelled"
-              ? st
-              : undefined,
-        },
-      })) as ExportApiBody;
-
-      const matrix = res.data?.matrix;
-      const suggestedFileName = res.data?.suggestedFileName;
-      if (!Array.isArray(matrix) || matrix.length === 0) {
-        notify.error("Export returned no data");
-        return;
-      }
-
-      const XLSX = await import("xlsx");
-      const sheet = XLSX.utils.aoa_to_sheet(matrix);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, sheet, "Projects");
-      XLSX.writeFile(wb, suggestedFileName || "projects.xlsx");
-    } catch (e: unknown) {
-      const err = e as { data?: { message?: string }; message?: string };
-      const msg =
-        err?.data?.message || err?.message || "Failed to export Excel";
-      notify.error(msg);
-    } finally {
-      exporting.value = false;
-    }
-  };
+  const downloadExcel = (params?: ProjectsExportParams) =>
+    runExport(
+      async () => {
+        const s = (params?.search ?? store.filters.search).trim();
+        const st = normalizeProjectStatus(
+          params?.status ?? store.filters.status,
+        );
+        return apiFetch("/api/projects/export", {
+          query: {
+            search: s || undefined,
+            status: st,
+            page: params?.page ?? store.meta.page,
+            limit: params?.limit ?? store.meta.limit,
+          },
+        });
+      },
+      { sheetName: "Projects", fallbackFileName: "projects.xlsx" },
+    );
 
   return { exporting, downloadExcel };
 }

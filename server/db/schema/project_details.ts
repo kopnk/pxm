@@ -47,8 +47,13 @@ cityKabId: uuid("city_kab_id")
 
   taxOut: numeric("tax_out", { precision: 18, scale: 4 }),
 
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 
   createdUser: uuid("created_user")
     .references(() => users.id),

@@ -48,7 +48,7 @@ export const updateProjectDetailSchema =
 export type CreateProjectDetailInput = z.infer<typeof createProjectDetailSchema>;
 export type UpdateProjectDetailInput = z.infer<typeof updateProjectDetailSchema>;
 
-/** Query untuk `GET /api/project_details/export` (sama filter seperti list). */
+/** Query untuk `GET /api/project_details/export` (search + status + pagination, sama seperti list). */
 export const projectDetailsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   projectId: z.string().uuid().optional(),
@@ -56,4 +56,6 @@ export const projectDetailsExportQueryZ = z.object({
     .enum(["active", "delay", "closed", "cancelled"])
     .optional(),
   cityKabId: z.string().uuid().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
 });

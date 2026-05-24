@@ -12,6 +12,7 @@ export const useProjectFinancialsApi = () => {
     projectDetailId?: string;
     search?: string;
     status?: string;
+    flowDirection?: string;
   }) => {
     store.setLoading(true);
 
@@ -22,8 +23,9 @@ export const useProjectFinancialsApi = () => {
           limit: params?.limit ?? store.limit,
           projectId: params?.projectId,
           projectDetailId: params?.projectDetailId,
-          search: params?.search,
-          status: params?.status,
+          search: store.filters.search || undefined,
+          status: store.filters.status || undefined,
+          flowDirection: store.filters.flowDirection || undefined,
         },
       });
 

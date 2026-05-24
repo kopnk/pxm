@@ -7,6 +7,8 @@ import {
 
 /** Baris hasil join untuk export Excel project financials */
 export type ProjectFinancialExportRow = {
+  projectDetailId: string;
+  createdAt: string | null;
   flowDirection: string;
   status: string;
   note: string | null;
@@ -31,6 +33,21 @@ export type ProjectFinancialExportRow = {
   balapDate: string | null;
   bastNumber: string | null;
   bastDate: string | null;
+  vbNumber: string | null;
+  vbDate: string | null;
+  mcmNumber: string | null;
+  mcmDate: string | null;
+  paidNumber: string | null;
+  paidDate: string | null;
+  /** Diisi saat merge: balap/bast untuk kolom client */
+  clientBalapNumber?: string | null;
+  clientBalapDate?: string | null;
+  clientBastNumber?: string | null;
+  clientBastDate?: string | null;
+  partnerStatus?: string | null;
+  partnerNote?: string | null;
+  clientStatus?: string | null;
+  clientNote?: string | null;
   contractNumber: string | null;
   projectPoNumber: string | null;
   poDate: string | null;
@@ -98,6 +115,10 @@ export const PROJECT_FINANCIALS_EXPORT_HEADERS: string[] = [
   "balap number partner date",
   "bast number partner",
   "bast number partner date",
+  "vb number",
+  "vb date",
+  "mcm number",
+  "mcm date",
   "partner status",
   "note",
   "client invoice",
@@ -114,6 +135,8 @@ export const PROJECT_FINANCIALS_EXPORT_HEADERS: string[] = [
   "client status",
   "client tax number",
   "client tax date",
+  "paid number",
+  "paid date",
   "client name",
   "status",
   "note",
@@ -160,44 +183,35 @@ export function buildProjectFinancialsExportAoa(
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]!;
-    const flow = r.flowDirection;
-    const isIn = flow === "in";
-    const isOut = flow === "out";
 
-    const totalPartner = isIn
-      ? pfPartnerLineTotal(
-          r.qtyPartner,
-          r.unitPricePartner,
-          r.pph,
-          r.taxIn,
-        )
-      : null;
-    const totalClient = isOut
-      ? pfClientLineTotal(r.qtyClient, r.unitPriceClient, r.taxOut)
-      : null;
+    const totalPartner = pfPartnerLineTotal(
+      r.qtyPartner,
+      r.unitPricePartner,
+      r.pph,
+      r.taxIn,
+    );
+    const totalClient = pfClientLineTotal(
+      r.qtyClient,
+      r.unitPriceClient,
+      r.taxOut,
+    );
 
-    const partnerPphIdr = isIn
-      ? pfPartnerTaxRupiahForDisplay(
-          r.qtyPartner,
-          r.unitPricePartner,
-          r.pph,
-        )
-      : null;
-    const partnerPpnIdr = isIn
-      ? pfPartnerTaxRupiahForDisplay(
-          r.qtyPartner,
-          r.unitPricePartner,
-          r.taxIn,
-        )
-      : null;
+    const partnerPphIdr = pfPartnerTaxRupiahForDisplay(
+      r.qtyPartner,
+      r.unitPricePartner,
+      r.pph,
+    );
+    const partnerPpnIdr = pfPartnerTaxRupiahForDisplay(
+      r.qtyPartner,
+      r.unitPricePartner,
+      r.taxIn,
+    );
 
-    const clientPpnIdr = isOut
-      ? pfClientTaxRupiahForDisplay(
-          r.qtyClient,
-          r.unitPriceClient,
-          r.taxOut,
-        )
-      : null;
+    const clientPpnIdr = pfClientTaxRupiahForDisplay(
+      r.qtyClient,
+      r.unitPriceClient,
+      r.taxOut,
+    );
 
     const row: (string | number)[] = [
       i + 1,
@@ -224,12 +238,12 @@ export function buildProjectFinancialsExportAoa(
       cellStr(r.detailStatus),
       picCell(r),
       joinRemarks(r),
-      isIn ? cellStr(r.poNumberPartner) : "",
-      isIn ? cellDate(r.poDatePartner) : "",
-      isIn ? cellStr(r.invoiceNumberPartner) : "",
-      isIn ? cellDate(r.invoiceDatePartner) : "",
-      isIn ? cellNum(r.qtyPartner) : "",
-      isIn ? cellNum(r.unitPricePartner) : "",
+      cellStr(r.poNumberPartner),
+      cellDate(r.poDatePartner),
+      cellStr(r.invoiceNumberPartner),
+      cellDate(r.invoiceDatePartner),
+      cellNum(r.qtyPartner),
+      cellNum(r.unitPricePartner),
       totalPartner != null && Number.isFinite(totalPartner) ? totalPartner : "",
       partnerPphIdr != null && Number.isFinite(partnerPphIdr)
         ? partnerPphIdr
@@ -237,29 +251,35 @@ export function buildProjectFinancialsExportAoa(
       partnerPpnIdr != null && Number.isFinite(partnerPpnIdr)
         ? partnerPpnIdr
         : "",
-      isIn ? cellStr(r.balapNumber) : "",
-      isIn ? cellDate(r.balapDate) : "",
-      isIn ? cellStr(r.bastNumber) : "",
-      isIn ? cellDate(r.bastDate) : "",
-      isIn ? cellStr(r.status) : "",
-      cellStr(r.note),
-      isOut ? cellStr(r.invoiceNumberClient) : "",
-      isOut ? cellDate(r.invoiceDateClient) : "",
-      isOut ? cellNum(r.qtyClient) : "",
-      isOut ? cellNum(r.unitPriceClient) : "",
+      cellStr(r.balapNumber),
+      cellDate(r.balapDate),
+      cellStr(r.bastNumber),
+      cellDate(r.bastDate),
+      cellStr(r.vbNumber),
+      cellDate(r.vbDate),
+      cellStr(r.mcmNumber),
+      cellDate(r.mcmDate),
+      cellStr(r.partnerStatus ?? r.status),
+      cellStr(r.partnerNote ?? r.note),
+      cellStr(r.invoiceNumberClient),
+      cellDate(r.invoiceDateClient),
+      cellNum(r.qtyClient),
+      cellNum(r.unitPriceClient),
       totalClient != null && Number.isFinite(totalClient) ? totalClient : "",
       "",
       clientPpnIdr != null && Number.isFinite(clientPpnIdr) ? clientPpnIdr : "",
-      isOut ? cellStr(r.balapNumber) : "",
-      isOut ? cellDate(r.balapDate) : "",
-      isOut ? cellStr(r.bastNumber) : "",
-      isOut ? cellDate(r.bastDate) : "",
-      isOut ? cellStr(r.status) : "",
-      isOut ? cellStr(r.fpNumberClient) : "",
-      isOut ? cellDate(r.fpDateClient) : "",
+      cellStr(r.clientBalapNumber),
+      cellDate(r.clientBalapDate),
+      cellStr(r.clientBastNumber),
+      cellDate(r.clientBastDate),
+      cellStr(r.clientStatus ?? r.status),
+      cellStr(r.fpNumberClient),
+      cellDate(r.fpDateClient),
+      cellStr(r.paidNumber),
+      cellDate(r.paidDate),
       cellStr(r.clientName),
-      cellStr(r.status),
-      cellStr(r.note),
+      cellStr(r.clientStatus ?? r.status),
+      cellStr(r.clientNote ?? r.note),
     ];
     const expected = PROJECT_FINANCIALS_EXPORT_HEADERS.length;
     if (row.length !== expected) {

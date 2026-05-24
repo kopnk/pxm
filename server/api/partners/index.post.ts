@@ -8,6 +8,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { z } from "zod";
 import { dbTime } from "~/server/utils/dbTime";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
 
@@ -75,7 +76,7 @@ export default defineEventHandler(async (event) => {
 
   /* ================= RESPONSE ================= */
   const responseData = created.map((row) => ({
-    ...row,
+    ...mapLocalTimestamps(row),
     rating: row.rating ? Number(row.rating) : null,
   }));
 
