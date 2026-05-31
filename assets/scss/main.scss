@@ -122,6 +122,20 @@ body {
   font-family: "SFMono-Regular", "Menlo", "Monaco", "Courier New", monospace;
 }
 
+/* =========================
+   Number inputs: hide spin buttons
+========================= */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
 .badge-row {
   display: inline-flex;
   align-items: center;

@@ -8,6 +8,7 @@ import FormSection from "@/components/form/FormSection.vue";
 const { changePassword } = useProfileApi();
 const { logout } = useAppLogout();
 const { loading, handle } = useFormHandler();
+const router = useRouter();
 
 const currentPassword = ref("");
 const newPassword = ref("");
@@ -49,7 +50,7 @@ const submit = async () => {
     :loading="loading"
     submit-label="Update"
     @submit="submit"
-    @cancel="resetForm"
+    @cancel="router.replace('/profile')"
   >
     <FormSection>
       <div class="col-12 position-relative">

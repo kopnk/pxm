@@ -27,8 +27,12 @@ const taxesMenuActive = computed(() =>
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark header">
     <div class="container">
-      <NuxtLink to="/" class="navbar-brand d-flex align-items-center fw-bold">
-        PXM
+      <NuxtLink
+        to="/"
+        class="navbar-brand d-flex align-items-center"
+        aria-label="PXM home"
+      >
+        <img src="/pxm.png" alt="PXM" class="navbar-brand-logo" />
       </NuxtLink>
 
       <button
@@ -81,19 +85,6 @@ const taxesMenuActive = computed(() =>
               <span>Financial</span>
             </NuxtLink>
           </li>
-          <li class="nav-item">
-            <NuxtLink class="nav-link pxm-nav-link" to="/clients" active-class="active">
-              <NavIcon name="clients" />
-              <span>Clients</span>
-            </NuxtLink>
-          </li>
-          <li class="nav-item">
-            <NuxtLink class="nav-link pxm-nav-link" to="/partners" active-class="active">
-              <NavIcon name="partners" />
-              <span>Partners</span>
-            </NuxtLink>
-          </li>
-
           <li class="nav-item dropdown">
             <a
               class="nav-link pxm-nav-link dropdown-toggle"
@@ -126,6 +117,18 @@ const taxesMenuActive = computed(() =>
                 </NuxtLink>
               </li>
             </ul>
+          </li>
+          <li class="nav-item">
+            <NuxtLink class="nav-link pxm-nav-link" to="/clients" active-class="active">
+              <NavIcon name="clients" />
+              <span>Clients</span>
+            </NuxtLink>
+          </li>
+          <li class="nav-item">
+            <NuxtLink class="nav-link pxm-nav-link" to="/partners" active-class="active">
+              <NavIcon name="partners" />
+              <span>Partner</span>
+            </NuxtLink>
           </li>
           <li class="nav-item">
             <NuxtLink class="nav-link pxm-nav-link" to="/dcn" active-class="active">
@@ -227,7 +230,12 @@ const taxesMenuActive = computed(() =>
 
 .navbar-brand {
   color: #fff !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-brand-logo {
+  display: block;
+  height: 30px;
+  width: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
