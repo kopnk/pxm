@@ -354,54 +354,57 @@ const onExportExcel = () => {
                     </div>
                   </td>
                   <td class="fin-col-doc fin-doc-cell">
-                    <div class="fin-doc-no">{{ docPrimary(rowPoNumber(item)) }}</div>
-                    <div class="data-meta">{{ rowPoDate(item) }}</div>
-                  </td>
-                  <td class="fin-col-doc fin-doc-cell">
-                    <div class="fin-doc-no">
-                      {{ docPrimary(rowInvoiceNumber(item)) }}
+                    <div class="fin-doc-block">
+                      <div class="fin-doc-no">{{ docPrimary(rowPoNumber(item)) }}</div>
+                      <div class="fin-doc-date">{{ rowPoDate(item) }}</div>
                     </div>
-                    <div class="data-meta">{{ rowInvoiceDate(item) }}</div>
                   </td>
                   <td class="fin-col-doc fin-doc-cell">
-                    <div class="fin-doc-no">{{ docPrimary(rowFpNumber(item)) }}</div>
-                    <div class="data-meta">{{ rowFpDate(item) }}</div>
+                    <div class="fin-doc-block">
+                      <div class="fin-doc-no">
+                        {{ docPrimary(rowInvoiceNumber(item)) }}
+                      </div>
+                      <div class="fin-doc-date">{{ rowInvoiceDate(item) }}</div>
+                    </div>
+                  </td>
+                  <td class="fin-col-doc fin-doc-cell">
+                    <div class="fin-doc-block">
+                      <div class="fin-doc-no">{{ docPrimary(rowFpNumber(item)) }}</div>
+                      <div class="fin-doc-date">{{ rowFpDate(item) }}</div>
+                    </div>
                   </td>
                   <td class="fin-col-balap fin-doc-cell">
-                    <div>
-                      <span class="label-prefix">Balap</span>
-                      <span>{{ docPrimary(item.balapNumber) }}</span>
+                    <div class="fin-doc-block">
+                      <div>
+                        <span class="label-prefix">Balap</span>
+                        <span class="fin-doc-no fin-doc-no-inline">{{
+                          docPrimary(item.balapNumber)
+                        }}</span>
+                      </div>
+                      <div class="fin-doc-date">{{ pfFormatIdDate(item.balapDate) }}</div>
                     </div>
-                    <div class="data-meta">{{ pfFormatIdDate(item.balapDate) }}</div>
-                    <div class="mt-1">
-                      <span class="label-prefix">BAST</span>
-                      <span>{{ docPrimary(item.bastNumber) }}</span>
+                    <div class="fin-doc-block mt-1">
+                      <div>
+                        <span class="label-prefix">BAST</span>
+                        <span class="fin-doc-no fin-doc-no-inline">{{
+                          docPrimary(item.bastNumber)
+                        }}</span>
+                      </div>
+                      <div class="fin-doc-date">{{ pfFormatIdDate(item.bastDate) }}</div>
                     </div>
-                    <div class="data-meta">{{ pfFormatIdDate(item.bastDate) }}</div>
                   </td>
                   <td class="fin-col-paid fin-doc-cell">
                     <div
                       v-for="(block, paidIdx) in rowPaidBlocks(item)"
                       :key="block.label"
+                      class="fin-doc-block"
                       :class="{ 'mt-1': paidIdx > 0 }"
                     >
-                      <div v-if="block.no !== '—'">
+                      <div>
                         <span class="label-prefix">{{ block.label }}</span>
-                        <span>{{ block.no }}</span>
+                        <span class="fin-doc-no fin-doc-no-inline">{{ block.no }}</span>
                       </div>
-                      <div
-                        v-else
-                        class="data-meta"
-                      >
-                        <span class="label-prefix">{{ block.label }}</span>
-                        {{ block.date }}
-                      </div>
-                      <div
-                        v-if="block.no !== '—'"
-                        class="data-meta"
-                      >
-                        {{ block.date }}
-                      </div>
+                      <div class="fin-doc-date">{{ block.date }}</div>
                     </div>
                   </td>
                   <td class="fin-col-party">
@@ -533,6 +536,7 @@ const onExportExcel = () => {
 }
 
 .table-financials {
+  table-layout: fixed;
   min-width: 1720px;
 
   th {
@@ -540,56 +544,92 @@ const onExportExcel = () => {
     font-size: 0.8rem;
   }
 
+  td {
+    overflow: hidden;
+    vertical-align: top;
+  }
+
   .fin-col-no {
     width: 50px;
   }
 
   .fin-desc {
+    width: 220px;
     min-width: 180px;
-    max-width: 240px;
   }
 
   .fin-site {
+    width: 180px;
     min-width: 140px;
-    max-width: 200px;
   }
 
   .fin-col-qty {
+    width: 72px;
     min-width: 72px;
   }
 
   .fin-col-amount {
+    width: 168px;
     min-width: 168px;
   }
 
   .fin-col-doc {
-    min-width: 132px;
+    width: 7.25rem;
+    min-width: 7.25rem;
+    max-width: 7.25rem;
   }
 
   .fin-col-balap {
-    min-width: 168px;
+    width: 9rem;
+    min-width: 9rem;
+    max-width: 9rem;
   }
 
   .fin-col-paid {
-    min-width: 148px;
+    width: 8rem;
+    min-width: 8rem;
+    max-width: 8rem;
   }
 
   .fin-col-party {
+    width: 120px;
     min-width: 120px;
   }
 
   .fin-col-status {
+    width: 140px;
     min-width: 140px;
   }
 
-  .fin-doc-no {
-    font-weight: 600;
-    color: #212529;
-    line-height: 1.35;
+  .fin-doc-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-width: 0;
+    width: 100%;
   }
 
-  .fin-doc-cell .data-meta {
-    margin-bottom: 0;
+  .fin-doc-no {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #212529;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .fin-doc-no-inline {
+    display: inline;
+    font-size: inherit;
+  }
+
+  .fin-doc-date {
+    font-size: 0.72rem;
+    color: #6c757d;
+    line-height: 1.15;
+    white-space: nowrap;
   }
 
   .fin-amount-stack > div {

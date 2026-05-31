@@ -326,13 +326,13 @@ const showingEnd = computed(() =>
                 <div class="progress-stage-dates">
                   <div class="progress-stage-date-row">
                     <span class="progress-stage-date-label">Plan</span>
-                    <span class="fw-medium">
+                    <span class="progress-stage-date-value">
                       {{ formatDateDMY(item.stageData?.[s.code]?.plan_submit_date) }}
                     </span>
                   </div>
                   <div class="progress-stage-date-row">
                     <span class="progress-stage-date-label">Actual</span>
-                    <span class="fw-medium">
+                    <span class="progress-stage-date-value">
                       {{ formatDateDMY(item.stageData?.[s.code]?.actual_approve_date) }}
                     </span>
                   </div>
@@ -486,9 +486,11 @@ const showingEnd = computed(() =>
 /* Pembatas antar kolom tahap (mudah bedakan plan–actual tiap stage) */
 .progress-stage-col {
   border-left: 2px solid var(--bs-border-color);
-  padding-left: 0.65rem;
-  padding-right: 0.65rem;
-  min-width: 11.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  min-width: 10.5rem;
+  max-width: 10.5rem;
+  overflow: hidden;
 }
 
 .stage-header-caption {
@@ -512,15 +514,25 @@ const showingEnd = computed(() =>
 .progress-stage-date-row {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  line-height: 1.2;
-  min-width: 100%;
+  gap: 0.25rem;
+  line-height: 1.15;
+  width: 100%;
+  min-width: 0;
 }
 
 .progress-stage-date-label {
   color: #6c757d;
+  font-size: 0.68rem;
+  font-weight: 500;
+  flex: 0 0 2.35rem;
+}
+
+.progress-stage-date-value {
   font-size: 0.72rem;
   font-weight: 500;
-  min-width: 2.9rem;
+  color: #212529;
+  line-height: 1.15;
+  min-width: 0;
+  white-space: nowrap;
 }
 </style>

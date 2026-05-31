@@ -21,7 +21,9 @@ export default defineNuxtConfig({
     pageTransition: { name: 'pxm-page', mode: 'default' },
   },
 
-  devtools: { enabled: true },
+  devtools: {
+    enabled: process.env.NUXT_DEVTOOLS === "true",
+  },
 
   nitro: {
     preset: "node-server",
@@ -34,9 +36,20 @@ export default defineNuxtConfig({
     css: {
       preprocessorOptions: {
         scss: {
-          quietDeps: true
-        }
-      }
-    }
-  }
+          quietDeps: true,
+        },
+      },
+    },
+    build: {
+      reportCompressedSize: false,
+    },
+    optimizeDeps: {
+      include: [
+        "bootstrap/dist/js/bootstrap.bundle.min.js",
+        "chart.js",
+        "vue-chartjs",
+        "xlsx",
+      ],
+    },
+  },
 })
