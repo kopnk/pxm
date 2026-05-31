@@ -5,6 +5,7 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
+import { getApiErrorMessage } from "@/lib/apiError";
 
 export const useProjectsListPage = () => {
   const store = useProjectsStore();
@@ -42,9 +43,6 @@ export const useProjectsListPage = () => {
     Math.min(store.meta.page * store.meta.limit, store.meta.total),
   );
 
-  const getErrorMessage = (err: any) =>
-    err?.data?.message || err?.message || "Failed to load projects";
-
   const fetchProjects = async (page = store.meta.page, showToast = true) => {
     try {
       fetchError.value = null;
@@ -52,8 +50,8 @@ export const useProjectsListPage = () => {
         page,
         limit: store.meta.limit,
       });
-    } catch (err: any) {
-      fetchError.value = getErrorMessage(err);
+    } catch (err: unknown) {
+      fetchError.value = getApiErrorMessage(err, "Failed to load projects");
 
       if (showToast) {
         notify.error(fetchError.value);

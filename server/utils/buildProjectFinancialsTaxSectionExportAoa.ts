@@ -7,6 +7,7 @@ import {
   pfListLineBase,
   pfPartnerTaxRupiahForDisplay,
 } from "~/lib/projectFinancialsMath";
+import { cellStr } from "~/server/utils/exportCellHelpers";
 
 export type ProjectFinancialTaxSectionKind = "taxIn" | "taxOut" | "pph";
 
@@ -70,11 +71,6 @@ function cityFromAddressMeta(meta: unknown): string {
   if (!meta || typeof meta !== "object") return "";
   const city = (meta as { city?: unknown }).city;
   return typeof city === "string" ? city.trim() : "";
-}
-
-function cellStr(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v);
 }
 
 function journalBillPaidDate(

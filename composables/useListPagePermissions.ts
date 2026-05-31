@@ -7,15 +7,11 @@ import { useAuthStore } from "@/stores/auth";
 export function useListPagePermissions() {
   const auth = useAuthStore();
 
-  const canCreate = computed(() =>
-    ["admin", "superadmin"].includes(auth.user?.role || ""),
-  );
-
-  const canEdit = computed(() =>
+  const canManage = computed(() =>
     ["admin", "superadmin"].includes(auth.user?.role || ""),
   );
 
   const canDelete = computed(() => auth.user?.role === "superadmin");
 
-  return { canCreate, canEdit, canDelete };
+  return { canCreate: canManage, canEdit: canManage, canDelete };
 }

@@ -4,6 +4,7 @@ import {
   pfPartnerLineTotal,
   pfPartnerTaxRupiahForDisplay,
 } from "~/lib/projectFinancialsMath";
+import { cellDate, cellNum, cellStr } from "~/server/utils/exportCellHelpers";
 
 /** Baris hasil join untuk export Excel project financials */
 export type ProjectFinancialExportRow = {
@@ -141,22 +142,6 @@ export const PROJECT_FINANCIALS_EXPORT_HEADERS: string[] = [
   "status",
   "note",
 ];
-
-function cellDate(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v).slice(0, 10);
-}
-
-function cellNum(v: unknown): number | string {
-  if (v == null || v === "") return "";
-  const n = Number(v);
-  return Number.isFinite(n) ? n : "";
-}
-
-function cellStr(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v);
-}
 
 function joinRemarks(r: ProjectFinancialExportRow): string {
   const parts = [

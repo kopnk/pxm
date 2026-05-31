@@ -9,7 +9,7 @@ import {
   pfListLineBase,
   pfPartnerTaxRupiahForDisplay,
   pfClientTaxRupiahForDisplay,
-} from "@/composables/useProjectFinancialsDisplay";
+} from "@/lib/projectFinancialsMath";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 
 const {

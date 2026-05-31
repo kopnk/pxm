@@ -1,3 +1,5 @@
+import { cellDate, cellNum, cellStr } from "~/server/utils/exportCellHelpers";
+
 export type ProjectListExportRow = {
   projectName: string | null;
   contractNumber: string | null;
@@ -32,22 +34,6 @@ export const PROJECTS_EXPORT_HEADERS: string[] = [
   "Tax/VAT Amount",
   "Grand Total",
 ];
-
-function cellStr(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v);
-}
-
-function cellDate(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v).slice(0, 10);
-}
-
-function cellNum(v: unknown): number | string {
-  if (v == null || v === "") return "";
-  const n = Number(v);
-  return Number.isFinite(n) ? n : "";
-}
 
 export function buildProjectsExportAoa(
   rows: ProjectListExportRow[],

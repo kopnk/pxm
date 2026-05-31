@@ -3,7 +3,7 @@ import { projectFinancials } from "~/server/db/schema/project_financials";
 
 /**
  * Ekspresi SQL per baris yang selaras dengan `pfPartnerLineTotal` /
- * `pfClientLineTotal` di `useProjectFinancialsDisplay.ts` (untuk agregat list).
+ * `pfClientLineTotal` di `lib/projectFinancialsMath.ts` (untuk agregat list).
  */
 const basePartner = sql`(COALESCE(${projectFinancials.qtyPartner}::numeric, 0) * COALESCE(${projectFinancials.unitPricePartner}::numeric, 0))`;
 

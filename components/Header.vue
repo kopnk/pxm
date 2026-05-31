@@ -27,12 +27,8 @@ const taxesMenuActive = computed(() =>
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark header">
     <div class="container">
-      <NuxtLink
-        to="/"
-        class="navbar-brand d-flex align-items-center"
-        aria-label="PXM home"
-      >
-        <img src="/pxm.png" alt="PXM" class="navbar-brand-logo" />
+      <NuxtLink to="/" class="navbar-brand d-flex align-items-center fw-bold">
+        PXM
       </NuxtLink>
 
       <button
@@ -229,13 +225,7 @@ const taxesMenuActive = computed(() =>
 }
 
 .navbar-brand {
-  color: #fff !important;
-}
-
-.navbar-brand-logo {
-  display: block;
-  height: 30px;
-  width: auto;
+  color: #212529 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

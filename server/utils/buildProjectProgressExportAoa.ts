@@ -1,3 +1,5 @@
+import { cellDate, cellNum, cellStr } from "~/server/utils/exportCellHelpers";
+
 /**
  * Matrix export Excel Project Progress (baris = site progress terfilter).
  * Tanggal per stage: YYYY-MM-DD; cocokkan kode stage di JSON secara case-insensitive.
@@ -79,22 +81,6 @@ export const PROJECT_PROGRESS_EXPORT_HEADERS: string[] = [
   "Accrued Plan",
   "Accrued Actual",
 ];
-
-function cellStr(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v);
-}
-
-function cellDate(v: unknown): string {
-  if (v == null || v === "") return "";
-  return String(v).slice(0, 10);
-}
-
-function cellNum(v: unknown): string | number {
-  if (v == null || v === "") return "";
-  const n = Number(v);
-  return Number.isFinite(n) ? n : "";
-}
 
 function pickStage(
   sd: Record<string, ProgressExportStageCell>,

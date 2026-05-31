@@ -6,6 +6,7 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { formatListTimestamp as formatListTimestampWib } from "@/utils/formatListTimestamp";
+import { getApiErrorMessage } from "@/lib/apiError";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 
 const FINANCIAL_STATUS_LABELS: Record<string, string> = {
@@ -80,11 +81,6 @@ export const useProjectFinancialsListPage = (options?: {
     Math.min(store.page * store.limit, store.total),
   );
 
-  const getErrorMessage = (err: unknown) => {
-    const e = err as { data?: { message?: string }; message?: string };
-    return e?.data?.message || e?.message || "Failed to load project financials";
-  };
-
   const fetchData = async (page = store.page, showToast = true) => {
     try {
       fetchError.value = null;
@@ -95,7 +91,7 @@ export const useProjectFinancialsListPage = (options?: {
         limit: store.limit,
       });
     } catch (err: unknown) {
-      fetchError.value = getErrorMessage(err);
+      fetchError.value = getApiErrorMessage(err, "Failed to load project financials");
       if (showToast) {
         notify.error(fetchError.value);
       }
