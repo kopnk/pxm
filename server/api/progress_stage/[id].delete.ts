@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
     await tx.delete(progressStage).where(eq(progressStage.id, id));
 
     await logAudit({
+      event,
       actorId: userId,
       action: "DELETE",
       targetTable: "progress_stage",

@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
        * 3. Audit logout (AMAN)
        */
       await logAudit({
+        event,
         actorId,
         action: "LOGOUT",
         targetTable: "users",

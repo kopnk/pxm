@@ -9,6 +9,7 @@ import { logAudit } from "~/server/utils/audit";
 import { userSignupSchema } from "~/server/validation/users.schema";
 import { parseBody } from "~/server/utils/zod";
 import { dbTime } from "~/server/utils/dbTime";
+import { ensureUserPermissionsForRole } from "~/server/utils/rlsPermissions";
 
 export default defineEventHandler(async (event) => {
 
@@ -60,8 +61,12 @@ export default defineEventHandler(async (event) => {
       .returning({ id: users.id });
 
     const userId = rows[0].id;
+    const role = body.role ?? "staff";
+
+    await ensureUserPermissionsForRole(userId, role);
 
     await logAudit({
+      event,
       actorId,
       action: "CREATE",
       targetTable: "users",

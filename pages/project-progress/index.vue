@@ -17,7 +17,8 @@ const { getProjectProgress, deleteProjectProgress } = useProjectProgressApi();
 const { getProgressStages } = useProgressStageApi();
 const progressStageStore = useProgressStageStore();
 const authStore = useAuthStore();
-const { canCreate, canEdit, canDelete } = useListPagePermissions();
+const { canCreate, canEdit, canDelete } =
+    useListPagePermissions("project_progress");
 const { handle } = useFormHandler();
 const canCreateProjectProgress = computed(
   () => canCreate.value && authStore.user?.role === "superadmin",

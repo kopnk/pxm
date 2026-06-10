@@ -115,6 +115,7 @@ export default defineEventHandler(async (event) => {
       .where(eq(users.id, userId));
 
     await logAudit({
+      event,
       actorId: userId,
       action: "UPDATE",
       targetTable: "users",

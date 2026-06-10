@@ -22,6 +22,7 @@ import { projectFinancialsExportQueryZ } from "~/server/validation/project_finan
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { firstQuery } from "~/server/utils/firstQuery";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 const MAX_EXPORT_MERGED_ROWS = 8000;
 
@@ -146,7 +147,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const page = q.page ?? 1;
-  const limit = q.limit ?? 10;
+  const limit = q.limit ?? DEFAULT_PAGE_LIMIT;
   const mergedPage = paginateMergedExportRows(mergedAll, page, limit);
 
   const matrix = buildProjectFinancialsExportAoa(mergedPage);

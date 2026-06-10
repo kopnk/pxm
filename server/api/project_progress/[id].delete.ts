@@ -59,6 +59,7 @@ export default defineEventHandler(async (event) => {
     /* ===== AUDIT ===== */
 
     await logAudit({
+      event,
       actorId: userId,
       action: "DELETE",
       targetTable: "project_progress",

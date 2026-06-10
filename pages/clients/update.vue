@@ -1,7 +1,5 @@
 <script setup lang="ts">
-definePageMeta({
-  middleware: ["superadmin"],
-});
+definePageMeta({});
 
 import { reactive, ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "#imports";

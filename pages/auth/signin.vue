@@ -7,6 +7,7 @@ import { ref } from "vue";
 import { useRouter } from "#imports";
 import { apiFetch } from "~/utils/apiFetch";
 import type { AuthSessionUser } from "~/stores/auth";
+import type { RlsMatrix } from "~/lib/rls";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -31,12 +32,11 @@ const submit = async () => {
       },
     });
 
-    const me = await apiFetch<{ data: { user: Record<string, unknown> } }>(
-      "/api/auth/me",
-    );
+    const me = await apiFetch<{
+      data: { user: AuthSessionUser; permissions?: RlsMatrix };
+    }>("/api/auth/me");
 
-    // 3️⃣ SET AUTH STATE (INI KUNCI UTAMA)
-    auth.setUser(me.data.user as AuthSessionUser);
+    auth.setUser(me.data.user, me.data.permissions ?? me.data.user.permissions);
 
     // 4️⃣ BARU PINDAH HALAMAN
     await router.push("/");

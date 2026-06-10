@@ -19,6 +19,7 @@ import { projectFinancialsTaxSectionExportQueryZ } from "~/server/validation/pro
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { buildTotalPages } from "~/server/utils/pagination";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { firstQuery } from "~/server/utils/firstQuery";
 
 export async function handleProjectFinancialsTaxSectionExport(
@@ -65,7 +66,7 @@ export async function handleProjectFinancialsTaxSectionExport(
 
   const total = Number(countRow[0]?.value ?? 0);
   const page = q.page ?? 1;
-  const limit = q.limit ?? 10;
+  const limit = q.limit ?? DEFAULT_PAGE_LIMIT;
   const offset = (page - 1) * limit;
 
   const rows = await db

@@ -1,4 +1,5 @@
 import { useDcnStore, type DcnFlow, type DcnItem } from "@/stores/dcn";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { apiFetch } from "~/utils/apiFetch";
 
 type DcnPayload = {
@@ -42,7 +43,7 @@ export const useDcnApi = () => {
     try {
       const query: Record<string, string | number> = {
         page: params?.page ?? 1,
-        limit: params?.limit ?? 10,
+        limit: params?.limit ?? DEFAULT_PAGE_LIMIT,
       };
 
       if (params?.search) query.search = params.search;

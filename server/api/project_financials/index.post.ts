@@ -95,6 +95,7 @@ export default defineEventHandler(async (event) => {
     }
 
     await logAudit({
+      event,
       actorId: userId,
       action: "CREATE",
       targetTable: "project_financials",

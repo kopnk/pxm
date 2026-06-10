@@ -1,4 +1,5 @@
 import { useClientsStore } from "@/stores/clients";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { apiFetch } from "~/utils/apiFetch";
 
 export type ClientPayload = {
@@ -35,7 +36,7 @@ export const useClientsApi = () => {
     try {
       const query: any = {
         page: params?.page ?? 1,
-        limit: params?.limit ?? 10,
+        limit: params?.limit ?? DEFAULT_PAGE_LIMIT,
       };
 
       if (params?.search) query.search = params.search;

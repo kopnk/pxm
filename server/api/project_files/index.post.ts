@@ -121,6 +121,7 @@ export default defineEventHandler(async (event) => {
     const row = rows[0];
 
     await logAudit({
+      event,
       actorId: userId,
       action: "CREATE",
       targetTable: "project_files",

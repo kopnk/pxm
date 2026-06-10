@@ -6,10 +6,11 @@ import { useClientsApi } from "@/composables/useClientsApi";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 const store = useClientsStore();
 const { getClients, deleteClient } = useClientsApi();
-const { canCreate, canEdit, canDelete } = useListPagePermissions();
+const { canCreate, canEdit, canDelete } = useListPagePermissions("clients");
 const { handle } = useFormHandler();
 
 const search = ref("");
@@ -20,7 +21,7 @@ const deletingId = ref<string | null>(null);
 const loadData = async (page = 1) => {
   await getClients({
     page,
-    limit: store.limit ?? 10,
+    limit: store.limit ?? DEFAULT_PAGE_LIMIT,
     search: search.value || undefined,
     isActive: isActive.value === "" ? undefined : isActive.value === "true",
   });

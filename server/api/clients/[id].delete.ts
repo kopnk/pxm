@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
     await tx.delete(clients).where(eq(clients.id, id));
 
     await logAudit({
+      event,
       actorId: userId,
       action: "DELETE",
       targetTable: "clients",

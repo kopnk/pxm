@@ -63,6 +63,7 @@ export default defineEventHandler(async (event) => {
 
     for (const row of rows) {
       await logAudit({
+        event,
         actorId: userId,
         action: "CREATE",
         targetTable: "partners",

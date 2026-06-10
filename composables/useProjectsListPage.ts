@@ -10,7 +10,7 @@ import { getApiErrorMessage } from "@/lib/apiError";
 export const useProjectsListPage = () => {
   const store = useProjectsStore();
   const { getProjects, deleteProject } = useProjectsApi();
-  const { canCreate, canEdit, canDelete } = useListPagePermissions();
+  const { canCreate, canEdit, canDelete } = useListPagePermissions("projects");
   const { handle } = useFormHandler();
   const notify = useNotify();
 

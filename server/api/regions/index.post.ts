@@ -73,6 +73,7 @@ export default defineEventHandler(async (event) => {
       }
 
       await logAudit({
+        event,
         actorId: userId,
         action: "CREATE",
         targetTable: "regions",
@@ -113,6 +114,7 @@ export default defineEventHandler(async (event) => {
     const createdRow = rows[0];
 
     await logAudit({
+      event,
       actorId: userId,
       action: "CREATE",
       targetTable: "regions",

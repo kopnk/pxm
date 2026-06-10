@@ -13,6 +13,7 @@ import { projectsExportQueryZ } from "~/server/validation/projects.schema";
 import { toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { buildTotalPages } from "~/server/utils/pagination";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { firstQuery } from "~/server/utils/firstQuery";
 
 export default defineEventHandler(async (event) => {
@@ -48,7 +49,7 @@ export default defineEventHandler(async (event) => {
 
   const total = Number(countRow[0]?.value ?? 0);
   const page = q.page ?? 1;
-  const limit = q.limit ?? 10;
+  const limit = q.limit ?? DEFAULT_PAGE_LIMIT;
   const offset = (page - 1) * limit;
 
   const rows = await db

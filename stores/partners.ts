@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 interface Partner {
   id: string;
@@ -35,7 +36,7 @@ export const usePartnersStore = defineStore("partners", {
   state: () => ({
     items: [] as Partner[],
     page: 1,
-    limit: 10,
+    limit: DEFAULT_PAGE_LIMIT,
     total: 0,
     totalPages: 1,
     loading: false,

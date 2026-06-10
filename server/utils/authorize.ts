@@ -8,6 +8,10 @@ export function requireRole(event: H3Event, allowedRoles: string[]) {
     return errorResponse(event, "Forbidden", 403);
   }
 
+  if (event.context.rlsEnforced) {
+    return null;
+  }
+
   const userRole = String(user.role).toLowerCase();
   const roles = allowedRoles.map((r) => r.toLowerCase());
 

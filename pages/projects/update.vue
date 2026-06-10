@@ -56,7 +56,7 @@ const fileCategoryOptions = [
   { value: "wo", label: "WO" },
   { value: "contract", label: "Contract" },
 ];
-const canDeleteFile = computed(() => auth.user?.role === "superadmin");
+const canDeleteFile = computed(() => auth.canAccess("projects", "delete"));
 
 const loadProjectFiles = async () => {
   if (!id) return;

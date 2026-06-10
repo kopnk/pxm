@@ -263,6 +263,7 @@ export default defineEventHandler(async (event) => {
     /* ================= AUDIT ================= */
     for (const row of inserted) {
       await logAudit({
+        event,
         actorId: userId,
         action: "CREATE",
         targetTable: "project_details",

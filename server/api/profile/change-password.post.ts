@@ -76,6 +76,7 @@ export default defineEventHandler(async (event) => {
       .where(eq(users.id, authUser.id));
 
     await logAudit({
+      event,
       actorId: authUser.id,
       action: "CHANGE_PASSWORD",
       targetTable: "users",

@@ -588,12 +588,25 @@ async function loadDashboard() {
   loading.value = true;
   errorMessage.value = "";
 
+  const auth = useAuthStore();
+  if (!auth.initialized) {
+    await auth.initAuth();
+  }
+
   try {
     const [p, d, pr, f] = await Promise.all([
-      fetchAllPages<ProjectRow>("/api/projects", 200),
-      fetchAllPages<ProjectDetailRow>("/api/project_details", 200),
-      fetchAllPages<ProjectProgressRow>("/api/project_progress", 200),
-      fetchAllPages<ProjectFinancialRow>("/api/project_financials", 200),
+      auth.canAccess("projects", "read")
+        ? fetchAllPages<ProjectRow>("/api/projects", 200)
+        : Promise.resolve([]),
+      auth.canAccess("project_details", "read")
+        ? fetchAllPages<ProjectDetailRow>("/api/project_details", 200)
+        : Promise.resolve([]),
+      auth.canAccess("project_progress", "read")
+        ? fetchAllPages<ProjectProgressRow>("/api/project_progress", 200)
+        : Promise.resolve([]),
+      auth.canAccess("project_financials", "read")
+        ? fetchAllPages<ProjectFinancialRow>("/api/project_financials", 200)
+        : Promise.resolve([]),
     ]);
 
     projects.value = p;
@@ -601,7 +614,9 @@ async function loadDashboard() {
     progressRows.value = pr;
     financialRows.value = f;
 
-    await loadProgressStages();
+    if (auth.canAccess("project_progress", "read")) {
+      await loadProgressStages();
+    }
     rebuildSeries();
   } catch (err: any) {
     errorMessage.value =

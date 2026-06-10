@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 export const progressStatusEnum = z.enum([
   "pending",
@@ -49,5 +50,5 @@ export const projectProgressExportQueryZ = z.object({
   project: z.string().max(200).optional(),
   detail: z.string().max(200).optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });

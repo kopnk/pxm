@@ -75,6 +75,7 @@ export default defineEventHandler(async (event) => {
 
     /* ================= AUDIT ================= */
     await logAudit({
+      event,
       actorId: userId,
       action: "UPDATE",
       targetTable: "clients",

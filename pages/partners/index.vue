@@ -11,7 +11,7 @@ import { formatListTimestamp } from "@/utils/formatListTimestamp";
 const router = useRouter();
 const store = usePartnersStore();
 const { getPartners, deletePartner } = usePartnersApi();
-const { canCreate, canEdit, canDelete } = useListPagePermissions();
+const { canCreate, canEdit, canDelete } = useListPagePermissions("partners");
 const { handle } = useFormHandler();
 
 const search = ref("");

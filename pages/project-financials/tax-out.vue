@@ -17,7 +17,10 @@ const {
   nextPage,
   formatCurrencyIdr,
   getRowNumber,
-} = useProjectFinancialsListPage({ flowDirection: "out" });
+} = useProjectFinancialsListPage({
+  flowDirection: "out",
+  rlsResource: "tax_out",
+});
 
 const { exporting, downloadExcel } =
   useProjectFinancialsTaxSectionExport("tax-out");

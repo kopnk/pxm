@@ -1,24 +1,21 @@
-// server/middleware/auth.ts
 import { defineEventHandler, getCookie, createError } from "h3";
 import { lucia } from "~/server/auth/lucia";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
+import { getUserPermissionsMatrix } from "~/server/utils/rlsPermissions";
 
 export default defineEventHandler(async (event) => {
   const url = event.node.req.url || "";
 
-  // hanya lindungi API
   if (!url.startsWith("/api/")) {
     return;
   }
 
-  // auth endpoint bebas
   if (url.startsWith("/api/auth/")) {
     return;
   }
 
-  // Partner PO PDF: optional signed `access` query — verified in route handler.
   const pathOnly = url.split("?")[0] ?? "";
   const queryString = url.includes("?") ? url.slice(url.indexOf("?") + 1) : "";
   const pdfParams = new URLSearchParams(queryString);
@@ -59,4 +56,8 @@ export default defineEventHandler(async (event) => {
 
   event.context.user = dbUser;
   event.context.session = session;
+  event.context.permissions = await getUserPermissionsMatrix(
+    dbUser.id,
+    dbUser.role ?? "staff",
+  );
 });

@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { apiFetch } from "~/utils/apiFetch";
 
 export type ProjectFileItem = {
@@ -26,7 +27,7 @@ export const useProjectFilesApi = () => {
         refId: params.refId,
         fileCategory: params.fileCategory || undefined,
         page: params.page ?? 1,
-        limit: params.limit ?? 20,
+        limit: params.limit ?? DEFAULT_PAGE_LIMIT,
       },
     });
 

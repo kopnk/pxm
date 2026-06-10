@@ -5,6 +5,7 @@ import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { successResponse, errorResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
+import { getUserPermissionsMatrix } from "~/server/utils/rlsPermissions";
 
 export default defineEventHandler(async (event) => {
  // console.log("🎯 [/api/auth/me] START");
@@ -64,11 +65,17 @@ export default defineEventHandler(async (event) => {
   /**
    * 4. Convert datetime → WIB
    */
+  const permissions = await getUserPermissionsMatrix(
+    user.id,
+    user.role ?? "staff",
+  );
+
   const formattedUser = {
     ...user,
     createdAt: toLocalTime(user.createdAt),
     updatedAt: toLocalTime(user.updatedAt),
     lastLoginAt: toLocalTime(user.lastLoginAt),
+    permissions,
   };
 
   /**
@@ -78,6 +85,7 @@ export default defineEventHandler(async (event) => {
 
   return successResponse(event, "Authenticated", {
     user: formattedUser,
+    permissions,
     session: {
       id: session.id,
       createdAt: toLocalTime(session.createdAt),

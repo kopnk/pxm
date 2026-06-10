@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 export const createProjectDetailSchema = z.object({
   projectId: z.string().uuid(),
@@ -57,5 +58,5 @@ export const projectDetailsExportQueryZ = z.object({
     .optional(),
   cityKabId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });

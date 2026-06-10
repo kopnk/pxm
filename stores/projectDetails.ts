@@ -1,5 +1,6 @@
 // stores/projectDetails.ts
 import { defineStore } from "pinia";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 /* ================= TYPES ================= */
 export interface ProjectDetailItem {
@@ -64,7 +65,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
   state: (): ProjectDetailsState => ({
     items: [],
     page: 1,
-    limit: 10,
+    limit: DEFAULT_PAGE_LIMIT,
     total: 0,
     totalPages: 0,
     loading: false,
@@ -116,7 +117,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
     reset() {
       this.items = [];
       this.page = 1;
-      this.limit = 10;
+      this.limit = DEFAULT_PAGE_LIMIT;
       this.total = 0;
       this.totalPages = 0;
       this.loading = false;

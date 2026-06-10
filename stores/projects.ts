@@ -1,5 +1,6 @@
 // stores/projects.ts
 import { defineStore } from "pinia";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 export interface Project {
   id: string;
@@ -45,7 +46,7 @@ export const useProjectsStore = defineStore("projects", {
     items: [] as Project[],
     meta: {
       page: 1,
-      limit: 10,
+      limit: DEFAULT_PAGE_LIMIT,
       total: 0,
       totalPages: 1,
     } as ProjectsMeta,
@@ -82,7 +83,7 @@ export const useProjectsStore = defineStore("projects", {
       this.items = [];
       this.meta = {
         page: 1,
-        limit: 10,
+        limit: DEFAULT_PAGE_LIMIT,
         total: 0,
         totalPages: 1,
       };

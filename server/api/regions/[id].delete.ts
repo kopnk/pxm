@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
   }
 
   await logAudit({
+    event,
     actorId: event.context.user.id,
     action: "DELETE",
     targetTable: "regions",

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-definePageMeta({
-  middleware: ["superadmin"],
-});
+definePageMeta({});
 
 import { onMounted } from "vue";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 const usersStore = useUsersStore();
 const usersApi = useUsersApi();
 const authStore = useAuthStore();
@@ -13,12 +12,12 @@ const { handle } = useFormHandler();
 
 const rowNumber = (index: number) => {
   const page = usersStore.meta?.page ?? 1;
-  const limit = usersStore.meta?.limit ?? 10;
+  const limit = usersStore.meta?.limit ?? DEFAULT_PAGE_LIMIT;
   return (page - 1) * limit + index + 1;
 };
 
 onMounted(async () => {
-  await usersApi.getUsers({ page: 1, limit: 10 });
+  await usersApi.getUsers({ page: 1, limit: DEFAULT_PAGE_LIMIT });
 });
 
 const onDelete = async (id: string) => {
@@ -29,7 +28,7 @@ const onDelete = async (id: string) => {
     await usersApi.deleteUser(id);
     await usersApi.getUsers({
       page: usersStore.meta?.page ?? 1,
-      limit: usersStore.meta?.limit ?? 10,
+      limit: usersStore.meta?.limit ?? DEFAULT_PAGE_LIMIT,
     });
   }, toastSuccessDeleted("user"));
 };
@@ -41,7 +40,7 @@ const onDelete = async (id: string) => {
       <h4 class="text-brand mb-0">Users</h4>
 
       <NuxtLink
-        v-if="authStore.user?.role === 'superadmin'"
+        v-if="authStore.canAccess('users', 'create')"
         to="/users/signup"
         class="btn btn-primary"
       >
@@ -73,6 +72,7 @@ const onDelete = async (id: string) => {
             <tr v-for="(u, index) in usersStore.items" :key="u.id">
               <td class="text-center">
                 <NuxtLink
+                  v-if="authStore.canAccess('users', 'delete')"
                   to="#"
                   class="text-danger text-decoration-none"
                   title="Delete user"
@@ -80,15 +80,18 @@ const onDelete = async (id: string) => {
                 >
                   {{ rowNumber(index) }}
                 </NuxtLink>
+                <span v-else>{{ rowNumber(index) }}</span>
               </td>
 
               <td>
                 <NuxtLink
+                  v-if="authStore.canAccess('users', 'update')"
                   :to="`/users/update?id=${u.id}`"
                   class="text-decoration-none"
                 >
                   {{ u.email }}
                 </NuxtLink>
+                <span v-else>{{ u.email }}</span>
               </td>
 
               <td>{{ u.firstName }} {{ u.lastName }}</td>

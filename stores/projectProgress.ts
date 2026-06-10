@@ -1,5 +1,6 @@
 // stores/projectProgress.ts
 import { defineStore } from "pinia";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 /* ================= TYPES ================= */
 
@@ -66,7 +67,7 @@ export const useProjectProgressStore = defineStore("projectProgress", {
   state: (): ProjectProgressState => ({
     items: [],
     page: 1,
-    limit: 10,
+    limit: DEFAULT_PAGE_LIMIT,
     total: 0,
     totalPages: 0,
     stageCounts: {},
@@ -118,7 +119,7 @@ export const useProjectProgressStore = defineStore("projectProgress", {
     reset() {
       this.items = [];
       this.page = 1;
-      this.limit = 10;
+      this.limit = DEFAULT_PAGE_LIMIT;
       this.total = 0;
       this.totalPages = 0;
       this.stageCounts = {};

@@ -71,6 +71,20 @@
       "when": 1777700000000,
       "tag": "0009_seed_progress_stages",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777800000000,
+      "tag": "0010_audit_log_access_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777900000000,
+      "tag": "0011_user_permissions",
+      "breakpoints": true
     }
   ]
 }

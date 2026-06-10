@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
     const updatedRow = rows[0];
 
     await logAudit({
+      event,
       actorId: userId,
       action: "UPDATE",
       targetTable: "regions",

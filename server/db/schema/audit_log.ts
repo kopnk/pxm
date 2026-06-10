@@ -34,6 +34,12 @@ export const auditLog = pgTable(
     // data setelah perubahan
     newData: jsonb("new_data"),
 
+    // cara akses (Web App, Mobile Web, dll)
+    accessVia: text("access_via"),
+
+    // deskripsi aksi human-readable
+    description: text("description"),
+
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({

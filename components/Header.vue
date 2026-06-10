@@ -1,7 +1,18 @@
 <script setup lang="ts">
+import type { RlsResource } from "~/lib/rls";
+
 const auth = useAuthStore();
 const route = useRoute();
 const user = computed(() => auth.user);
+
+const canRead = (resource: RlsResource) => auth.canAccess(resource, "read");
+
+const showTaxesMenu = computed(
+  () =>
+    canRead("tax_in") ||
+    canRead("tax_out") ||
+    canRead("pph"),
+);
 
 const { logout } = useAppLogout();
 
@@ -45,13 +56,13 @@ const taxesMenuActive = computed(() =>
 
       <div class="collapse navbar-collapse" id="mainNavbar">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item">
+          <li v-if="canRead('projects')" class="nav-item">
             <NuxtLink class="nav-link pxm-nav-link" to="/projects" active-class="active">
               <NavIcon name="projects" />
               <span>Projects</span>
             </NuxtLink>
           </li>
-          <li class="nav-item">
+          <li v-if="canRead('project_details')" class="nav-item">
             <NuxtLink
               class="nav-link pxm-nav-link"
               to="/project-details"
@@ -61,7 +72,7 @@ const taxesMenuActive = computed(() =>
               <span>Details</span>
             </NuxtLink>
           </li>
-          <li class="nav-item">
+          <li v-if="canRead('project_progress')" class="nav-item">
             <NuxtLink
               class="nav-link pxm-nav-link"
               to="/project-progress"
@@ -71,7 +82,7 @@ const taxesMenuActive = computed(() =>
               <span>Progress</span>
             </NuxtLink>
           </li>
-          <li class="nav-item">
+          <li v-if="canRead('project_financials')" class="nav-item">
             <NuxtLink
               class="nav-link pxm-nav-link"
               to="/project-financials"
@@ -81,7 +92,7 @@ const taxesMenuActive = computed(() =>
               <span>Financial</span>
             </NuxtLink>
           </li>
-          <li class="nav-item dropdown">
+          <li v-if="showTaxesMenu" class="nav-item dropdown">
             <a
               class="nav-link pxm-nav-link dropdown-toggle"
               :class="{ active: taxesMenuActive }"
@@ -94,12 +105,12 @@ const taxesMenuActive = computed(() =>
               <span>Taxes</span>
             </a>
             <ul class="dropdown-menu">
-              <li>
+              <li v-if="canRead('tax_in')">
                 <NuxtLink class="dropdown-item" to="/project-financials/tax-in">
                   Tax In
                 </NuxtLink>
               </li>
-              <li>
+              <li v-if="canRead('tax_out')">
                 <NuxtLink
                   class="dropdown-item"
                   to="/project-financials/tax-out"
@@ -107,26 +118,14 @@ const taxesMenuActive = computed(() =>
                   Tax Out
                 </NuxtLink>
               </li>
-              <li>
+              <li v-if="canRead('pph')">
                 <NuxtLink class="dropdown-item" to="/project-financials/pph">
                   PPH
                 </NuxtLink>
               </li>
             </ul>
           </li>
-          <li class="nav-item">
-            <NuxtLink class="nav-link pxm-nav-link" to="/clients" active-class="active">
-              <NavIcon name="clients" />
-              <span>Clients</span>
-            </NuxtLink>
-          </li>
-          <li class="nav-item">
-            <NuxtLink class="nav-link pxm-nav-link" to="/partners" active-class="active">
-              <NavIcon name="partners" />
-              <span>Partner</span>
-            </NuxtLink>
-          </li>
-          <li class="nav-item">
+          <li v-if="canRead('dcn')" class="nav-item">
             <NuxtLink class="nav-link pxm-nav-link" to="/dcn" active-class="active">
               <NavIcon name="dcn" />
               <span>DCN</span>
@@ -151,7 +150,7 @@ const taxesMenuActive = computed(() =>
           </button>
 
           <ul class="dropdown-menu dropdown-menu-end text-small">
-            <li>
+            <li v-if="canRead('profile')">
               <NuxtLink
                 class="dropdown-item"
                 to="/profile"
@@ -161,7 +160,7 @@ const taxesMenuActive = computed(() =>
               </NuxtLink>
             </li>
 
-            <li>
+            <li v-if="canRead('change_password')">
               <NuxtLink
                 class="dropdown-item"
                 to="/profile/change-password"
@@ -171,8 +170,28 @@ const taxesMenuActive = computed(() =>
               </NuxtLink>
             </li>
 
-            <li v-if="user.role === 'superadmin'">
+            <li v-if="canRead('users')">
               <NuxtLink class="dropdown-item" to="/users"> Users </NuxtLink>
+            </li>
+
+            <li v-if="user.role === 'superadmin'">
+              <NuxtLink class="dropdown-item" to="/rls"> RLS </NuxtLink>
+            </li>
+
+            <li v-if="canRead('clients')">
+              <NuxtLink class="dropdown-item" to="/clients" active-class="active">
+                Clients
+              </NuxtLink>
+            </li>
+
+            <li v-if="canRead('partners')">
+              <NuxtLink class="dropdown-item" to="/partners" active-class="active">
+                Partner
+              </NuxtLink>
+            </li>
+
+            <li v-if="canRead('audit_log')">
+              <NuxtLink class="dropdown-item" to="/audit"> Audit Log </NuxtLink>
             </li>
 
             <li><hr class="dropdown-divider" /></li>

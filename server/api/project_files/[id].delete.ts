@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
       .returning();
 
     await logAudit({
+      event,
       actorId: userId,
       action: "DELETE",
       targetTable: "project_files",

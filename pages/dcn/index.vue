@@ -1,32 +1,25 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { useAuthStore } from "@/stores/auth";
 import { useDcnApi, DCN_OUT_TYPE_OPTIONS } from "@/composables/useDcnApi";
+import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { formatListTimestamp } from "@/utils/formatListTimestamp";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
-const auth = useAuthStore();
 const { store, getDcns, deleteDcn } = useDcnApi();
 const { handle } = useFormHandler();
+const { canCreate, canEdit, canDelete } = useListPagePermissions("dcn");
 
 const search = ref("");
 const flow = ref<"" | "in" | "out">("");
 const type = ref("");
 const deletingId = ref<string | null>(null);
 
-const canCreate = computed(() =>
-  ["admin", "superadmin"].includes(auth.user?.role || ""),
-);
-const canEdit = computed(() =>
-  ["admin", "superadmin"].includes(auth.user?.role || ""),
-);
-const canDelete = computed(() => auth.user?.role === "superadmin");
-
 const loadData = async (page = 1) => {
   await getDcns({
     page,
-    limit: store.limit ?? 10,
+    limit: store.limit ?? DEFAULT_PAGE_LIMIT,
     search: search.value || undefined,
     flow: flow.value || undefined,
     type: flow.value === "out" && type.value ? type.value : undefined,

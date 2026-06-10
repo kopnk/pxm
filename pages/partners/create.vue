@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: ["superadmin"] });
+definePageMeta({});
 
 import { reactive } from "vue";
 import { useRouter } from "#imports";

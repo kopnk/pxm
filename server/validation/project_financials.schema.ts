@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 const optStr = z.string().optional().nullable();
 const optUuid = z.string().uuid().optional().nullable();
@@ -103,7 +104,7 @@ export const projectFinancialsExportQueryZ = z.object({
   projectId: z.string().uuid().optional(),
   projectDetailId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });
 
 /** Query export tax-in / tax-out / pph (search + status + pagination; flow via section SQL). */

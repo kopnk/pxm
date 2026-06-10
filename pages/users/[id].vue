@@ -1,7 +1,5 @@
 <script setup>
-definePageMeta({
-  middleware: ["superadmin"],
-});
+definePageMeta({});
 
 import { useFormHandler } from "@/composables/useFormHandler";
 import {

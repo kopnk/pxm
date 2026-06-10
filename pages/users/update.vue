@@ -1,9 +1,8 @@
 <script setup lang="ts">
-definePageMeta({
-  middleware: ["superadmin"],
-});
+definePageMeta({});
 
 import { reactive } from "vue";
+import { useAuthStore } from "@/stores/auth";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessUpdated } from "@/composables/useToastMessages";
 import FormShell from "@/components/form/FormShell.vue";
@@ -14,10 +13,7 @@ const authStore = useAuthStore();
 const { getUserById, updateUser } = useUsersApi();
 const { loading, handle } = useFormHandler();
 
-/**
- * 🔐 FE Guard (TIDAK DIUBAH)
- */
-if (authStore.user?.role !== "superadmin") {
+if (!authStore.canAccess("users", "update")) {
   navigateTo("/users");
 }
 

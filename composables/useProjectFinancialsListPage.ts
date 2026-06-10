@@ -8,6 +8,7 @@ import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { formatListTimestamp as formatListTimestampWib } from "@/utils/formatListTimestamp";
 import { getApiErrorMessage } from "@/lib/apiError";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
+import type { RlsResource } from "~/lib/rls";
 
 const FINANCIAL_STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -20,11 +21,15 @@ const FINANCIAL_STATUS_LABELS: Record<string, string> = {
 export const useProjectFinancialsListPage = (options?: {
   /** Override flow filter saat halaman section (tax-in / tax-out / pph). */
   flowDirection?: "in" | "out";
+  /** RLS resource for button permissions on section pages. */
+  rlsResource?: RlsResource;
 }) => {
   const store = useProjectFinancialsStore();
   const { getProjectFinancials, deleteProjectFinancial } =
     useProjectFinancialsApi();
-  const { canCreate, canEdit, canDelete } = useListPagePermissions();
+  const { canCreate, canEdit, canDelete } = useListPagePermissions(
+    options?.rlsResource ?? "project_financials",
+  );
   const { handle } = useFormHandler();
   const notify = useNotify();
 

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-definePageMeta({
-  middleware: ["superadmin"],
-});
+definePageMeta({});
 
 import { reactive } from "vue";
+import { useAuthStore } from "@/stores/auth";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessCreated } from "@/composables/useToastMessages";
 import FormShell from "@/components/form/FormShell.vue";
@@ -13,11 +12,7 @@ const authStore = useAuthStore();
 const { signupUser } = useUsersApi();
 const { loading, handle } = useFormHandler();
 
-/**
- * 🔐 FE Guard (TIDAK DIUBAH)
- */
-if (authStore.user?.role !== "superadmin") {
-  console.warn("[SIGNUP] Forbidden role:", authStore.user?.role);
+if (!authStore.canAccess("users", "create")) {
   navigateTo("/users");
 }
 

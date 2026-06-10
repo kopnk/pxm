@@ -11,3 +11,4 @@ export * from "./project_files";
 export * from "./project_details";
 export * from "./project_progress";
 export * from "./project_financials";
+export * from "./user_permissions";

@@ -1,17 +1,20 @@
 import { computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
+import type { RlsAction, RlsResource } from "~/lib/rls";
 
 /**
- * Shared list-page role checks (create/edit = admin+superadmin, delete = superadmin).
+ * List-page permission checks from RLS matrix (superadmin always allowed).
  */
-export function useListPagePermissions() {
+export function useListPagePermissions(resource: RlsResource) {
   const auth = useAuthStore();
 
-  const canManage = computed(() =>
-    ["admin", "superadmin"].includes(auth.user?.role || ""),
-  );
+  const can = (action: RlsAction) =>
+    computed(() => auth.canAccess(resource, action));
 
-  const canDelete = computed(() => auth.user?.role === "superadmin");
-
-  return { canCreate: canManage, canEdit: canManage, canDelete };
+  return {
+    canCreate: can("create"),
+    canEdit: can("update"),
+    canDelete: can("delete"),
+    canRead: can("read"),
+  };
 }

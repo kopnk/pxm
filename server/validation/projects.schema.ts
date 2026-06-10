@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 export const createProjectSchema = z.object({
   contractNumber: z.string().nullable().optional(),
@@ -24,7 +25,7 @@ export const updateProjectSchema = createProjectSchema.partial();
 
 export const queryProjectSchema = z.object({
   page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(10),
+  limit: z.coerce.number().default(DEFAULT_PAGE_LIMIT),
   search: z.string().optional(),
   status: z.enum(["active", "closed", "cancelled"]).optional(),
 });
@@ -34,5 +35,5 @@ export const projectsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   status: z.enum(["active", "closed", "cancelled"]).optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(500).optional().default(10),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });
