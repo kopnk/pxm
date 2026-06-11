@@ -11,7 +11,8 @@
     "db:baseline:local": "node scripts/drizzle-baseline-local.mjs",
     "db:repair:local": "node scripts/drizzle-repair-local.mjs",
     "db:migrate": "npx drizzle-kit migrate",
-    "db:sync-rls-defaults": "node scripts/sync-rls-defaults.mjs"
+    "db:sync-rls-defaults": "node scripts/sync-rls-defaults.mjs",
+    "db:set-superadmin": "node scripts/set-superadmin.mjs"
   },
   "dependencies": {
     "@lucia-auth/adapter-drizzle": "^1.1.0",
