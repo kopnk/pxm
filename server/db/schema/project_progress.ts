@@ -63,6 +63,9 @@ export const projectProgress = pgTable(
       .notNull()
       .references(() => users.id),
 
+    updatedUser: uuid("updated_user")
+      .references(() => users.id),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

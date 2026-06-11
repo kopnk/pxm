@@ -13,6 +13,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo("/auth/signin");
   }
 
+  if (auth.user.mustChangePassword) {
+    const allowed =
+      to.path === "/profile/change-password" ||
+      to.path.startsWith("/auth/");
+    if (!allowed) {
+      return navigateTo("/profile/change-password");
+    }
+    return;
+  }
+
   if (auth.user.role === "superadmin") return;
 
   const resource = resolveRouteRlsResource(to.path);

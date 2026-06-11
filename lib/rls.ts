@@ -2,7 +2,7 @@ export const RLS_ACTIONS = ["create", "read", "update", "delete"] as const;
 export type RlsAction = (typeof RLS_ACTIONS)[number];
 
 /** Default policy per role when a menu is first registered or merged into stored matrix. */
-export type RlsDefaultPolicy = "full" | "cru" | "ru" | "none";
+export type RlsDefaultPolicy = "full" | "cru" | "ru" | "r" | "u" | "none";
 
 export type RlsMenuDefinition = {
   key: string;
@@ -23,21 +23,21 @@ export const RLS_MENU_REGISTRY = [
     label: "Dashboard",
     route: "/",
     adminDefault: "ru",
-    staffDefault: "ru",
+    staffDefault: "r",
   },
   {
     key: "projects",
     label: "Projects",
     route: "/projects",
     adminDefault: "cru",
-    staffDefault: "ru",
+    staffDefault: "r",
   },
   {
     key: "project_details",
     label: "Details",
     route: "/project-details",
     adminDefault: "cru",
-    staffDefault: "ru",
+    staffDefault: "r",
   },
   {
     key: "project_progress",
@@ -51,41 +51,41 @@ export const RLS_MENU_REGISTRY = [
     label: "Financial",
     route: "/project-financials",
     adminDefault: "cru",
-    staffDefault: "ru",
+    staffDefault: "u",
   },
   {
     key: "tax_in",
     label: "Tax In",
     route: "/project-financials/tax-in",
-    adminDefault: "ru",
-    staffDefault: "ru",
+    adminDefault: "r",
+    staffDefault: "r",
   },
   {
     key: "tax_out",
     label: "Tax Out",
     route: "/project-financials/tax-out",
-    adminDefault: "ru",
-    staffDefault: "ru",
+    adminDefault: "r",
+    staffDefault: "r",
   },
   {
     key: "pph",
     label: "Pph",
     route: "/project-financials/pph",
-    adminDefault: "ru",
-    staffDefault: "ru",
+    adminDefault: "r",
+    staffDefault: "r",
   },
   {
     key: "dcn",
     label: "Dcn",
     route: "/dcn",
     adminDefault: "cru",
-    staffDefault: "ru",
+    staffDefault: "cru",
   },
   {
     key: "profile",
     label: "Profile",
     route: "/profile",
-    adminDefault: "ru",
+    adminDefault: "u",
     staffDefault: "ru",
   },
   {
@@ -107,14 +107,21 @@ export const RLS_MENU_REGISTRY = [
     label: "Clients",
     route: "/clients",
     adminDefault: "cru",
-    staffDefault: "ru",
+    staffDefault: "r",
   },
   {
     key: "partners",
     label: "Partners",
     route: "/partners",
     adminDefault: "cru",
-    staffDefault: "ru",
+    staffDefault: "r",
+  },
+  {
+    key: "regions",
+    label: "Regions",
+    route: "/regions",
+    adminDefault: "cru",
+    staffDefault: "r",
   },
   {
     key: "audit_log",
@@ -143,6 +150,10 @@ const policyToActions = (
       return { create: true, read: true, update: true, delete: false };
     case "ru":
       return { create: false, read: true, update: true, delete: false };
+    case "r":
+      return { create: false, read: true, update: false, delete: false };
+    case "u":
+      return { create: false, read: false, update: true, delete: false };
     default:
       return { create: false, read: false, update: false, delete: false };
   }

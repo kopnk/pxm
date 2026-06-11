@@ -16,11 +16,30 @@ export const useRlsStore = defineStore("rls", {
     users: [] as RlsUserRow[],
     loading: false,
     savingUserId: null as string | null,
+    filters: {
+      search: "",
+      role: "",
+      isActive: "" as "" | "true" | "false",
+      menuSearch: "",
+      actionFilter: "" as "" | RlsAction,
+    },
   }),
 
   actions: {
     setLoading(value: boolean) {
       this.loading = value;
+    },
+
+    setFilters(
+      filters: Partial<{
+        search: string;
+        role: string;
+        isActive: "" | "true" | "false";
+        menuSearch: string;
+        actionFilter: "" | RlsAction;
+      }>,
+    ) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     setSavingUserId(userId: string | null) {

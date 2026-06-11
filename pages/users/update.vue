@@ -1,65 +1,36 @@
 <script setup lang="ts">
 definePageMeta({});
 
-import { reactive } from "vue";
 import { useAuthStore } from "@/stores/auth";
-import { useFormHandler } from "@/composables/useFormHandler";
-import { toastSuccessUpdated } from "@/composables/useToastMessages";
+import { useUserUpdateForm } from "@/composables/useUserUpdateForm";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
 
 const route = useRoute();
 const authStore = useAuthStore();
-const { getUserById, updateUser } = useUsersApi();
-const { loading, handle } = useFormHandler();
+const { getUserById } = useUsersApi();
 
 if (!authStore.canAccess("users", "update")) {
   navigateTo("/users");
 }
 
-/**
- * Fetch original user (LOGIC SAMA)
- */
 const originalUser = await getUserById(route.query.id as string);
 
-/**
- * Clone supaya tidak mutate data asli
- */
-const user = reactive({
-  id: originalUser.id,
-  email: originalUser.email,
-  firstName: originalUser.firstName,
-  lastName: originalUser.lastName,
-  phone: originalUser.phone,
-  region: originalUser.region,
-  area: originalUser.area,
-  role: originalUser.role,
-  isActive: originalUser.isActive,
-  avatarUrl: originalUser.avatarUrl,
-  lastLoginAt: originalUser.lastLoginAt,
-  createdAt: originalUser.createdAt,
-  updatedAt: originalUser.updatedAt,
-});
-
-/**
- * Submit (LOGIC PAYLOAD TETAP)
- */
-const submit = async () => {
-  await handle(async () => {
-    await updateUser(user.id, {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-      region: user.region,
-      area: user.area,
-      role: user.role,
-      isActive: user.isActive,
-      avatarUrl: user.avatarUrl,
-    });
-
-    await navigateTo("/users");
-  }, toastSuccessUpdated("user"));
-};
+const {
+  user,
+  regions,
+  areas,
+  selectedRegionId,
+  selectedAreaId,
+  regionsLoading,
+  areasLoading,
+  editableRoles,
+  canEditRole,
+  canEditStatus,
+  loading,
+  submit,
+} = useUserUpdateForm(originalUser);
 </script>
 
 <template>
@@ -71,76 +42,145 @@ const submit = async () => {
     @cancel="navigateTo('/users')"
   >
     <FormSection>
-      <!-- READ ONLY -->
       <div class="col-12">
-        <label>Email</label>
+        <label class="label-field d-block mb-1">Email</label>
         <input class="form-control" :value="user.email" disabled />
       </div>
 
-      <!-- EDITABLE -->
       <div class="col-6">
-        <label>First Name</label>
-        <input class="form-control" v-model="user.firstName" />
+        <label class="label-field d-block mb-1">First Name</label>
+        <input v-model="user.firstName" class="form-control" required />
       </div>
 
       <div class="col-6">
-        <label>Last Name</label>
-        <input class="form-control" v-model="user.lastName" />
+        <label class="label-field d-block mb-1">Last Name</label>
+        <input v-model="user.lastName" class="form-control" required />
       </div>
 
       <div class="col-6">
-        <label>Phone</label>
-        <input class="form-control" v-model="user.phone" />
+        <label class="label-field d-block mb-1">Phone</label>
+        <input v-model="user.phone" class="form-control" />
       </div>
 
       <div class="col-6">
-        <label>Region</label>
-        <input class="form-control" v-model="user.region" />
-      </div>
-
-      <div class="col-6">
-        <label>Area</label>
-        <input class="form-control" v-model="user.area" />
-      </div>
-
-      <div class="col-6">
-        <label>Role</label>
-        <select class="form-select" v-model="user.role">
-          <option value="staff">Staff</option>
-          <option value="admin">Admin</option>
-          <option value="superadmin">Superadmin</option>
+        <label class="label-field d-block mb-1">Region</label>
+        <select
+          v-model="selectedRegionId"
+          class="form-select"
+          :disabled="regionsLoading"
+          required
+        >
+          <option value="" disabled>
+            {{ regionsLoading ? "Loading…" : "Select region" }}
+          </option>
+          <option
+            v-for="region in regions"
+            :key="region.id"
+            :value="region.id"
+          >
+            {{ region.name }}
+          </option>
         </select>
       </div>
 
       <div class="col-6">
-        <label>Active</label>
-        <select class="form-select" v-model="user.isActive">
+        <label class="label-field d-block mb-1">Area</label>
+        <select
+          v-model="selectedAreaId"
+          class="form-select"
+          :disabled="!selectedRegionId || areasLoading"
+          required
+        >
+          <option value="" disabled>
+            {{
+              !selectedRegionId
+                ? "Select region first"
+                : areasLoading
+                  ? "Loading…"
+                  : areas.length
+                    ? "Select area"
+                    : "No area available"
+            }}
+          </option>
+          <option v-for="area in areas" :key="area.id" :value="area.id">
+            {{ area.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="col-6">
+        <label class="label-field d-block mb-1">Role</label>
+        <select
+          v-if="canEditRole"
+          v-model="user.role"
+          class="form-select"
+        >
+          <option
+            v-for="role in editableRoles"
+            :key="role"
+            :value="role"
+          >
+            {{ role.charAt(0).toUpperCase() + role.slice(1) }}
+          </option>
+        </select>
+        <input
+          v-else
+          class="form-control"
+          :value="user.role"
+          disabled
+        />
+      </div>
+
+      <div class="col-6">
+        <label class="label-field d-block mb-1">Active</label>
+        <select
+          v-if="canEditStatus"
+          v-model="user.isActive"
+          class="form-select"
+        >
           <option :value="true">Active</option>
           <option :value="false">Inactive</option>
         </select>
+        <input
+          v-else
+          class="form-control"
+          :value="user.isActive ? 'Active' : 'Inactive'"
+          disabled
+        />
       </div>
 
       <div class="col-6">
-        <label>Avatar URL</label>
-        <input class="form-control" v-model="user.avatarUrl" />
+        <label class="label-field d-block mb-1">Avatar URL</label>
+        <input v-model="user.avatarUrl" class="form-control" />
       </div>
     </FormSection>
 
-    <!-- READ ONLY META -->
     <FormSection title="Metadata">
       <div class="col-6">
-        <label>Last Login At</label>
-        <input class="form-control" :value="user.lastLoginAt" disabled />
+        <label class="label-field d-block mb-1">Last Login At</label>
+        <input
+          class="form-control"
+          :value="formatListTimestamp(user.lastLoginAt)"
+          disabled
+        />
       </div>
 
       <div class="col-6">
-        <label>Created At</label>
-        <input class="form-control" :value="user.createdAt" disabled />
+        <label class="label-field d-block mb-1">Created At</label>
+        <input
+          class="form-control"
+          :value="formatListTimestamp(user.createdAt)"
+          disabled
+        />
       </div>
 
       <div class="col-6">
-        <label>Updated At</label>
-        <input class="form-control" :value="user.updatedAt" disabled />
+        <label class="label-field d-block mb-1">Updated At</label>
+        <input
+          class="form-control"
+          :value="formatListTimestamp(user.updatedAt)"
+          disabled
+        />
       </div>
     </FormSection>
   </FormShell>

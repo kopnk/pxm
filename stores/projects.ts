@@ -30,6 +30,8 @@ export interface Project {
   clientId?: string | null;
 
   createdUser: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }

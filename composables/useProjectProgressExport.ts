@@ -5,6 +5,7 @@ import { useExcelMatrixExport } from "@/composables/useExcelMatrixExport";
 export type ProjectProgressExportParams = {
   search: string;
   stage: string;
+  stageDateType: string;
   status: string;
   project?: string;
   detail?: string;
@@ -21,6 +22,7 @@ export function useProjectProgressExport() {
       async () => {
         const s = params.search.trim();
         const stg = params.stage.trim();
+        const dateType = params.stageDateType.trim();
         const st = params.status.trim();
         const proj = (params.project ?? "").trim();
         const det = (params.detail ?? "").trim();
@@ -28,6 +30,10 @@ export function useProjectProgressExport() {
           query: {
             search: s || undefined,
             stage: stg || undefined,
+            stageDateType:
+              dateType === "planned" || dateType === "actual"
+                ? dateType
+                : undefined,
             status: st || undefined,
             project: proj || undefined,
             detail: det || undefined,

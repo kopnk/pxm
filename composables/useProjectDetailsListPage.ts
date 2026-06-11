@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useProjectDetailsApi } from "@/composables/useProjectDetailsApi";
 import { useProjectDetailsStore } from "@/stores/projectDetails";
 import { useFormHandler } from "@/composables/useFormHandler";
@@ -6,6 +6,13 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { detailStatusBadgeClass } from "~/lib/detailStatus";
+import {
+  createStoreFilter,
+  useFlatPaginationRange,
+  watchDebouncedStoreSearch,
+  watchStoreFilters,
+} from "~/lib/listPage";
 
 export const useProjectDetailsListPage = () => {
   const store = useProjectDetailsStore();
@@ -15,8 +22,9 @@ export const useProjectDetailsListPage = () => {
   const { handle } = useFormHandler();
   const notify = useNotify();
 
-  const search = ref("");
-  const status = ref("");
+  const searchFilter = createStoreFilter(store, "search");
+  const statusFilter = createStoreFilter(store, "status");
+
   const fetchError = ref<string | null>(null);
   const deletingId = ref<string | null>(null);
   const deleteTargetId = ref<string | null>(null);
@@ -34,14 +42,7 @@ export const useProjectDetailsListPage = () => {
     store.items.find((item) => item.id === deleteTargetId.value),
   );
 
-  const showingStart = computed(() => {
-    if (store.total === 0) return 0;
-    return (store.page - 1) * store.limit + 1;
-  });
-
-  const showingEnd = computed(() =>
-    Math.min(store.page * store.limit, store.total),
-  );
+  const { showingStart, showingEnd } = useFlatPaginationRange(store);
 
   const fetchData = async (page = store.page, showToast = true) => {
     try {
@@ -51,8 +52,6 @@ export const useProjectDetailsListPage = () => {
       await getProjectDetails({
         page,
         limit: store.limit,
-        search: search.value || undefined,
-        status: status.value || undefined,
       });
     } catch (err: unknown) {
       fetchError.value = getApiErrorMessage(err, "Failed to load project details");
@@ -69,9 +68,15 @@ export const useProjectDetailsListPage = () => {
     void fetchData(1).catch(() => {});
   });
 
-  watch([search, status], () => {
-    void fetchData(1).catch(() => {});
-  });
+  watchDebouncedStoreSearch(
+    () => store.filters.search,
+    () => void fetchData(1).catch(() => {}),
+  );
+
+  watchStoreFilters(
+    () => [store.filters.status] as const,
+    () => void fetchData(1).catch(() => {}),
+  );
 
   const prevPage = () => {
     if (store.page > 1) {
@@ -128,20 +133,15 @@ export const useProjectDetailsListPage = () => {
   const getRowNumber = (index: number) =>
     (store.page - 1) * store.limit + index + 1;
 
-  const getStatusBadgeClass = (value: string | null) => ({
-    "bg-success": value === "active",
-    "bg-warning text-dark": value === "delay",
-    "bg-secondary": value === "closed",
-    "bg-danger": value === "cancelled",
-  });
+  const getStatusBadgeClass = detailStatusBadgeClass;
 
   return {
     store,
     canCreate,
     canEdit,
     canDelete,
-    search,
-    status,
+    searchFilter,
+    statusFilter,
     statusOptions,
     fetchError,
     deletingId,

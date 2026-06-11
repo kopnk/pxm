@@ -12,6 +12,7 @@ import {
 
 import { and, eq, ne } from "drizzle-orm";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
@@ -109,24 +110,28 @@ export default defineEventHandler(async (event) => {
 
   /* ================= BUSINESS LOGIC ================= */
 
-  const quantity =
+  const quantityNum =
     body.quantity !== undefined
       ? body.quantity != null
         ? Number(body.quantity)
         : null
-      : oldData.quantity;
+      : oldData.quantity != null
+        ? Number(oldData.quantity)
+        : null;
 
-  const unitPrice =
+  const unitPriceNum =
     body.unitPrice !== undefined
       ? body.unitPrice != null
         ? Number(body.unitPrice)
         : null
-      : oldData.unitPrice;
+      : oldData.unitPrice != null
+        ? Number(oldData.unitPrice)
+        : null;
 
-  let totalPrice: number | null = null;
+  let totalPriceNum: number | null = null;
 
-  if (quantity != null && unitPrice != null) {
-    totalPrice = quantity * unitPrice;
+  if (quantityNum != null && unitPriceNum != null) {
+    totalPriceNum = quantityNum * unitPriceNum;
   }
 
   /* ================= BUILD UPDATE OBJECT ================= */
@@ -149,7 +154,7 @@ export default defineEventHandler(async (event) => {
 
     neId:
       body.neId !== undefined
-        ? body.neId.trim()
+        ? body.neId?.trim() ?? null
         : oldData.neId,
 
     materialId:
@@ -182,14 +187,14 @@ export default defineEventHandler(async (event) => {
         ? body.lineNumber
         : oldData.lineNumber,
 
-    quantity,
+    quantity: quantityNum != null ? String(quantityNum) : null,
     uom:
       body.uom !== undefined
         ? body.uom
         : oldData.uom,
 
-    unitPrice,
-    totalPrice,
+    unitPrice: unitPriceNum != null ? String(unitPriceNum) : null,
+    totalPrice: totalPriceNum != null ? String(totalPriceNum) : null,
 
     status:
       body.status !== undefined
@@ -218,6 +223,7 @@ export default defineEventHandler(async (event) => {
           : null
         : oldData.taxOut,
 
+    updatedUser: userId,
     updatedAt: dbTime(),
   };
 
@@ -229,7 +235,7 @@ export default defineEventHandler(async (event) => {
     .where(eq(projectDetails.id, id))
     .returning();
 
-  const updated = updatedRows[0];
+  const updated = requireFirstRow(updatedRows, "Project detail not found");
 
   /* ================= SYNC PROJECT PROGRESS PROJECT ID =================
      Jika detail dipindah ke project lain, progress terkait harus ikut.
@@ -239,6 +245,7 @@ export default defineEventHandler(async (event) => {
       .update(projectProgress)
       .set({
         projectId: updated.projectId,
+        updatedUser: userId,
         updatedAt: dbTime(),
       })
       .where(eq(projectProgress.projectDetailId, id));

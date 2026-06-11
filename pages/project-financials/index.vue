@@ -427,6 +427,12 @@ const onExportExcel = () => {
                     </div>
                     <div class="data-meta mt-1">
                       <div>
+                        Created by: {{ item.createdBy || "-" }}
+                      </div>
+                      <div>
+                        Updated by: {{ item.updatedBy || "-" }}
+                      </div>
+                      <div>
                         Created: {{ formatListTimestamp(item.createdAt) }}
                       </div>
                       <div>
@@ -537,7 +543,13 @@ const onExportExcel = () => {
 
 .table-financials {
   table-layout: fixed;
-  min-width: 1720px;
+  min-width: 1880px;
+
+  th,
+  td {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
 
   th {
     vertical-align: middle;
@@ -569,26 +581,32 @@ const onExportExcel = () => {
   }
 
   .fin-col-amount {
-    width: 168px;
-    min-width: 168px;
+    width: 11.5rem;
+    min-width: 11.5rem;
+    padding-right: 1.1rem;
   }
 
   .fin-col-doc {
-    width: 7.25rem;
-    min-width: 7.25rem;
-    max-width: 7.25rem;
+    width: 8.75rem;
+    min-width: 8.75rem;
+    padding-left: 0.85rem;
   }
 
   .fin-col-balap {
-    width: 9rem;
-    min-width: 9rem;
-    max-width: 9rem;
+    width: 10.75rem;
+    min-width: 10.75rem;
+    padding-right: 0.85rem;
   }
 
   .fin-col-paid {
-    width: 8rem;
-    min-width: 8rem;
-    max-width: 8rem;
+    width: 9.75rem;
+    min-width: 9.75rem;
+    padding-left: 0.85rem;
+  }
+
+  .fin-doc-cell {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
   }
 
   .fin-col-party {

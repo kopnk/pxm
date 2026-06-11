@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useProjectFinancialsApi } from "@/composables/useProjectFinancialsApi";
 import { useProjectFinancialsStore } from "@/stores/projectFinancials";
 import { useFormHandler } from "@/composables/useFormHandler";
@@ -9,6 +9,12 @@ import { formatListTimestamp as formatListTimestampWib } from "@/utils/formatLis
 import { getApiErrorMessage } from "@/lib/apiError";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 import type { RlsResource } from "~/lib/rls";
+import {
+  createStoreFilter,
+  useFlatPaginationRange,
+  watchDebouncedStoreSearch,
+  watchStoreFilters,
+} from "~/lib/listPage";
 
 const FINANCIAL_STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -77,14 +83,7 @@ export const useProjectFinancialsListPage = (options?: {
       store.items.find((item) => item.id === deleteTargetId.value) ?? null,
   );
 
-  const showingStart = computed(() => {
-    if (store.total === 0) return 0;
-    return (store.page - 1) * store.limit + 1;
-  });
-
-  const showingEnd = computed(() =>
-    Math.min(store.page * store.limit, store.total),
-  );
+  const { showingStart, showingEnd } = useFlatPaginationRange(store);
 
   const fetchData = async (page = store.page, showToast = true) => {
     try {
@@ -108,15 +107,14 @@ export const useProjectFinancialsListPage = (options?: {
     void fetchData(1).catch(() => {});
   });
 
-  watch(
-    () => [
-      store.filters.search,
-      store.filters.status,
-      store.filters.flowDirection,
-    ],
-    () => {
-      void fetchData(1).catch(() => {});
-    },
+  watchDebouncedStoreSearch(
+    () => store.filters.search,
+    () => void fetchData(1).catch(() => {}),
+  );
+
+  watchStoreFilters(
+    () => [store.filters.status, store.filters.flowDirection] as const,
+    () => void fetchData(1).catch(() => {}),
   );
 
   const prevPage = () => {

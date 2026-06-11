@@ -40,7 +40,9 @@ export const auditLog = pgTable(
     // deskripsi aksi human-readable
     description: text("description"),
 
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => ({
     idxActor: index("idx_audit_actor").on(table.actorId),

@@ -9,6 +9,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import {
   formatDcnOutNumber,
   getNextDcnOutNumber,
@@ -93,12 +94,13 @@ export default defineEventHandler(async (event) => {
           body.fromAddress !== undefined ? body.fromAddress : oldData.fromAddress,
         subject: body.subject !== undefined ? body.subject : oldData.subject,
         flow: nextFlow,
+        updatedUser: userId,
         updatedAt: dbTime(),
       })
       .where(eq(dcn.id, id))
       .returning();
 
-    const row = rows[0];
+    const row = requireFirstRow(rows, "DCN record not found");
 
     await logAudit({
       event,

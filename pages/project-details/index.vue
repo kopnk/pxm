@@ -8,8 +8,8 @@ const {
   canCreate,
   canEdit,
   canDelete,
-  search,
-  status,
+  searchFilter,
+  statusFilter,
   statusOptions,
   deletingId,
   deleteTarget,
@@ -30,8 +30,8 @@ const { exporting, downloadExcel } = useProjectDetailsExport();
 
 const onExportExcel = () => {
   void downloadExcel({
-    search: search.value,
-    status: status.value,
+    search: store.filters.search,
+    status: store.filters.status,
     page: store.page,
     limit: store.limit,
   });
@@ -61,13 +61,13 @@ const onExportExcel = () => {
         class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pd-filter-one-line"
       >
         <input
-          v-model="search"
+          v-model="searchFilter"
           type="search"
           class="form-control form-control-sm pd-filter-search"
           placeholder="Site, material, PO, region…"
         />
         <select
-          v-model="status"
+          v-model="statusFilter"
           class="form-select form-select-sm flex-shrink-0 pd-filter-status"
         >
           <option
@@ -209,7 +209,9 @@ const onExportExcel = () => {
                     </span>
                   </div>
 
-                  <div class="small text-muted mt-1">
+                  <div class="data-meta mt-1">
+                    <div>Created by: {{ item.createdBy || "-" }}</div>
+                    <div>Updated by: {{ item.updatedBy || "-" }}</div>
                     <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
                     <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                   </div>

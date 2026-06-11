@@ -34,21 +34,19 @@ export const useDcnApi = () => {
   const getDcns = async (params?: {
     page?: number;
     limit?: number;
-    search?: string;
-    flow?: DcnFlow;
-    type?: string;
     year?: number;
   }) => {
     store.setLoading(true);
     try {
+      const flow = store.filters.flow;
       const query: Record<string, string | number> = {
-        page: params?.page ?? 1,
-        limit: params?.limit ?? DEFAULT_PAGE_LIMIT,
+        page: params?.page ?? store.page,
+        limit: params?.limit ?? store.limit ?? DEFAULT_PAGE_LIMIT,
       };
 
-      if (params?.search) query.search = params.search;
-      if (params?.flow) query.flow = params.flow;
-      if (params?.type) query.type = params.type;
+      if (store.filters.search) query.search = store.filters.search;
+      if (flow) query.flow = flow;
+      if (flow === "out" && store.filters.type) query.type = store.filters.type;
       if (params?.year) query.year = params.year;
 
       const res: any = await apiFetch("/api/dcn", { query });

@@ -60,7 +60,9 @@ export function parseDcnOutNumber(number: string): ParsedDcnOutNumber | null {
   if (!match) return null;
   const sequence = Number(match[1]);
   if (!Number.isFinite(sequence) || sequence <= 0) return null;
-  return { sequence, year2: match[2] };
+  const year2 = match[2];
+  if (!year2) return null;
+  return { sequence, year2 };
 }
 
 export function formatDcnOutNumber(

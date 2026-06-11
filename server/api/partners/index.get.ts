@@ -4,7 +4,13 @@ import { partners } from "~/server/db/schema/partners";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
-import { and, or, ilike, eq, count, asc } from "drizzle-orm";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  mapRowAuditUsers,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
+import { and, or, ilike, eq, count, asc, getTableColumns } from "drizzle-orm";
 import { toLocalTime } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
@@ -52,20 +58,36 @@ export default defineEventHandler(async (event) => {
   const totalPages = buildTotalPages(total, limit);
 
   /* ================= DATA ================= */
+  const auditUsers = createUserAuditAliases();
+
   const rows = await db
-    .select()
+    .select({
+      ...getTableColumns(partners),
+      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
+    })
     .from(partners)
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(partners.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(partners.updatedUser, auditUsers.updater.id),
+    )
     .where(where)
     .orderBy(asc(partners.name), asc(partners.id))
     .limit(limit)
     .offset(offset);
 
-  const items = rows.map((row) => ({
-    ...row,
-    rating: row.rating ? Number(row.rating) : null,
-    createdAt: toLocalTime(row.createdAt),
-    updatedAt: toLocalTime(row.updatedAt),
-  }));
+  const items = rows.map((row) => {
+    const mapped = mapRowAuditUsers(row);
+    return {
+      ...mapped,
+      rating: row.rating ? Number(row.rating) : null,
+      createdAt: toLocalTime(row.createdAt),
+      updatedAt: toLocalTime(row.updatedAt),
+    };
+  });
 
   return successResponse(event, "Partners retrieved", {
     items,

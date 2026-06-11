@@ -1,5 +1,9 @@
 import { eq, ne, sql } from "drizzle-orm";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import type { PgTransaction } from "drizzle-orm/pg-core";
 import { db } from "~/server/db";
+import * as schema from "~/server/db/schema";
 import { users } from "~/server/db/schema/users";
 import { userPermissions } from "~/server/db/schema/user_permissions";
 import {
@@ -8,6 +12,12 @@ import {
   normalizeRlsMatrix,
 } from "~/lib/rls";
 import { dbTime } from "~/server/utils/dbTime";
+
+type DbTx = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 export async function getUserPermissionsMatrix(
   userId: string,
@@ -34,10 +44,12 @@ export async function getUserPermissionsMatrix(
 export async function upsertUserPermissionsMatrix(
   userId: string,
   permissions: RlsMatrix,
+  tx?: DbTx,
 ): Promise<void> {
   const now = dbTime();
+  const executor = tx ?? db;
 
-  await db
+  await executor
     .insert(userPermissions)
     .values({
       userId,
@@ -57,10 +69,13 @@ export async function upsertUserPermissionsMatrix(
 export async function ensureUserPermissionsForRole(
   userId: string,
   role: string,
+  tx?: DbTx,
 ): Promise<void> {
   if (role.toLowerCase() === "superadmin") return;
 
-  const existing = await db
+  const executor = tx ?? db;
+
+  const existing = await executor
     .select({ userId: userPermissions.userId })
     .from(userPermissions)
     .where(eq(userPermissions.userId, userId))
@@ -68,7 +83,7 @@ export async function ensureUserPermissionsForRole(
 
   if (existing.length) return;
 
-  await upsertUserPermissionsMatrix(userId, defaultMatrixForRole(role));
+  await upsertUserPermissionsMatrix(userId, defaultMatrixForRole(role), tx);
 }
 
 export async function listRlsUsers() {

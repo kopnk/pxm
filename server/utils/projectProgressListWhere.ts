@@ -5,11 +5,15 @@ import { projects } from "~/server/db/schema/projects";
 import { projectDetails } from "~/server/db/schema/project_details";
 import { buildSearchOr } from "~/server/utils/searchAmountSql";
 
+export type StageDateTypeFilter = "planned" | "actual";
+
 export type ProjectProgressListFilterInput = {
   search?: string;
   project?: string;
   detail?: string;
   stage?: string;
+  /** Hanya baris yang punya plan / actual date terisi di stage terpilih */
+  stageDateType?: StageDateTypeFilter;
   status?: string;
 };
 
@@ -22,6 +26,42 @@ const stageAllowed = [
   "cancelled",
 ] as const;
 
+function normalizeStageDateType(
+  value?: string,
+): StageDateTypeFilter | undefined {
+  const v = value?.trim().toLowerCase();
+  if (v === "planned" || v === "actual") return v;
+  return undefined;
+}
+
+const hasPlanDate = sql`coalesce(trim(st.value ->> 'plan_submit_date'), '') <> ''`;
+const hasActualDate = sql`coalesce(trim(st.value ->> 'actual_approve_date'), '') <> ''`;
+
+function stageExistsCondition(
+  stageKey: string,
+  options?: {
+    status?: string;
+    stageDateType?: StageDateTypeFilter;
+  },
+): SQL {
+  const parts: SQL[] = [sql`st.key = ${stageKey}`];
+
+  if (options?.status) {
+    parts.push(sql`st.value ->> 'status' = ${options.status}`);
+  }
+  if (options?.stageDateType === "planned") {
+    parts.push(hasPlanDate);
+  }
+  if (options?.stageDateType === "actual") {
+    parts.push(hasActualDate);
+  }
+
+  return sql`exists (
+    select 1 from jsonb_each(${projectProgress.stageData}) as st
+    where ${and(...parts)}
+  )`;
+}
+
 /**
  * WHERE untuk `GET /api/project_progress` (list) dan export Excel.
  */
@@ -33,7 +73,8 @@ export function buildProjectProgressListWhere(
   const globalSearch = input.search?.trim();
   const project = input.project?.trim();
   const detail = input.detail?.trim();
-  const stageFilter = input.stage?.trim();
+  const stageCode = input.stage?.trim();
+  const stageDateType = normalizeStageDateType(input.stageDateType);
   const statusFilter = input.status?.trim();
 
   if (globalSearch) {
@@ -78,8 +119,7 @@ export function buildProjectProgressListWhere(
     }
   }
 
-  const stagePattern = stageFilter ? `%${stageFilter}%` : null;
-  let stageStatusHandledWithStageFilter = false;
+  let stageFilterHandled = false;
 
   if (statusFilter) {
     if (statusFilter.startsWith("detail:")) {
@@ -95,14 +135,13 @@ export function buildProjectProgressListWhere(
     } else if (statusFilter.startsWith("stage:")) {
       const stageStatus = statusFilter.slice("stage:".length);
       if ((stageAllowed as readonly string[]).includes(stageStatus)) {
-        if (stagePattern) {
-          stageStatusHandledWithStageFilter = true;
+        if (stageCode) {
+          stageFilterHandled = true;
           conditions.push(
-            sql`exists (
-              select 1 from jsonb_each(${projectProgress.stageData}) as st
-              where st.key ilike ${stagePattern}
-                and st.value ->> 'status' = ${stageStatus}
-            )`,
+            stageExistsCondition(stageCode, {
+              status: stageStatus,
+              stageDateType,
+            }),
           );
         } else {
           conditions.push(
@@ -121,14 +160,13 @@ export function buildProjectProgressListWhere(
         ),
       );
     } else if ((stageAllowed as readonly string[]).includes(statusFilter)) {
-      if (stagePattern) {
-        stageStatusHandledWithStageFilter = true;
+      if (stageCode) {
+        stageFilterHandled = true;
         conditions.push(
-          sql`exists (
-            select 1 from jsonb_each(${projectProgress.stageData}) as st
-            where st.key ilike ${stagePattern}
-              and st.value ->> 'status' = ${statusFilter}
-          )`,
+          stageExistsCondition(stageCode, {
+            status: statusFilter,
+            stageDateType,
+          }),
         );
       } else {
         conditions.push(
@@ -141,12 +179,11 @@ export function buildProjectProgressListWhere(
     }
   }
 
-  if (stagePattern && !stageStatusHandledWithStageFilter) {
+  if (stageCode && !stageFilterHandled) {
     conditions.push(
-      sql`exists (
-        select 1 from jsonb_each(${projectProgress.stageData}) as st
-        where st.key ilike ${stagePattern}
-      )`,
+      stageExistsCondition(stageCode, {
+        stageDateType,
+      }),
     );
   }
 

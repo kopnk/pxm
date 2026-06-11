@@ -9,9 +9,7 @@ export const useProjectDetailsApi = () => {
   const getProjectDetails = async (params?: {
     page?: number;
     limit?: number;
-    search?: string;
     projectId?: string;
-    status?: string;
     cityKabId?: string;
   }) => {
     store.setLoading(true);
@@ -21,9 +19,9 @@ export const useProjectDetailsApi = () => {
         query: {
           page: params?.page ?? store.page,
           limit: params?.limit ?? store.limit,
-          search: params?.search,
+          search: store.filters.search || undefined,
           projectId: params?.projectId,
-          status: params?.status,
+          status: store.filters.status || undefined,
           cityKabId: params?.cityKabId,
         },
       });

@@ -24,6 +24,7 @@ export const dcn = pgTable("dcn", {
   flow: dcnFlowEnum("flow").notNull(),
 
   createdUser: uuid("created_user").references(() => users.id),
+  updatedUser: uuid("updated_user").references(() => users.id),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

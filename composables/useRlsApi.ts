@@ -1,4 +1,5 @@
 import type { RlsMatrix } from "~/lib/rls";
+import { canManageUserInList } from "~/lib/userRoles";
 import { apiFetch } from "~/utils/apiFetch";
 import { useRlsStore, type RlsUserRow } from "@/stores/rls";
 
@@ -9,8 +10,9 @@ export const useRlsApi = () => {
     store.setLoading(true);
     try {
       const res = await apiFetch<{ data: { users: RlsUserRow[] } }>("/api/rls");
-      store.setUsers(res.data.users);
-      return res.data.users;
+      const users = res.data.users.filter((user) => canManageUserInList(user.role));
+      store.setUsers(users);
+      return users;
     } finally {
       store.setLoading(false);
     }

@@ -46,6 +46,8 @@ export interface ProjectProgressItem {
   detailStatus?: string | null;
 
   createdUser?: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 
   createdAt: string | null;
   updatedAt: string | null;
@@ -59,6 +61,12 @@ export interface ProjectProgressState {
   totalPages: number;
   stageCounts: Record<string, { plan: number; actual: number }>;
   loading: boolean;
+  filters: {
+    search: string;
+    stage: string;
+    stageDateType: "" | "planned" | "actual";
+    status: string;
+  };
 }
 
 /* ================= STORE ================= */
@@ -72,6 +80,12 @@ export const useProjectProgressStore = defineStore("projectProgress", {
     totalPages: 0,
     stageCounts: {},
     loading: false,
+    filters: {
+      search: "",
+      stage: "",
+      stageDateType: "",
+      status: "",
+    },
   }),
 
   actions: {
@@ -114,6 +128,17 @@ export const useProjectProgressStore = defineStore("projectProgress", {
 
     setLoading(value: boolean) {
       this.loading = value;
+    },
+
+    setFilters(
+      filters: Partial<{
+        search: string;
+        stage: string;
+        stageDateType: "" | "planned" | "actual";
+        status: string;
+      }>,
+    ) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     reset() {

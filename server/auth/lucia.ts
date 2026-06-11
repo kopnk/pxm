@@ -23,7 +23,6 @@ export const lucia = new Lucia(adapter, {
       secure: process.env.SESSION_COOKIE_SECURE === "true",
       sameSite: "strict", // 🔥 PENTING
       path: "/",
-      httpOnly: true,
     },
   },
 

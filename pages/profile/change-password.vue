@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastPasswordChangedSignInAgain } from "@/composables/useToastMessages";
 import FormShell from "@/components/form/FormShell.vue";
@@ -7,8 +7,13 @@ import FormSection from "@/components/form/FormSection.vue";
 
 const { changePassword } = useProfileApi();
 const { logout } = useAppLogout();
+const auth = useAuthStore();
 const { loading, handle } = useFormHandler();
 const router = useRouter();
+
+const mustChangePassword = computed(() =>
+  Boolean(auth.user?.mustChangePassword),
+);
 
 const currentPassword = ref("");
 const newPassword = ref("");
@@ -21,6 +26,11 @@ const resetForm = () => {
   confirmPassword.value = "";
 };
 
+const onCancel = () => {
+  if (mustChangePassword.value) return;
+  void router.replace("/profile");
+};
+
 const submit = async () => {
   // FE validation tetap sama
   if (newPassword.value !== confirmPassword.value) {
@@ -29,7 +39,9 @@ const submit = async () => {
 
   await handle(async () => {
     await changePassword({
-      currentPassword: currentPassword.value,
+      currentPassword: mustChangePassword.value
+        ? undefined
+        : currentPassword.value,
       newPassword: newPassword.value,
       confirmPassword: confirmPassword.value,
     });
@@ -46,14 +58,21 @@ const submit = async () => {
 
 <template>
   <FormShell
-    title="Change Password"
+    :title="mustChangePassword ? 'Set New Password' : 'Change Password'"
     :loading="loading"
     submit-label="Update"
     @submit="submit"
-    @cancel="router.replace('/profile')"
+    @cancel="onCancel"
   >
     <FormSection>
-      <div class="col-12 position-relative">
+      <div v-if="mustChangePassword" class="col-12">
+        <p class="data-meta mb-0">
+          Your password was reset to the default. Please set a new password
+          before continuing.
+        </p>
+      </div>
+
+      <div v-if="!mustChangePassword" class="col-12 position-relative">
         <label>Current Password</label>
         <input
           v-model="currentPassword"

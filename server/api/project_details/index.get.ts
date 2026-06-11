@@ -3,9 +3,14 @@ import { db } from "~/server/db";
 
 import { projectDetails } from "~/server/db/schema/project_details";
 import { projects } from "~/server/db/schema/projects";
-import { users } from "~/server/db/schema/users";
-
 import { count, eq, desc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  mapRowAuditUsers,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
 
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
@@ -60,6 +65,8 @@ export default defineEventHandler(async (event) => {
   const totalPages = buildTotalPages(total, limit);
 
   /* ================= DATA ================= */
+  const auditUsers = createUserAuditAliases();
+
   const rows = await db
     .select({
       id: projectDetails.id,
@@ -103,29 +110,39 @@ export default defineEventHandler(async (event) => {
       regionName: pdRegion.name,
 
       createdUser: projectDetails.createdUser,
-      createdBy: users.firstName,
+      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
     })
     .from(projectDetails)
     .leftJoin(projects, eq(projectDetails.projectId, projects.id))
     .leftJoin(pdCity, eq(projectDetails.cityKabId, pdCity.id))
     .leftJoin(pdSub, eq(pdCity.parentId, pdSub.id))
     .leftJoin(pdRegion, eq(pdSub.parentId, pdRegion.id))
-    .leftJoin(users, eq(projectDetails.createdUser, users.id))
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(projectDetails.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(projectDetails.updatedUser, auditUsers.updater.id),
+    )
     .where(where)
     .orderBy(desc(projectDetails.createdAt), desc(projectDetails.id))
     .limit(limit)
     .offset(offset);
 
   /* ================= MAP DATA ================= */
-  const items = rows.map((row) => ({
-    ...row,
+  const items = rows.map((row) => {
+    const mapped = mapRowAuditUsers(row);
+    return {
+    ...mapped,
     quantity: row.quantity != null ? Number(row.quantity) : null,
     unitPrice: row.unitPrice != null ? Number(row.unitPrice) : null,
     totalPrice: row.totalPrice != null ? Number(row.totalPrice) : null,
     taxOut: row.taxOut != null ? Number(row.taxOut) : null,
     createdAt: row.createdAt ? toLocalTime(row.createdAt) : null,
     updatedAt: row.updatedAt ? toLocalTime(row.updatedAt) : null,
-  }));
+  };
+  });
 
   /* ================= RESPONSE ================= */
   return successResponse(event, "Project details retrieved", {

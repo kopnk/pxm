@@ -6,7 +6,7 @@ import { projectDetails } from "~/server/db/schema/project_details";
 import { projectFinancials } from "~/server/db/schema/project_financials";
 import { projects } from "~/server/db/schema/projects";
 import { requireRole } from "~/server/utils/authorize";
-import { buildPartnerEprPdfBuffer } from "~/server/utils/buildPartnerEprPdf.ts";
+import { buildPartnerEprPdfBuffer } from "~/server/utils/buildPartnerEprPdf";
 
 function safeFilename(value: string) {
   return value.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "EPR";

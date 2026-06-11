@@ -8,6 +8,10 @@ import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useProgressStageStore } from "@/stores/progressStage";
 import { apiFetch } from "~/utils/apiFetch";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import type {
+  ProjectProgressStageData,
+  ProjectProgressStatus,
+} from "@/stores/projectProgress";
 
 const route = useRoute();
 const router = useRouter();
@@ -61,7 +65,7 @@ const selectProject = async (p: any) => {
 type StageForm = {
   plan_submit_date: string | null;
   actual_approve_date: string | null;
-  status: string;
+  status: ProjectProgressStatus;
 };
 
 const emptyStage = (): StageForm => ({
@@ -110,8 +114,8 @@ const mergeLoadedStageData = (loaded: Record<string, any> | null) => {
   }
 };
 
-const buildPayloadStageData = () => {
-  const out: Record<string, StageForm> = {};
+const buildPayloadStageData = (): ProjectProgressStageData => {
+  const out: ProjectProgressStageData = {};
   for (const s of stages.value) {
     const r = row(s.code);
     out[s.code] = {
@@ -122,7 +126,9 @@ const buildPayloadStageData = () => {
   }
   for (const key of Object.keys(form.stageData)) {
     if (out[key]) continue;
-    out[key] = { ...form.stageData[key] };
+    const existing = form.stageData[key];
+    if (!existing) continue;
+    out[key] = { ...existing };
   }
   return out;
 };

@@ -1,7 +1,7 @@
 import { defineEventHandler, getCookie } from "h3";
 import { lucia } from "~/server/auth/lucia";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
+import { users, sessions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { successResponse, errorResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
       lastName: users.lastName,
       role: users.role,
       isActive: users.isActive,
+      mustChangePassword: users.mustChangePassword,
       avatarUrl: users.avatarUrl,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
@@ -70,6 +71,13 @@ export default defineEventHandler(async (event) => {
     user.role ?? "staff",
   );
 
+  const dbSession = await db
+    .select({ createdAt: sessions.createdAt })
+    .from(sessions)
+    .where(eq(sessions.id, session.id))
+    .limit(1)
+    .then((rows) => rows[0]);
+
   const formattedUser = {
     ...user,
     createdAt: toLocalTime(user.createdAt),
@@ -88,7 +96,7 @@ export default defineEventHandler(async (event) => {
     permissions,
     session: {
       id: session.id,
-      createdAt: toLocalTime(session.createdAt),
+      createdAt: toLocalTime(dbSession?.createdAt),
       expiresAt: toLocalTime(session.expiresAt),
     },
   });

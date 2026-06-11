@@ -20,7 +20,10 @@ import { dbTime } from "~/server/utils/dbTime";
 /* =========================================================
    🔹 SELECT BUILDER (Hierarchy Join)
 ========================================================= */
-function buildProjectDetailSelect(tx: typeof db) {
+type DbClient = typeof db;
+type DbTransaction = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
+
+function buildProjectDetailSelect(tx: DbClient | DbTransaction) {
   const city = alias(regions, "city");
   const sub = alias(regions, "sub");
   const region = alias(regions, "region");
@@ -214,10 +217,10 @@ export default defineEventHandler(async (event) => {
             siteId: item.siteId ?? null,
             siteName: item.siteName ?? null,
 
-            quantity,
+            quantity: quantity != null ? String(quantity) : null,
             uom: item.uom ?? null,
-            unitPrice,
-            totalPrice,
+            unitPrice: unitPrice != null ? String(unitPrice) : null,
+            totalPrice: totalPrice != null ? String(totalPrice) : null,
 
             status: item.status ?? "active",
 

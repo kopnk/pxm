@@ -8,6 +8,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { toLocalTime } from "~/server/utils/datetime";
 import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
 import {
@@ -75,6 +76,7 @@ export default defineEventHandler(async (event) => {
             body.remarksCancel !== undefined
               ? body.remarksCancel
               : d.remarksCancel,
+          updatedUser: userId,
           updatedAt: dbTime(),
         })
         .where(eq(projectDetails.id, body.projectDetailId));
@@ -94,7 +96,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
 
-    const createdRow = rows[0];
+    const createdRow = requireFirstRow(rows, "Project progress not created");
 
     await logAudit({
       event,

@@ -54,7 +54,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
 
-  event.context.user = dbUser;
+  event.context.user = {
+    id: dbUser.id,
+    email: dbUser.email,
+    role: dbUser.role ?? "staff",
+    isActive: Boolean(dbUser.isActive),
+  };
   event.context.session = session;
   event.context.permissions = await getUserPermissionsMatrix(
     dbUser.id,

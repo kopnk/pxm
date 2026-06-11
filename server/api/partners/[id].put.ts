@@ -9,6 +9,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -69,12 +70,13 @@ export default defineEventHandler(async (event) => {
         isActive: body.isActive ?? oldData.isActive,
 
         // ✅ DATABASE AUTHORITATIVE TIME
+        updatedUser: userId,
         updatedAt: dbTime(),
       })
       .where(eq(partners.id, id))
       .returning();
 
-    const row = rows[0];
+    const row = requireFirstRow(rows, "Partner not found");
 
     await logAudit({
       event,

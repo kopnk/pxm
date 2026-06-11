@@ -8,6 +8,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { getNextDcnOutNumber } from "~/server/utils/dcnNumber";
 
 export default defineEventHandler(async (event) => {
@@ -46,7 +47,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
 
-    const row = rows[0];
+    const row = requireFirstRow(rows, "DCN record not found");
 
     await logAudit({
       event,

@@ -136,7 +136,7 @@ export default defineEventHandler(async (event) => {
     .orderBy(desc(projectFinancials.createdAt), desc(projectFinancials.id));
 
   const mergedAll = mergeProjectFinancialsExportByDetail(
-    rows as ProjectFinancialExportRow[],
+    rows as unknown as ProjectFinancialExportRow[],
   );
 
   if (mergedAll.length > MAX_EXPORT_MERGED_ROWS) {
@@ -151,7 +151,8 @@ export default defineEventHandler(async (event) => {
   const mergedPage = paginateMergedExportRows(mergedAll, page, limit);
 
   const matrix = buildProjectFinancialsExportAoa(mergedPage);
-  const dateLabel = toLocalDate(Date.now()) ?? "export";
+  const dateLabel =
+    toLocalDate(mergedPage[0]?.createdAt ?? null) ?? "export";
 
   return successResponse(event, "Project financials export matrix ready", {
     matrix,

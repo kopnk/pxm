@@ -26,8 +26,8 @@ export const progressStage = pgTable("progress_stage", {
   isRequired: boolean("is_required").default(true),
   isActive: boolean("is_active").default(true),
 
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 
   createdUser: uuid("created_user").references(() => users.id),
 });

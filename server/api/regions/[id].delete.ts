@@ -1,16 +1,21 @@
-import { defineEventHandler } from "h3";
+import { defineEventHandler, createError } from "h3";
 import { db } from "~/server/db";
 import { regions } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
-import { successResponse, errorResponse } from "~/server/utils/response";
-import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
+import { successResponse } from "~/server/utils/response";
+import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { regionIdSchema } from "~/server/validation/regions.schema";
-import { toLocalTime } from "~/server/utils/datetime";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
-  const forbidden = requireDeleteSuperadmin(event);
+  const forbidden = requireRole(event, ["superadmin", "admin"]);
   if (forbidden) return forbidden;
+
+  const userId = event.context.user?.id;
+  if (!userId) {
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
+  }
 
   const { id } = regionIdSchema.parse(event.context.params);
 
@@ -20,12 +25,12 @@ export default defineEventHandler(async (event) => {
     .returning();
 
   if (!deleted) {
-    return errorResponse(event, "Region not found", 404);
+    throw createError({ statusCode: 404, statusMessage: "Region not found" });
   }
 
   await logAudit({
     event,
-    actorId: event.context.user.id,
+    actorId: userId,
     action: "DELETE",
     targetTable: "regions",
     targetId: id,
@@ -33,7 +38,6 @@ export default defineEventHandler(async (event) => {
   });
 
   return successResponse(event, "Region deleted", {
-    ...deleted,
-    createdAt: toLocalTime(deleted.createdAt),
+    ...mapLocalTimestamps(deleted),
   });
 });

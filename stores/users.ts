@@ -1,5 +1,6 @@
 // stores/users.ts
 import { defineStore } from "pinia";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
 export interface User {
   id: string;
@@ -11,6 +12,10 @@ export interface User {
   area?: string;
   role: string;
   isActive: boolean;
+  mustChangePassword?: boolean;
+  createdUser?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   avatarUrl?: string;
   lastLoginAt?: string | null;
   createdAt: string;
@@ -27,13 +32,27 @@ export interface UsersMeta {
 export const useUsersStore = defineStore("users", {
   state: () => ({
     items: [] as User[],
-    meta: null as UsersMeta | null,
+    meta: {
+      page: 1,
+      limit: DEFAULT_PAGE_LIMIT,
+      total: 0,
+      totalPages: 1,
+    } as UsersMeta,
     loading: false,
+    filters: {
+      search: "",
+      role: "",
+      isActive: "",
+    },
   }),
 
   actions: {
     setLoading(value: boolean) {
       this.loading = value;
+    },
+
+    setFilters(filters: Partial<typeof this.filters>) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     setUsers(items: User[], meta: UsersMeta) {
@@ -53,7 +72,12 @@ export const useUsersStore = defineStore("users", {
 
     clear() {
       this.items = [];
-      this.meta = null;
+      this.meta = {
+        page: 1,
+        limit: DEFAULT_PAGE_LIMIT,
+        total: 0,
+        totalPages: 1,
+      };
     },
   },
 });

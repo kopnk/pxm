@@ -11,6 +11,7 @@ import { logAudit } from "~/server/utils/audit";
 import { supabase } from "~/server/utils/supabase";
 import { randomUUID } from "crypto";
 import { uploadProjectFileSchema } from "~/server/validation/project_files.schema";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -30,10 +31,12 @@ export default defineEventHandler(async (event) => {
   let file: any;
 
   for (const field of form) {
-    if (field.name === "file") {
+    const fieldName = field.name;
+    if (!fieldName) continue;
+    if (fieldName === "file") {
       file = field;
     } else {
-      rawFields[field.name] = field.data.toString();
+      rawFields[fieldName] = field.data.toString();
     }
   }
 
@@ -118,7 +121,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
 
-    const row = rows[0];
+    const row = requireFirstRow(rows, "File record not created");
 
     await logAudit({
       event,

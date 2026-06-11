@@ -28,20 +28,18 @@ export const useClientsApi = () => {
   const getClients = async (params?: {
     page?: number;
     limit?: number;
-    search?: string;
-    isActive?: boolean;
   }) => {
     store.setLoading(true);
 
     try {
-      const query: any = {
-        page: params?.page ?? 1,
-        limit: params?.limit ?? DEFAULT_PAGE_LIMIT,
+      const isActive = store.filters.isActive;
+      const query: Record<string, string | number | boolean> = {
+        page: params?.page ?? store.page,
+        limit: params?.limit ?? store.limit ?? DEFAULT_PAGE_LIMIT,
       };
 
-      if (params?.search) query.search = params.search;
-      if (params?.isActive !== undefined)
-        query.isActive = params.isActive;
+      if (store.filters.search) query.search = store.filters.search;
+      if (isActive !== "") query.isActive = isActive === "true";
 
       const res: any = await apiFetch("/api/clients", {
         query,

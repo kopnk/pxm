@@ -17,17 +17,21 @@ type ApiEnvelope<T> = {
 export const useUsersApi = () => {
   const usersStore = useUsersStore();
 
-  const getUsers = async (params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    isActive?: boolean;
-  }) => {
+  const getUsers = async (params?: { page?: number; limit?: number }) => {
     usersStore.setLoading(true);
     try {
+      const isActive = usersStore.filters.isActive;
       const res = await apiFetch<ApiEnvelope<UsersListData>>("/api/users", {
-        query: params,
+        query: {
+          page: params?.page ?? usersStore.meta.page,
+          limit: params?.limit ?? usersStore.meta.limit,
+          search: usersStore.filters.search || undefined,
+          role: usersStore.filters.role || undefined,
+          isActive:
+            isActive === ""
+              ? undefined
+              : isActive === "true",
+        },
       });
 
       const d = res.data;
@@ -49,12 +53,11 @@ export const useUsersApi = () => {
 
   const signupUser = async (payload: {
     email: string;
-    password: string;
     firstName: string;
     lastName: string;
-    phone?: string;
-    region?: string;
-    area?: string;
+    phone: string;
+    region: string;
+    area: string;
     role: string;
     isActive?: boolean;
     avatarUrl?: string;
@@ -77,11 +80,20 @@ export const useUsersApi = () => {
     usersStore.removeUser(id);
   };
 
+  const resetUserPassword = async (id: string) => {
+    const res = await apiFetch<ApiEnvelope<{ id: string; mustChangePassword: boolean }>>(
+      `/api/users/${id}/reset-password`,
+      { method: "POST" },
+    );
+    return res.data;
+  };
+
   return {
     getUsers,
     getUserById,
     signupUser,
     updateUser,
     deleteUser,
+    resetUserPassword,
   };
 };

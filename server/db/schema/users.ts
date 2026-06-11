@@ -4,6 +4,7 @@ import {
   text,
   boolean,
   timestamp,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -22,10 +23,14 @@ export const users = pgTable("users", {
   phone: text("phone"),
 
   isActive: boolean("is_active").default(true),
+  mustChangePassword: boolean("must_change_password").default(false).notNull(),
 
-  lastLoginAt: timestamp("last_login_at"),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   avatarUrl: text("avatar_url"),
 
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdUser: uuid("created_user").references((): AnyPgColumn => users.id),
+  updatedUser: uuid("updated_user").references((): AnyPgColumn => users.id),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

@@ -6,6 +6,7 @@ import { createProgressStageSchema } from "~/server/validation/progress_stage.sc
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -37,7 +38,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
 
-    const row = rows[0];
+    const row = requireFirstRow(rows, "Progress stage not created");
 
     await logAudit({
       event,

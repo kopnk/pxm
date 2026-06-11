@@ -46,6 +46,7 @@ export const updateProjectProgressSchema =
 export const projectProgressExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   stage: z.string().max(120).optional(),
+  stageDateType: z.enum(["planned", "actual"]).optional(),
   status: z.string().max(120).optional(),
   project: z.string().max(200).optional(),
   detail: z.string().max(200).optional(),

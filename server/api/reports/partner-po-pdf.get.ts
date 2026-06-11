@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const first = rows[0];
+  const first = rows[0]!;
   const poDates = rows
     .map((r) => r.poDatePartner)
     .filter(Boolean)

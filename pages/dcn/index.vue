@@ -1,87 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { useDcnApi, DCN_OUT_TYPE_OPTIONS } from "@/composables/useDcnApi";
-import { useListPagePermissions } from "@/composables/useListPagePermissions";
-import { useFormHandler } from "@/composables/useFormHandler";
-import { toastSuccessDeleted } from "@/composables/useToastMessages";
+import { useDcnListPage } from "@/composables/useDcnListPage";
 import { formatListTimestamp } from "@/utils/formatListTimestamp";
-import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
-const { store, getDcns, deleteDcn } = useDcnApi();
-const { handle } = useFormHandler();
-const { canCreate, canEdit, canDelete } = useListPagePermissions("dcn");
-
-const search = ref("");
-const flow = ref<"" | "in" | "out">("");
-const type = ref("");
-const deletingId = ref<string | null>(null);
-
-const loadData = async (page = 1) => {
-  await getDcns({
-    page,
-    limit: store.limit ?? DEFAULT_PAGE_LIMIT,
-    search: search.value || undefined,
-    flow: flow.value || undefined,
-    type: flow.value === "out" && type.value ? type.value : undefined,
-  });
-};
-
-onMounted(() => {
-  void loadData();
-});
-
-let timeout: ReturnType<typeof setTimeout> | null = null;
-watch(search, () => {
-  if (timeout) clearTimeout(timeout);
-  timeout = setTimeout(() => {
-    void loadData(1);
-  }, 300);
-});
-
-watch([flow, type], ([nextFlow]) => {
-  if (nextFlow !== "out") type.value = "";
-  void loadData(1);
-});
-
-const changePage = (page: number) => {
-  if (page < 1 || page > store.totalPages) return;
-  void loadData(page);
-};
-
-const remove = async (
-  id: string,
-  number?: string | null,
-  letterDate?: string | null,
-) => {
-  if (!canDelete.value) return;
-  const dcnNumber = number?.trim() || "(no number)";
-  const dateLabel = letterDate?.trim() || "unknown date";
-  const confirmed = window.confirm(
-    `Delete DCN "${dcnNumber}" dated ${dateLabel}?`,
-  );
-  if (!confirmed) return;
-
-  try {
-    await handle(async () => {
-      deletingId.value = id;
-      await deleteDcn(id);
-      await loadData(store.page);
-    }, toastSuccessDeleted("dcn"));
-  } finally {
-    deletingId.value = null;
-  }
-};
-
-const flowBadgeClass = (value: string) =>
-  value === "out" ? "bg-warning text-dark" : "bg-info text-dark";
-
-const typeLabelByCode = DCN_OUT_TYPE_OPTIONS.reduce<Record<string, string>>(
-  (acc, option) => {
-    acc[option.value] = option.label;
-    return acc;
-  },
-  {},
-);
+const {
+  store,
+  searchFilter,
+  flowFilter,
+  typeFilter,
+  deletingId,
+  canCreate,
+  canEdit,
+  canDelete,
+  changePage,
+  remove,
+  flowBadgeClass,
+  typeLabelByCode,
+  showingStart,
+  showingEnd,
+  DCN_OUT_TYPE_OPTIONS,
+} = useDcnListPage();
 
 const displayType = (value: string | null | undefined) => {
   if (!value) return "—";
@@ -104,14 +41,15 @@ const displayType = (value: string | null | undefined) => {
       <div class="card-body row g-2">
         <div class="col-md-4">
           <input
-            v-model="search"
+            v-model="searchFilter"
+            type="search"
             class="form-control"
             placeholder="Search"
           />
         </div>
 
         <div class="col-md-3">
-          <select v-model="flow" class="form-select">
+          <select v-model="flowFilter" class="form-select">
             <option value="">All Flow</option>
             <option value="in">In</option>
             <option value="out">Out</option>
@@ -119,7 +57,11 @@ const displayType = (value: string | null | undefined) => {
         </div>
 
         <div class="col-md-3">
-          <select v-model="type" class="form-select" :disabled="flow !== 'out'">
+          <select
+            v-model="typeFilter"
+            class="form-select"
+            :disabled="flowFilter !== 'out'"
+          >
             <option value="">All Type</option>
             <option
               v-for="option in DCN_OUT_TYPE_OPTIONS"
@@ -180,6 +122,8 @@ const displayType = (value: string | null | undefined) => {
                   </span>
                 </td>
                 <td>
+                  <div class="data-meta">Created by: {{ item.createdBy || "-" }}</div>
+                  <div class="data-meta">Updated by: {{ item.updatedBy || "-" }}</div>
                   <div class="data-meta">Created: {{ formatListTimestamp(item.createdAt) }}</div>
                   <div class="data-meta">Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                   <div v-if="canDelete" class="mt-1">
@@ -210,11 +154,8 @@ const displayType = (value: string | null | undefined) => {
       class="d-flex justify-content-between align-items-center mt-3"
     >
       <div class="data-meta">
-        Showing
-        {{ store.total === 0 ? 0 : (store.page - 1) * store.limit + 1 }}
-        -
-        {{ Math.min(store.page * store.limit, store.total) }}
-        of {{ store.total }} entries
+        Showing {{ showingStart }} - {{ showingEnd }} of
+        {{ store.total }} entries
       </div>
 
       <AppPagination

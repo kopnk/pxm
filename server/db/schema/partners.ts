@@ -7,6 +7,7 @@ import {
   numeric,
   jsonb,
 } from "drizzle-orm/pg-core";
+import { users } from "./users";
 
 export const partners = pgTable("partners", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -29,6 +30,9 @@ export const partners = pgTable("partners", {
 
   rating: numeric("rating", { precision: 2, scale: 1 }),
   isActive: boolean("is_active").default(true),
+
+  createdUser: uuid("created_user").references(() => users.id),
+  updatedUser: uuid("updated_user").references(() => users.id),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

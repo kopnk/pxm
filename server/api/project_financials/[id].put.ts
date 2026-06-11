@@ -140,6 +140,7 @@ export default defineEventHandler(async (event) => {
           oldData.unitPriceClient,
         ),
 
+        updatedUser: userId,
         updatedAt: dbTime(),
       })
       .where(eq(projectFinancials.id, id))

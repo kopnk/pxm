@@ -5,6 +5,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { and, eq, ilike, count, asc } from "drizzle-orm";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
 
@@ -21,7 +22,14 @@ export default defineEventHandler(async (event) => {
   }
 
   if (query.stageType) {
-    conditions.push(eq(progressStage.stageType, String(query.stageType)));
+    const stageType = String(query.stageType);
+    if (
+      stageType === "admin" ||
+      stageType === "field" ||
+      stageType === "document"
+    ) {
+      conditions.push(eq(progressStage.stageType, stageType));
+    }
   }
 
   if (query.isActive !== undefined) {
@@ -49,7 +57,7 @@ export default defineEventHandler(async (event) => {
     .offset(offset);
 
   return successResponse(event, "Progress stages retrieved", {
-    items,
+    items: items.map((row) => mapLocalTimestamps(row)),
     page,
     limit,
     total,

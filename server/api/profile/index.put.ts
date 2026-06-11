@@ -8,6 +8,7 @@ import { updateProfileSchema } from "~/server/validation/profile.schema";
 import { parseBody } from "~/server/utils/zod";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -75,10 +76,10 @@ export default defineEventHandler(async (event) => {
       targetTable: "users",
       targetId: actor.id,
       oldData: oldUser,
-      newData: rows[0],
+      newData: requireFirstRow(rows, "Profile not found"),
     });
 
-    return rows[0];
+    return requireFirstRow(rows, "Profile not found");
   });
 
   return successResponse(event, "Profile updated successfully", {

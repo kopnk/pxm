@@ -12,6 +12,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
 import {
@@ -78,6 +79,7 @@ export default defineEventHandler(async (event) => {
 
     for (const stageCode in newStageData) {
       const stage = newStageData[stageCode];
+      if (!stage) continue;
 
       if (stage.status === "approved" && !stage.actual_approve_date) {
         throw createError({
@@ -119,6 +121,7 @@ export default defineEventHandler(async (event) => {
             body.remarksCancel !== undefined
               ? body.remarksCancel
               : d.remarksCancel,
+          updatedUser: userId,
           updatedAt: dbTime(),
         })
         .where(eq(projectDetails.id, detailId));
@@ -132,12 +135,13 @@ export default defineEventHandler(async (event) => {
 
         stageData: newStageData,
 
+        updatedUser: userId,
         updatedAt: dbTime(),
       })
       .where(eq(projectProgress.id, id))
       .returning();
 
-    const updatedRow = rows[0];
+    const updatedRow = requireFirstRow(rows, "Project progress not found");
 
     await logAudit({
       event,
@@ -149,14 +153,12 @@ export default defineEventHandler(async (event) => {
       newData: updatedRow,
     });
 
-    if (updatedRow) {
-      await syncOutFlowFinancialAfterProgressSave(tx, {
-        projectDetailId: updatedRow.projectDetailId,
-        projectProgressId: updatedRow.id,
-        stageData: (updatedRow.stageData ?? {}) as StageData,
-      });
-      await reconcilePaidSyncForProjectDetail(tx, updatedRow.projectDetailId);
-    }
+    await syncOutFlowFinancialAfterProgressSave(tx, {
+      projectDetailId: updatedRow.projectDetailId,
+      projectProgressId: updatedRow.id,
+      stageData: (updatedRow.stageData ?? {}) as StageData,
+    });
+    await reconcilePaidSyncForProjectDetail(tx, updatedRow.projectDetailId);
 
     return updatedRow;
   });

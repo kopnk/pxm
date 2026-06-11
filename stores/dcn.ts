@@ -13,6 +13,8 @@ export interface DcnItem {
   subject?: string | null;
   flow: DcnFlow;
   createdUser?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +27,11 @@ export const useDcnStore = defineStore("dcn", {
     total: 0,
     totalPages: 1,
     loading: false,
+    filters: {
+      search: "",
+      flow: "" as "" | DcnFlow,
+      type: "",
+    },
   }),
 
   actions: {
@@ -44,6 +51,12 @@ export const useDcnStore = defineStore("dcn", {
 
     setLoading(value: boolean) {
       this.loading = value;
+    },
+
+    setFilters(
+      filters: Partial<{ search: string; flow: "" | DcnFlow; type: string }>,
+    ) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     updateItemInList(updated: DcnItem) {

@@ -4,8 +4,13 @@ import { projects } from "~/server/db/schema/projects";
 import { projectProgress } from "~/server/db/schema/project_progress";
 import { projectFinancials } from "~/server/db/schema/project_financials";
 import { clients } from "~/server/db/schema/clients";
-
 import { eq, desc, count, sql } from "drizzle-orm";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  mapRowAuditUsers,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
 
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
@@ -27,6 +32,8 @@ export default defineEventHandler(async (event) => {
 
   const search = query.search?.toString().trim();
   const status = query.status?.toString().trim();
+
+  const auditUsers = createUserAuditAliases();
 
   const where = buildProjectsListWhere({
     search: search || undefined,
@@ -107,10 +114,19 @@ export default defineEventHandler(async (event) => {
       dpp: financialByProject.dpp,
 
       createdUser: projects.createdUser,
+      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
       createdAt: projects.createdAt,
       updatedAt: projects.updatedAt,
     })
     .from(projects)
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(projects.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(projects.updatedUser, auditUsers.updater.id),
+    )
     .leftJoin(clients, eq(clients.id, projects.clientId))
     .leftJoin(
       progressByProject,
@@ -127,10 +143,10 @@ export default defineEventHandler(async (event) => {
 
   /* ================= FORMAT ================= */
 
-  const items = rows.map((row) => ({
-
-    ...row,
-
+  const items = rows.map((row) => {
+    const mapped = mapRowAuditUsers(row);
+    return {
+    ...mapped,
     subTotal: row.subTotal ? Number(row.subTotal) : 0,
     discount: row.discount ? Number(row.discount) : 0,
     netPrice: row.netPrice ? Number(row.netPrice) : 0,
@@ -149,8 +165,8 @@ export default defineEventHandler(async (event) => {
     poDate: toLocalDate(row.poDate),
     deliveryDate: toLocalDate(row.deliveryDate),
     komDate: toLocalDate(row.komDate),
-
-  }));
+  };
+  });
 
   /* ================= RESPONSE ================= */
 

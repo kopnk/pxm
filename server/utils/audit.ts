@@ -13,7 +13,8 @@ export type AuditAction =
   | "DELETE"
   | "LOGIN"
   | "LOGOUT"
-  | "CHANGE_PASSWORD";
+  | "CHANGE_PASSWORD"
+  | "RESET_PASSWORD";
 
 const TABLE_LABELS: Record<string, string> = {
   users: "Users",

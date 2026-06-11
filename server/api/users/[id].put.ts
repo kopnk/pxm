@@ -8,6 +8,10 @@ import { logAudit } from "~/server/utils/audit";
 import { userIdParamSchema, userUpdateSchema } from "~/server/validation/users.schema";
 import { parseBody } from "~/server/utils/zod";
 import { dbTime } from "~/server/utils/dbTime";
+import {
+  assertAssignableUserRole,
+  assertNotSuperadminTarget,
+} from "~/server/utils/userRolePolicy";
 
 export default defineEventHandler(async (event) => {
 
@@ -33,6 +37,12 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: "User not found" });
     }
 
+    assertNotSuperadminTarget(oldUser.role ?? "staff", "update");
+
+    if (body.role !== undefined) {
+      assertAssignableUserRole(actor.role, oldUser.role ?? "staff", body.role);
+    }
+
     const updateData: any = {
       firstName: body.firstName ?? oldUser.firstName,
       lastName: body.lastName ?? oldUser.lastName,
@@ -41,7 +51,7 @@ export default defineEventHandler(async (event) => {
       area: body.area ?? oldUser.area,
       avatarUrl: body.avatarUrl ?? oldUser.avatarUrl,
 
-      // ✅ DATABASE TIME ONLY
+      updatedUser: actor.id,
       updatedAt: dbTime(),
     };
 

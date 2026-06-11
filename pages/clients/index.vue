@@ -1,76 +1,24 @@
 <script setup lang="ts">
 import { formatListTimestamp } from "@/utils/formatListTimestamp";
-import { ref, watch, onMounted } from "vue";
-import { useClientsStore } from "@/stores/clients";
-import { useClientsApi } from "@/composables/useClientsApi";
-import { useFormHandler } from "@/composables/useFormHandler";
-import { toastSuccessDeleted } from "@/composables/useToastMessages";
-import { useListPagePermissions } from "@/composables/useListPagePermissions";
-import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
+import { useClientsListPage } from "@/composables/useClientsListPage";
 
-const store = useClientsStore();
-const { getClients, deleteClient } = useClientsApi();
-const { canCreate, canEdit, canDelete } = useListPagePermissions("clients");
-const { handle } = useFormHandler();
-
-const search = ref("");
-const isActive = ref<string | "">("");
-const deletingId = ref<string | null>(null);
-
-/* ================= FETCH DATA ================= */
-const loadData = async (page = 1) => {
-  await getClients({
-    page,
-    limit: store.limit ?? DEFAULT_PAGE_LIMIT,
-    search: search.value || undefined,
-    isActive: isActive.value === "" ? undefined : isActive.value === "true",
-  });
-};
-
-onMounted(() => loadData());
-
-/* ================= FILTER ================= */
-let timeout: any;
-watch(search, () => {
-  clearTimeout(timeout);
-  timeout = setTimeout(() => {
-    loadData(1);
-  }, 300);
-});
-
-watch(isActive, () => {
-  loadData(1);
-});
-
-/* ================= ACTIONS ================= */
-const remove = async (id: string, clientName?: string | null) => {
-  if (!canDelete.value) return;
-
-  const label = clientName?.trim() || "(no name)";
-  const confirmed = window.confirm(`Delete client "${label}"?`);
-  if (!confirmed) return;
-
-  await handle(async () => {
-    deletingId.value = id;
-
-    await deleteClient(id);
-
-    await loadData(store.page);
-  }, toastSuccessDeleted("client"));
-
-  deletingId.value = null;
-};
-
-/* ================= PAGINATION ================= */
-const changePage = (page: number) => {
-  if (page < 1 || page > store.totalPages) return;
-  loadData(page);
-};
+const {
+  store,
+  searchFilter,
+  isActiveFilter,
+  deletingId,
+  canCreate,
+  canEdit,
+  canDelete,
+  changePage,
+  remove,
+  showingStart,
+  showingEnd,
+} = useClientsListPage();
 </script>
 
 <template>
   <div class="container-fluid py-4 px-3">
-    <!-- HEADER -->
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
@@ -81,15 +29,19 @@ const changePage = (page: number) => {
       </NuxtLink>
     </div>
 
-    <!-- FILTER -->
     <div class="card mb-3 border-0 shadow-sm">
       <div class="card-body row g-2">
         <div class="col-md-4">
-          <input v-model="search" class="form-control" placeholder="Search" />
+          <input
+            v-model="searchFilter"
+            type="search"
+            class="form-control"
+            placeholder="Search"
+          />
         </div>
 
         <div class="col-md-3">
-          <select v-model="isActive" class="form-select">
+          <select v-model="isActiveFilter" class="form-select">
             <option value="">All</option>
             <option value="true">Active</option>
             <option value="false">Inactive</option>
@@ -98,7 +50,6 @@ const changePage = (page: number) => {
       </div>
     </div>
 
-    <!-- TABLE -->
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
@@ -116,80 +67,73 @@ const changePage = (page: number) => {
             </thead>
 
             <tbody>
-              <!-- LOADING -->
               <tr v-if="store.loading">
                 <td colspan="7" class="text-center py-3">Loading...</td>
               </tr>
 
               <tr v-for="(c, index) in store.items" :key="c.id">
                 <td class="text-center fw-bold">
-                    {{ (store.page - 1) * store.limit + index + 1 }}
-                  </td>
+                  {{ (store.page - 1) * store.limit + index + 1 }}
+                </td>
 
-                  <!-- NAME -->
-                  <td>
-                    <NuxtLink
-                      v-if="canEdit"
-                      :to="`/clients/update?id=${c.id}`"
-                      class="text-primary fw-semibold text-decoration-none"
-                    >
-                      {{ c.name }}
-                    </NuxtLink>
+                <td>
+                  <NuxtLink
+                    v-if="canEdit"
+                    :to="`/clients/update?id=${c.id}`"
+                    class="text-primary fw-semibold text-decoration-none"
+                  >
+                    {{ c.name }}
+                  </NuxtLink>
+                  <span v-else>{{ c.name }}</span>
+                  <div class="data-meta mt-1">{{ c.contactEmail || "—" }}</div>
+                </td>
 
-                    <span v-else>
-                      {{ c.name }}
-                    </span>
-                    <div class="data-meta mt-1">{{ c.contactEmail || "—" }}</div>
-                  </td>
-
-                  <td>{{ c.npwp }}</td>
-
-                  <td>
-                    <div class="fw-semibold">{{ c.bankName || "—" }}</div>
-                    <div class="data-meta">{{ c.bankAccount || "—" }}</div>
-                  </td>
-
-                  <td>
-                    <div class="fw-semibold">{{ c.contactName || "—" }}</div>
-                    <div class="data-meta">{{ c.contactPhone || "—" }}</div>
-                  </td>
-
-                  <td>
-                    {{ c.addressText }}
-                    <div v-if="c.addressMeta">
-                      <div class="data-meta mt-1">
-                        {{ c.addressMeta.city }},
-                        {{ c.addressMeta.province }}
-                      </div>
-                    </div>
-                  </td>
-
-                  <!-- STATUS + DELETE -->
-                  <td>
-                    <div>
-                      <span
-                        class="badge me-2"
-                        :class="c.isActive ? 'bg-success' : 'bg-danger'"
-                      >
-                        {{ c.isActive ? "Active" : "Inactive" }}
-                      </span>
-                    </div>
+                <td>{{ c.npwp }}</td>
+                <td>
+                  <div class="fw-semibold">{{ c.bankName || "—" }}</div>
+                  <div class="data-meta">{{ c.bankAccount || "—" }}</div>
+                </td>
+                <td>
+                  <div class="fw-semibold">{{ c.contactName || "—" }}</div>
+                  <div class="data-meta">{{ c.contactPhone || "—" }}</div>
+                </td>
+                <td>
+                  {{ c.addressText || "—" }}
+                  <div v-if="c.addressMeta">
                     <div class="data-meta mt-1">
-                      <div>Created: {{ formatListTimestamp(c.createdAt) }}</div>
-                      <div>Updated: {{ formatListTimestamp(c.updatedAt) }}</div>
+                      {{ c.addressMeta.city }},
+                      {{ c.addressMeta.province }}
                     </div>
-                    <span
-                      v-if="canDelete"
-                      class="text-danger fw-semibold"
-                      style="cursor: pointer"
-                      @click.stop="remove(c.id, c.name)"
-                    >
-                      ×
-                    </span>
-                  </td>
-                </tr>
+                  </div>
+                </td>
 
-              <!-- EMPTY -->
+                <td>
+                  <div>
+                    <span
+                      class="badge me-2"
+                      :class="c.isActive ? 'bg-success' : 'bg-danger'"
+                    >
+                      {{ c.isActive ? "Active" : "Inactive" }}
+                    </span>
+                  </div>
+                  <div class="data-meta mt-1">
+                    <div>Created by: {{ c.createdBy || "-" }}</div>
+                    <div>Updated by: {{ c.updatedBy || "-" }}</div>
+                    <div>Created: {{ formatListTimestamp(c.createdAt) }}</div>
+                    <div>Updated: {{ formatListTimestamp(c.updatedAt) }}</div>
+                  </div>
+                  <span
+                    v-if="canDelete"
+                    class="text-danger fw-semibold"
+                    style="cursor: pointer"
+                    @click.stop="remove(c.id, c.name)"
+                  >
+                    <span v-if="deletingId === c.id">...</span>
+                    <span v-else>×</span>
+                  </span>
+                </td>
+              </tr>
+
               <tr v-if="!store.loading && store.items.length === 0">
                 <td colspan="7" class="text-center text-muted py-3">
                   No data available
@@ -201,19 +145,13 @@ const changePage = (page: number) => {
       </div>
     </div>
 
-    <!-- SHOWING + PAGINATION -->
     <div
       v-if="store.total !== undefined"
       class="d-flex justify-content-between align-items-center mt-3"
     >
-      <div>
-        <div class="data-meta">
-          Showing
-          {{ store.total === 0 ? 0 : (store.page - 1) * store.limit + 1 }}
-          -
-          {{ Math.min(store.page * store.limit, store.total) }}
-          of {{ store.total }} entries
-        </div>
+      <div class="data-meta">
+        Showing {{ showingStart }} - {{ showingEnd }} of
+        {{ store.total }} entries
       </div>
 
       <AppPagination

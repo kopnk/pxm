@@ -35,8 +35,9 @@ export const projects = pgTable("projects", {
   clientId: uuid("client_id").references(() => clients.id),
 
   createdUser: uuid("created_user").references(() => users.id),
+  updatedUser: uuid("updated_user").references(() => users.id),
 
-createdAt: timestamp("created_at", { withTimezone: true })
+  createdAt: timestamp("created_at", { withTimezone: true })
   .defaultNow()
   .notNull(),
 

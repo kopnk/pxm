@@ -9,6 +9,7 @@ import { logAudit } from "~/server/utils/audit";
 import { z } from "zod";
 import { toLocalTime } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -51,6 +52,7 @@ export default defineEventHandler(async (event) => {
           signatoryName: body.signatoryName ?? null,
           signatoryTitle: body.signatoryTitle ?? null,
           isActive: body.isActive ?? true,
+          createdUser: userId,
 
           // ✅ DATABASE TIME CENTRALIZED
           createdAt: dbTime(),
@@ -83,11 +85,14 @@ export default defineEventHandler(async (event) => {
           createdAt: toLocalTime(row.createdAt),
           updatedAt: toLocalTime(row.updatedAt),
         }))
-      : {
-          ...created[0],
-          createdAt: toLocalTime(created[0].createdAt),
-          updatedAt: toLocalTime(created[0].updatedAt),
-        },
+      : (() => {
+          const row = requireFirstRow(created);
+          return {
+            ...row,
+            createdAt: toLocalTime(row.createdAt),
+            updatedAt: toLocalTime(row.updatedAt),
+          };
+        })(),
     201
   );
 });

@@ -17,6 +17,7 @@ export type AuthSessionUser = {
   firstName?: string;
   lastName?: string;
   isActive?: boolean;
+  mustChangePassword?: boolean;
   avatarUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;

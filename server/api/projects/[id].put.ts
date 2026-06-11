@@ -8,6 +8,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { updateProjectSchema } from "~/server/validation/projects.schema";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { mapLocalTimestamps, toLocalDate } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
@@ -60,9 +61,10 @@ export default defineEventHandler(async (event) => {
       prScNumber: body.prScNumber ?? oldData.prScNumber,
       poNumber: body.poNumber ?? oldData.poNumber,
 
-      poDate: body.poDate !== undefined
-        ? toLocalDate(body.poDate)
-        : oldData.poDate,
+      poDate:
+        body.poDate !== undefined
+          ? (toLocalDate(body.poDate) ?? oldData.poDate)
+          : oldData.poDate,
 
       deliveryDate: body.deliveryDate !== undefined
         ? toLocalDate(body.deliveryDate)
@@ -88,13 +90,13 @@ export default defineEventHandler(async (event) => {
       clientId:
         body.clientId !== undefined ? body.clientId : oldData.clientId,
 
-      // ✅ AUTHORITATIVE DATABASE TIME
+      updatedUser: userId,
       updatedAt: dbTime(),
     })
     .where(eq(projects.id, id))
     .returning();
 
-  const updated = updatedRows[0];
+  const updated = requireFirstRow(updatedRows, "Project not found");
 
   /* ================= AUDIT ================= */
   await logAudit({

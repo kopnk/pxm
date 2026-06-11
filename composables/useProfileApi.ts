@@ -39,7 +39,7 @@ export const useProfileApi = () => {
   };
 
   const changePassword = async (payload: {
-    currentPassword: string;
+    currentPassword?: string;
     newPassword: string;
     confirmPassword: string;
   }) => {

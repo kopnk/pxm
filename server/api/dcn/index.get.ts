@@ -4,6 +4,12 @@ import { dcn } from "~/server/db/schema/dcn";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  mapRowAuditUsers,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
 import { and, or, ilike, eq, count, desc, gte, lte } from "drizzle-orm";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
 
@@ -53,20 +59,46 @@ export default defineEventHandler(async (event) => {
   const total = Number(totalResult[0]?.value ?? 0);
   const totalPages = buildTotalPages(total, limit);
 
+  const auditUsers = createUserAuditAliases();
+
   const rows = await db
-    .select()
+    .select({
+      id: dcn.id,
+      flow: dcn.flow,
+      type: dcn.type,
+      number: dcn.number,
+      letterDate: dcn.letterDate,
+      toAddress: dcn.toAddress,
+      fromAddress: dcn.fromAddress,
+      subject: dcn.subject,
+      createdUser: dcn.createdUser,
+      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
+      createdAt: dcn.createdAt,
+      updatedAt: dcn.updatedAt,
+    })
     .from(dcn)
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(dcn.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(dcn.updatedUser, auditUsers.updater.id),
+    )
     .where(where)
     .orderBy(desc(dcn.createdAt), desc(dcn.id))
     .limit(limit)
     .offset(offset);
 
-  const items = rows.map((row) => ({
-    ...row,
-    letterDate: toLocalDate(row.letterDate as unknown as string),
-    createdAt: toLocalTime(row.createdAt),
-    updatedAt: toLocalTime(row.updatedAt),
-  }));
+  const items = rows.map((row) => {
+    const mapped = mapRowAuditUsers(row);
+    return {
+      ...mapped,
+      letterDate: toLocalDate(row.letterDate as unknown as string),
+      createdAt: toLocalTime(row.createdAt),
+      updatedAt: toLocalTime(row.updatedAt),
+    };
+  });
 
   return successResponse(event, "DCN records retrieved", {
     items,

@@ -5,14 +5,12 @@ import { z } from "zod";
  */
 export const changePasswordSchema = z
   .object({
-    currentPassword: z
-      .string({ required_error: "Current password is required" })
-      .min(1),
+    currentPassword: z.string().optional(),
     newPassword: z
-      .string({ required_error: "New password is required" })
+      .string({ error: "New password is required" })
       .min(6, "New password must be at least 6 characters"),
     confirmPassword: z
-      .string({ required_error: "Confirm password is required" }),
+      .string({ error: "Confirm password is required" }),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Password confirmation does not match",

@@ -6,6 +6,7 @@ import {
   timestamp,
   jsonb,
 } from "drizzle-orm/pg-core";
+import { users } from "./users";
 
 export const clients = pgTable("clients", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -28,7 +29,10 @@ export const clients = pgTable("clients", {
 
   isActive: boolean("is_active").default(true),
 
-createdAt: timestamp("created_at", { withTimezone: true })
+  createdUser: uuid("created_user").references(() => users.id),
+  updatedUser: uuid("updated_user").references(() => users.id),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
   .defaultNow()
   .notNull(),
 

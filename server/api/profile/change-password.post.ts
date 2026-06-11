@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
     .select({
       id: users.id,
       passwordHash: users.passwordHash,
+      mustChangePassword: users.mustChangePassword,
     })
     .from(users)
     .where(eq(users.id, authUser.id))
@@ -48,17 +49,25 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  /* ================= VERIFY OLD PASSWORD ================= */
-  const valid = await argon2.verify(
-    user.passwordHash,
-    currentPassword
-  );
+  const forcedChange = Boolean(user.mustChangePassword);
 
-  if (!valid) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Current password is incorrect",
-    });
+  /* ================= VERIFY OLD PASSWORD ================= */
+  if (!forcedChange) {
+    if (!currentPassword?.trim()) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Current password is required",
+      });
+    }
+
+    const valid = await argon2.verify(user.passwordHash, currentPassword);
+
+    if (!valid) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Current password is incorrect",
+      });
+    }
   }
 
   /* ================= HASH NEW PASSWORD ================= */
@@ -71,6 +80,7 @@ export default defineEventHandler(async (event) => {
       .update(users)
       .set({
         passwordHash: newPasswordHash,
+        mustChangePassword: false,
         updatedAt: dbTime(),
       })
       .where(eq(users.id, authUser.id));

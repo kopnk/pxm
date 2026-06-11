@@ -4,11 +4,16 @@ import { db } from "~/server/db";
 import { projectProgress } from "~/server/db/schema/project_progress";
 import { projects } from "~/server/db/schema/projects";
 import { projectDetails } from "~/server/db/schema/project_details";
-
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  auditUserNamesFromRow,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
 
 import { eq, count, desc } from "drizzle-orm";
 import { buildProjectProgressListWhere } from "~/server/utils/projectProgressListWhere";
@@ -29,6 +34,7 @@ export default defineEventHandler(async (event) => {
   const project = query.project?.toString().trim();
   const detail = query.detail?.toString().trim();
   const stageFilter = query.stage?.toString().trim();
+  const stageDateType = query.stageDateType?.toString().trim();
   const statusFilter = query.status?.toString().trim();
 
   const where = buildProjectProgressListWhere({
@@ -36,6 +42,10 @@ export default defineEventHandler(async (event) => {
     project: globalSearch ? undefined : project || undefined,
     detail: globalSearch ? undefined : detail || undefined,
     stage: stageFilter || undefined,
+    stageDateType:
+      stageDateType === "planned" || stageDateType === "actual"
+        ? stageDateType
+        : undefined,
     status: statusFilter || undefined,
   });
 
@@ -84,6 +94,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const auditUsers = createUserAuditAliases();
+
   const rows = await db
     .select({
       id: projectProgress.id,
@@ -106,10 +118,20 @@ export default defineEventHandler(async (event) => {
 
       detailStatus: projectDetails.status,
 
+      createdUser: projectProgress.createdUser,
+      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
       createdAt: projectProgress.createdAt,
       updatedAt: projectProgress.updatedAt,
     })
     .from(projectProgress)
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(projectProgress.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(projectProgress.updatedUser, auditUsers.updater.id),
+    )
     .leftJoin(projects, eq(projects.id, projectProgress.projectId))
     .leftJoin(projectDetails, eq(projectDetails.id, projectProgress.projectDetailId))
     .where(where)
@@ -161,6 +183,7 @@ export default defineEventHandler(async (event) => {
 
       detailStatus: row.detailStatus ?? null,
 
+      ...auditUserNamesFromRow(row),
       createdAt: toLocalTime(row.createdAt),
       updatedAt: toLocalTime(row.updatedAt),
     };

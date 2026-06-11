@@ -64,12 +64,10 @@ const submit = async () => {
     await createPartner(payload);
 
     // tetap refresh store (logic tidak diubah)
-    const res: any = await getPartners({
+    await getPartners({
       page: store.page,
       limit: store.limit,
     });
-
-    store.setPartners(res.data);
 
     await router.replace("/partners");
   }, toastSuccessCreated("partner"));

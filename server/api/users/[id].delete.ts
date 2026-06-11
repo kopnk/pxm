@@ -6,6 +6,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { logAudit } from "~/server/utils/audit";
 import { userIdParamSchema } from "~/server/validation/users.schema";
+import { assertNotSuperadminTarget } from "~/server/utils/userRolePolicy";
 
 export default defineEventHandler(async (event) => {
 
@@ -32,6 +33,8 @@ export default defineEventHandler(async (event) => {
     if (!oldUser) {
       throw createError({ statusCode: 404, statusMessage: "User not found" });
     }
+
+    assertNotSuperadminTarget(oldUser.role ?? "staff", "delete");
 
     await tx.delete(users).where(eq(users.id, id));
 

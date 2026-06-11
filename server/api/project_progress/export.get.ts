@@ -49,6 +49,7 @@ export default defineEventHandler(async (event) => {
   const parsed = projectProgressExportQueryZ.safeParse({
     search: firstQuery(raw.search),
     stage: firstQuery(raw.stage),
+    stageDateType: firstQuery(raw.stageDateType),
     status: firstQuery(raw.status),
     project: firstQuery(raw.project),
     detail: firstQuery(raw.detail),
@@ -70,6 +71,7 @@ export default defineEventHandler(async (event) => {
     project: globalSearch ? undefined : q.project,
     detail: globalSearch ? undefined : q.detail,
     stage: q.stage,
+    stageDateType: q.stageDateType,
     status: q.status,
   });
 

@@ -13,7 +13,15 @@ export default defineEventHandler(async (event) => {
   const forbidden = requireDeleteSuperadmin(event);
   if (forbidden) return forbidden;
 
-  const id = event.context.params.id;
+  const id = event.context.params?.id;
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
+  }
+
+  const actorId = event.context.user?.id;
+  if (!actorId) {
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
+  }
 
   // =========================
   // GET OLD DATA (EXPLICIT)
@@ -60,7 +68,7 @@ export default defineEventHandler(async (event) => {
   // =========================
   await logAudit({
     event,
-    actorId: event.context.user.id,
+    actorId,
     action: "DELETE",
     targetTable: "projects",
     targetId: id,

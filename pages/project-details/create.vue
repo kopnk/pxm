@@ -177,13 +177,15 @@ const downloadBulkTemplate = async () => {
           cityKabId: item.id ?? "",
         };
       })
-      .sort((a, b) => {
-        return (
+      .sort(
+        (
+          a: { regionName: string; subRegionName: string; cityKabName: string },
+          b: { regionName: string; subRegionName: string; cityKabName: string },
+        ) =>
           a.regionName.localeCompare(b.regionName, "id") ||
           a.subRegionName.localeCompare(b.subRegionName, "id") ||
-          a.cityKabName.localeCompare(b.cityKabName, "id")
-        );
-      });
+          a.cityKabName.localeCompare(b.cityKabName, "id"),
+      );
 
     const cityReferenceSheet = XLSX.utils.json_to_sheet(cityReferenceRows, {
       header: ["regionName", "subRegionName", "cityKabName", "cityKabId"],
@@ -226,6 +228,10 @@ const handleBulkFileChange = async (event: Event) => {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
     const firstSheet = workbook.SheetNames[0];
+    if (!firstSheet) {
+      notify.error("Template sheet not found");
+      return;
+    }
     const sheet = workbook.Sheets[firstSheet];
 
     if (!sheet) {

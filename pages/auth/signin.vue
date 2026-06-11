@@ -38,7 +38,11 @@ const submit = async () => {
 
     auth.setUser(me.data.user, me.data.permissions ?? me.data.user.permissions);
 
-    // 4️⃣ BARU PINDAH HALAMAN
+    if (me.data.user.mustChangePassword) {
+      await router.push("/profile/change-password");
+      return;
+    }
+
     await router.push("/");
   } catch (e: any) {
     error.value = e?.data?.message || "Login failed";

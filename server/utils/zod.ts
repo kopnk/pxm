@@ -1,4 +1,4 @@
-import { ZodSchema } from "zod";
+import type { ZodSchema } from "zod";
 import { createError } from "h3";
 
 export function parseBody<T>(schema: ZodSchema<T>, body: unknown): T {

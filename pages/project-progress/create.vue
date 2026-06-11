@@ -9,6 +9,10 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessCreated } from "@/composables/useToastMessages";
 import { apiFetch } from "~/utils/apiFetch";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import type {
+  ProjectProgressStageData,
+  ProjectProgressStatus,
+} from "@/stores/projectProgress";
 
 const router = useRouter();
 
@@ -76,7 +80,7 @@ const stages = computed(() =>
 type StageForm = {
   plan_submit_date: string | null;
   actual_approve_date: string | null;
-  status: string;
+  status: ProjectProgressStatus;
 };
 
 const emptyStage = (): StageForm => ({
@@ -110,8 +114,8 @@ const initStageRows = () => {
   }
 };
 
-const buildPayloadStageData = () => {
-  const out: Record<string, StageForm> = {};
+const buildPayloadStageData = (): ProjectProgressStageData => {
+  const out: ProjectProgressStageData = {};
   for (const s of stages.value) {
     const r = row(s.code);
     out[s.code] = {

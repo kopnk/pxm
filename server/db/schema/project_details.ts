@@ -57,4 +57,7 @@ cityKabId: uuid("city_kab_id")
 
   createdUser: uuid("created_user")
     .references(() => users.id),
+
+  updatedUser: uuid("updated_user")
+    .references(() => users.id),
 });

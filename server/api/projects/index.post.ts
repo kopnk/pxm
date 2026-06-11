@@ -8,6 +8,7 @@ import { logAudit } from "~/server/utils/audit";
 import { createProjectSchema } from "~/server/validation/projects.schema";
 import { toLocalDate, toLocalTime } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -32,6 +33,11 @@ export default defineEventHandler(async (event) => {
   const vatAmount = (netPrice * vatRate) / 100;
   const grandTotal = netPrice + vatAmount;
 
+  const poDate = toLocalDate(body.poDate);
+  if (!poDate) {
+    throw createError({ statusCode: 400, statusMessage: "Invalid PO date" });
+  }
+
   /* ================= INSERT ================= */
   const created = await db.transaction(async (tx) => {
 
@@ -42,7 +48,7 @@ export default defineEventHandler(async (event) => {
         prScNumber: body.prScNumber,
         poNumber: body.poNumber,
 
-        poDate: toLocalDate(body.poDate),
+        poDate,
         deliveryDate: toLocalDate(body.deliveryDate),
         komDate: toLocalDate(body.komDate),
 
@@ -69,7 +75,7 @@ export default defineEventHandler(async (event) => {
       })
       .returning();
 
-    const createdRow = rows[0];
+    const createdRow = requireFirstRow(rows, "Project not created");
 
     await logAudit({
       event,

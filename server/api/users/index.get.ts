@@ -1,11 +1,17 @@
 import { defineEventHandler, getQuery, createError } from "h3";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
-import { and, eq, ilike, count, desc, sql } from "drizzle-orm";
+import { and, eq, ilike, count, desc, sql, or, ne } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { toLocalTime } from "~/server/utils/datetime";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  mapRowAuditUsers,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
 
 export default defineEventHandler(async (event) => {
 
@@ -20,7 +26,9 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const { page, limit, offset } = buildPagination(query);
 
-  const conditions = [];
+  const conditions = [
+    ne(sql`lower(coalesce(${users.role}, ''))`, "superadmin"),
+  ];
 
   if (query.role) {
     conditions.push(eq(users.role, String(query.role)));
@@ -31,15 +39,24 @@ export default defineEventHandler(async (event) => {
   }
 
   if (query.search) {
-    conditions.push(
-      ilike(
-        sql`concat(${users.firstName}, ' ', ${users.lastName})`,
-        `%${query.search}%`
-      )
+    const term = `%${String(query.search).trim()}%`;
+    const searchCondition = or(
+      ilike(users.email, term),
+      ilike(users.firstName, term),
+      ilike(users.lastName, term),
+      ilike(sql`concat(${users.firstName}, ' ', ${users.lastName})`, term),
+      ilike(users.phone, term),
+      ilike(users.region, term),
+      ilike(users.area, term),
+      ilike(users.role, term),
     );
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
   }
 
-  const where = conditions.length ? and(...conditions) : undefined;
+  const where = and(...conditions);
+  const auditUsers = createUserAuditAliases();
 
   const totalResult = await db
     .select({ value: count() })
@@ -61,8 +78,12 @@ export default defineEventHandler(async (event) => {
           area: users.area,
           role: users.role,
           isActive: users.isActive,
+          mustChangePassword: users.mustChangePassword,
           avatarUrl: users.avatarUrl,
           lastLoginAt: users.lastLoginAt,
+          createdUser: users.createdUser,
+          updatedUser: users.updatedUser,
+          ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
         }
@@ -73,6 +94,11 @@ export default defineEventHandler(async (event) => {
           lastName: users.lastName,
           role: users.role,
           isActive: users.isActive,
+          mustChangePassword: users.mustChangePassword,
+          lastLoginAt: users.lastLoginAt,
+          createdUser: users.createdUser,
+          updatedUser: users.updatedUser,
+          ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
         };
@@ -80,17 +106,28 @@ export default defineEventHandler(async (event) => {
   const rows = await db
     .select(selectFields)
     .from(users)
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(users.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(users.updatedUser, auditUsers.updater.id),
+    )
     .where(where)
     .orderBy(desc(users.createdAt))
     .limit(limit)
     .offset(offset);
 
-  const items = rows.map((u) => ({
-    ...u,
-    createdAt: toLocalTime(u.createdAt),
-    updatedAt: toLocalTime(u.updatedAt),
-    lastLoginAt: u.lastLoginAt ? toLocalTime(u.lastLoginAt) : null,
-  }));
+  const items = rows.map((u) => {
+    const mapped = mapRowAuditUsers(u);
+    return {
+      ...mapped,
+      createdAt: toLocalTime(u.createdAt),
+      updatedAt: toLocalTime(u.updatedAt),
+      lastLoginAt: u.lastLoginAt ? toLocalTime(u.lastLoginAt) : null,
+    };
+  });
 
   return successResponse(event, "Users retrieved", {
     items,

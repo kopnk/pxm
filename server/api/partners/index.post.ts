@@ -53,6 +53,7 @@ export default defineEventHandler(async (event) => {
           signatoryTitle: body.signatoryTitle ?? null,
           rating: body.rating !== undefined ? Number(body.rating).toString() : null,
           isActive: body.isActive ?? true,
+          createdUser: userId,
 
           // ✅ DATABASE TIME (CONSISTENT POLICY)
           createdAt: dbTime(),

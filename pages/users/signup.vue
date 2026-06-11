@@ -1,90 +1,30 @@
 <script setup lang="ts">
 definePageMeta({});
 
-import { reactive } from "vue";
 import { useAuthStore } from "@/stores/auth";
-import { useFormHandler } from "@/composables/useFormHandler";
-import { toastSuccessCreated } from "@/composables/useToastMessages";
+import { useUserSignupForm } from "@/composables/useUserSignupForm";
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
 
 const authStore = useAuthStore();
-const { signupUser } = useUsersApi();
-const { loading, handle } = useFormHandler();
 
 if (!authStore.canAccess("users", "create")) {
   navigateTo("/users");
 }
 
-/**
- * Form state (TETAP SAMA)
- */
-const user = reactive({
-  email: "",
-  password: "",
-  firstName: "",
-  lastName: "",
-  phone: "",
-  region: "",
-  area: "",
-  role: "staff",
-  isActive: true,
-  avatarUrl: "http://profile/update",
-});
-
-/**
- * Submit signup (LOGIC SAMA)
- */
-const submit = async () => {
-  console.log("🟡 [SIGNUP] Submit clicked");
-  console.log("🟡 [SIGNUP] Payload:", JSON.parse(JSON.stringify(user)));
-
-  await handle(async () => {
-    try {
-      console.log("🟠 [SIGNUP] Calling API...");
-      await signupUser({
-        email: user.email,
-        password: user.password,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        region: user.region,
-        area: user.area,
-        role: user.role,
-        isActive: user.isActive,
-        avatarUrl: user.avatarUrl,
-      });
-
-      console.log("🟢 [SIGNUP] Success → redirect");
-      await navigateTo("/users");
-    } catch (err: any) {
-      console.error("🔴 [SIGNUP] Failed:", err);
-
-      // 🔥 ZOD VALIDATION ERROR (LOGIC TETAP)
-      if (err?.data?.data?.fieldErrors) {
-        const fieldErrors = err.data.data.fieldErrors;
-
-        if (fieldErrors.avatarUrl) {
-          throw new Error("Invalid avatar URL");
-        }
-
-        if (fieldErrors.email) {
-          throw new Error("Invalid email");
-        }
-
-        if (fieldErrors.password) {
-          throw new Error("Invalid password");
-        }
-
-        throw new Error("Data input is invalid");
-      }
-
-      throw new Error(
-        err?.data?.message ?? err?.message ?? "Signup failed, check console",
-      );
-    }
-  }, toastSuccessCreated("user"));
-};
+const {
+  user,
+  regions,
+  areas,
+  selectedRegionId,
+  selectedAreaId,
+  regionsLoading,
+  areasLoading,
+  loading,
+  creatableRoles,
+  defaultPassword,
+  submit,
+} = useUserSignupForm();
 </script>
 
 <template>
@@ -97,60 +37,128 @@ const submit = async () => {
   >
     <FormSection>
       <div class="col-12">
-        <label>Email</label>
-        <input class="form-control" v-model="user.email" />
+        <label class="label-field d-block mb-1">Email</label>
+        <input
+          v-model="user.email"
+          type="email"
+          class="form-control"
+          placeholder="user@example.com"
+          required
+        />
       </div>
 
       <div class="col-12">
-        <label>Password</label>
-        <input type="password" class="form-control" v-model="user.password" />
+        <p class="data-meta mb-0">
+          Default password:
+          <span class="data-value">{{ defaultPassword }}</span>
+          — user must change it on first login.
+        </p>
       </div>
 
       <div class="col-6">
-        <label>First Name</label>
-        <input class="form-control" v-model="user.firstName" />
+        <label class="label-field d-block mb-1">First Name</label>
+        <input
+          v-model="user.firstName"
+          class="form-control"
+          required
+        />
       </div>
 
       <div class="col-6">
-        <label>Last Name</label>
-        <input class="form-control" v-model="user.lastName" />
+        <label class="label-field d-block mb-1">Last Name</label>
+        <input
+          v-model="user.lastName"
+          class="form-control"
+          required
+        />
       </div>
 
       <div class="col-6">
-        <label>Phone</label>
-        <input class="form-control" v-model="user.phone" />
+        <label class="label-field d-block mb-1">Phone</label>
+        <input
+          v-model="user.phone"
+          type="tel"
+          class="form-control"
+          placeholder="08xxxxxxxxxx"
+          inputmode="numeric"
+          pattern="08[0-9]{8,13}"
+          minlength="10"
+          maxlength="15"
+          required
+        />
+        <div class="data-meta mt-1">Starts with 08, 10–15 digits</div>
       </div>
 
       <div class="col-6">
-        <label>Region</label>
-        <input class="form-control" v-model="user.region" />
-      </div>
-
-      <div class="col-6">
-        <label>Area</label>
-        <input class="form-control" v-model="user.area" />
-      </div>
-
-      <div class="col-6">
-        <label>Role</label>
-        <select class="form-select" v-model="user.role">
-          <option value="staff">Staff</option>
-          <option value="admin">Admin</option>
-          <option value="superadmin">Superadmin</option>
+        <label class="label-field d-block mb-1">Region</label>
+        <select
+          v-model="selectedRegionId"
+          class="form-select"
+          :disabled="regionsLoading"
+          required
+        >
+          <option value="" disabled>
+            {{ regionsLoading ? "Loading…" : "Select region" }}
+          </option>
+          <option
+            v-for="region in regions"
+            :key="region.id"
+            :value="region.id"
+          >
+            {{ region.name }}
+          </option>
         </select>
       </div>
 
       <div class="col-6">
-        <label>Status</label>
-        <select class="form-select" v-model="user.isActive">
+        <label class="label-field d-block mb-1">Area</label>
+        <select
+          v-model="selectedAreaId"
+          class="form-select"
+          :disabled="!selectedRegionId || areasLoading"
+          required
+        >
+          <option value="" disabled>
+            {{
+              !selectedRegionId
+                ? "Select region first"
+                : areasLoading
+                  ? "Loading…"
+                  : areas.length
+                    ? "Select area"
+                    : "No area available"
+            }}
+          </option>
+          <option v-for="area in areas" :key="area.id" :value="area.id">
+            {{ area.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="col-6">
+        <label class="label-field d-block mb-1">Role</label>
+        <select v-model="user.role" class="form-select">
+          <option
+            v-for="role in creatableRoles"
+            :key="role"
+            :value="role"
+          >
+            {{ role.charAt(0).toUpperCase() + role.slice(1) }}
+          </option>
+        </select>
+      </div>
+
+      <div class="col-6">
+        <label class="label-field d-block mb-1">Status</label>
+        <select v-model="user.isActive" class="form-select">
           <option :value="true">Active</option>
           <option :value="false">Inactive</option>
         </select>
       </div>
 
       <div class="col-6">
-        <label>Avatar URL</label>
-        <input class="form-control" v-model="user.avatarUrl" />
+        <label class="label-field d-block mb-1">Avatar URL</label>
+        <input v-model="user.avatarUrl" class="form-control" />
       </div>
     </FormSection>
   </FormShell>

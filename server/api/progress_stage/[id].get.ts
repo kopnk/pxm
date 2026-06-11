@@ -4,6 +4,7 @@ import { progressStage } from "~/server/db/schema/progress_stage";
 import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
 
@@ -27,5 +28,5 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });
   }
 
-  return successResponse(event, "Progress stage retrieved", data);
+  return successResponse(event, "Progress stage retrieved", mapLocalTimestamps(data));
 });

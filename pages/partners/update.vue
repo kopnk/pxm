@@ -91,12 +91,10 @@ const submit = async () => {
 
     await updatePartner(id, payload);
 
-    const res: any = await getPartners({
+    await getPartners({
       page: store.page,
       limit: store.limit,
     });
-
-    store.setPartners(res.data);
 
     await router.replace("/partners");
   }, toastSuccessUpdated("partner"));

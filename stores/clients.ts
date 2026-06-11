@@ -17,6 +17,8 @@ interface Client {
   contactEmail?: string | null;
 
   isActive: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 
   createdAt: string;
   updatedAt: string;
@@ -30,6 +32,10 @@ export const useClientsStore = defineStore("clients", {
     total: 0,
     totalPages: 1,
     loading: false,
+    filters: {
+      search: "",
+      isActive: "" as "" | "true" | "false",
+    },
   }),
 
   actions: {
@@ -43,6 +49,10 @@ export const useClientsStore = defineStore("clients", {
 
     setLoading(val: boolean) {
       this.loading = val;
+    },
+
+    setFilters(filters: Partial<{ search: string; isActive: "" | "true" | "false" }>) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     updateClientInList(updated: Client) {

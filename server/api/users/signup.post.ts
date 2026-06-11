@@ -9,15 +9,18 @@ import { logAudit } from "~/server/utils/audit";
 import { userSignupSchema } from "~/server/validation/users.schema";
 import { parseBody } from "~/server/utils/zod";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { ensureUserPermissionsForRole } from "~/server/utils/rlsPermissions";
+import { DEFAULT_USER_PASSWORD } from "~/lib/authDefaults";
+import { assertCreatableUserRole } from "~/server/utils/userRolePolicy";
 
 export default defineEventHandler(async (event) => {
 
-  const forbidden = requireRole(event, ["superadmin"]);
+  const forbidden = requireRole(event, ["superadmin", "admin"]);
   if (forbidden) return forbidden;
 
-  const actorId = event.context.user?.id;
-  if (!actorId) {
+  const actor = event.context.user;
+  if (!actor?.id) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
@@ -25,6 +28,8 @@ export default defineEventHandler(async (event) => {
     userSignupSchema,
     await readBody(event)
   );
+
+  assertCreatableUserRole(actor.role, body.role ?? "staff");
 
   const created = await db.transaction(async (tx) => {
 
@@ -38,7 +43,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 409, statusMessage: "Email already exists" });
     }
 
-    const passwordHash = await argon2.hash(body.password);
+    const passwordHash = await argon2.hash(DEFAULT_USER_PASSWORD);
 
     const rows = await tx
       .insert(users)
@@ -47,27 +52,29 @@ export default defineEventHandler(async (event) => {
         passwordHash,
         firstName: body.firstName,
         lastName: body.lastName,
-        phone: body.phone ?? null,
-        region: body.region ?? null,
-        area: body.area ?? null,
+        phone: body.phone,
+        region: body.region,
+        area: body.area,
         avatarUrl: body.avatarUrl ?? null,
         role: body.role ?? "staff",
         isActive: body.isActive ?? true,
+        mustChangePassword: true,
+        createdUser: actor.id,
+        updatedUser: actor.id,
 
-        // ✅ DATABASE TIME (authoritative)
         createdAt: dbTime(),
         updatedAt: dbTime(),
       })
       .returning({ id: users.id });
 
-    const userId = rows[0].id;
+    const userId = requireFirstRow(rows, "User not created").id;
     const role = body.role ?? "staff";
 
-    await ensureUserPermissionsForRole(userId, role);
+    await ensureUserPermissionsForRole(userId, role, tx);
 
     await logAudit({
       event,
-      actorId,
+      actorId: actor.id,
       action: "CREATE",
       targetTable: "users",
       targetId: userId,

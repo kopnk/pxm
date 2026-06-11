@@ -54,11 +54,39 @@ function getErrorMessage(err: unknown) {
   return e?.data?.message || e?.message || "Failed to load progress stages";
 }
 
+function hasActualDate(
+  st?: { actual_approve_date?: string | null } | null,
+): boolean {
+  return Boolean(String(st?.actual_approve_date ?? "").trim());
+}
+
+/** Per stage: detail line terfilter vs sudah / belum actual. */
+export function computeStageDetailBarCounts(
+  rows: DashboardProgressStageRow[],
+  stageCodes: string[],
+  totalDetailLines: number,
+): { actual: number[]; pending: number[] } {
+  const actual = stageCodes.map(() => 0);
+
+  for (const row of rows) {
+    const sd = row.stageData ?? {};
+    for (let i = 0; i < stageCodes.length; i++) {
+      if (hasActualDate(sd[stageCodes[i]!])) actual[i] = (actual[i] ?? 0) + 1;
+    }
+  }
+
+  const pending = actual.map((count) =>
+    Math.max(0, totalDetailLines - count),
+  );
+  return { actual, pending };
+}
+
 /**
  * Chart garis Plan vs Actual per stage (filter mengikuti `filteredProgressRows`).
  */
 export function useDashboardProgressStageChart(
   filteredProgressRows: ComputedRef<DashboardProgressStageRow[]>,
+  totalDetailLines: ComputedRef<number>,
 ) {
   const stageList = ref<ProgressStageDef[]>([]);
   const stagesLoadError = ref<string | null>(null);
@@ -134,15 +162,43 @@ export function useDashboardProgressStageChart(
       for (let i = 0; i < codes.length; i++) {
         const st = sd[codes[i]!];
         if (!st) continue;
-        if (String(st.plan_submit_date ?? "").trim()) plan[i] += 1;
-        if (String(st.actual_approve_date ?? "").trim()) actual[i] += 1;
+        if (String(st.plan_submit_date ?? "").trim()) plan[i] = (plan[i] ?? 0) + 1;
+        if (hasActualDate(st)) actual[i] = (actual[i] ?? 0) + 1;
       }
     }
+
+    const { actual: barActual, pending: barPending } =
+      computeStageDetailBarCounts(rows, codes, totalDetailLines.value);
 
     return {
       labels,
       datasets: [
         {
+          type: "bar" as const,
+          label: "Completed",
+          data: barActual,
+          backgroundColor: "rgba(42,157,143,0.62)",
+          borderColor: "rgba(42,157,143,0.9)",
+          borderWidth: 1,
+          borderRadius: 3,
+          stack: "detailLines",
+          order: 2,
+          yAxisID: "y",
+        },
+        {
+          type: "bar" as const,
+          label: "Remaining",
+          data: barPending,
+          backgroundColor: "rgba(173, 181, 189, 0.72)",
+          borderColor: "rgba(108, 117, 125, 0.85)",
+          borderWidth: 1,
+          borderRadius: 3,
+          stack: "detailLines",
+          order: 2,
+          yAxisID: "y",
+        },
+        {
+          type: "line" as const,
           label: "Planned",
           data: plan,
           borderColor: "#f77f00",
@@ -152,8 +208,11 @@ export function useDashboardProgressStageChart(
           pointHoverRadius: 7,
           borderWidth: 2,
           fill: false,
+          order: 1,
+          yAxisID: "y",
         },
         {
+          type: "line" as const,
           label: "Actual",
           data: actual,
           borderColor: "#2a9d8f",
@@ -163,6 +222,8 @@ export function useDashboardProgressStageChart(
           pointHoverRadius: 7,
           borderWidth: 2,
           fill: false,
+          order: 1,
+          yAxisID: "y",
         },
       ],
     };
@@ -180,7 +241,7 @@ export function useDashboardProgressStageChart(
   };
 }
 
-/** Opsi Chart.js khusus chart stage (sumbu Y bilangan bulat + grid). */
+/** Opsi Chart.js khusus chart stage (garis + batang bertumpuk per detail line). */
 export const dashboardStageChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -190,13 +251,50 @@ export const dashboardStageChartOptions = {
   },
   plugins: {
     legend: { position: "top" as const },
+    tooltip: {
+      callbacks: {
+        footer(
+          tooltipItems: {
+            datasetIndex: number;
+            parsed?: { y?: number };
+            chart: { data: { datasets: { label?: string }[] } };
+          }[],
+        ) {
+          const barLabels = new Set(["Completed", "Remaining"]);
+          const hasBar = tooltipItems.some((item) =>
+            barLabels.has(
+              item.chart.data.datasets[item.datasetIndex]?.label ?? "",
+            ),
+          );
+          if (!hasBar) return "";
+
+          const completedItem = tooltipItems.find(
+            (item) =>
+              item.chart.data.datasets[item.datasetIndex]?.label ===
+              "Completed",
+          );
+          const remainingItem = tooltipItems.find(
+            (item) =>
+              item.chart.data.datasets[item.datasetIndex]?.label ===
+              "Remaining",
+          );
+          const completed = Number(completedItem?.parsed?.y ?? 0);
+          const remaining = Number(remainingItem?.parsed?.y ?? 0);
+          const total = completed + remaining;
+          if (total <= 0) return "";
+          return `Total detail lines: ${total}`;
+        },
+      },
+    },
   },
   scales: {
     x: {
+      stacked: true,
       grid: { display: true, color: "rgba(0,0,0,0.07)" },
       ticks: { maxRotation: 42, minRotation: 0, autoSkip: true },
     },
     y: {
+      stacked: true,
       beginAtZero: true,
       ticks: {
         stepSize: 1,

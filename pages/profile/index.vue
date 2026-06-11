@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
+
 const profileApi = useProfileApi();
 const profileStore = useProfileStore();
 
@@ -63,7 +65,7 @@ const profile = computed(() => profileStore.profile);
 
             <tr>
               <th class="text-muted" scope="row">Last login</th>
-              <td>{{ profile?.lastLoginAt }}</td>
+              <td>{{ formatListTimestamp(profile?.lastLoginAt) }}</td>
             </tr>
           </tbody>
         </table>

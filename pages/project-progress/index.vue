@@ -1,49 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
-import { useProjectProgressApi } from "@/composables/useProjectProgressApi";
-import { useProjectProgressStore } from "@/stores/projectProgress";
-import { useFormHandler } from "@/composables/useFormHandler";
-import { useProgressStageApi } from "@/composables/useProgressStageApi";
-import { useProgressStageStore } from "@/stores/progressStage";
-import { useListPagePermissions } from "@/composables/useListPagePermissions";
-import { toastSuccessDeleted } from "@/composables/useToastMessages";
-import { useAuthStore } from "@/stores/auth";
-import { useProjectProgressExport } from "@/composables/useProjectProgressExport";
 import { formatListTimestamp } from "@/utils/formatListTimestamp";
-
-const store = useProjectProgressStore();
-
-const { getProjectProgress, deleteProjectProgress } = useProjectProgressApi();
-const { getProgressStages } = useProgressStageApi();
-const progressStageStore = useProgressStageStore();
-const authStore = useAuthStore();
-const { canCreate, canEdit, canDelete } =
-    useListPagePermissions("project_progress");
-const { handle } = useFormHandler();
-const canCreateProjectProgress = computed(
-  () => canCreate.value && authStore.user?.role === "superadmin",
-);
-
-const { exporting, downloadExcel } = useProjectProgressExport();
-
-const onExportExcel = () => {
-  void downloadExcel({
-    search: search.value,
-    stage: stage.value,
-    status: status.value,
-    page: store.page,
-    limit: store.limit,
-  });
-};
-
-const search = ref("");
-const stage = ref("");
-const status = ref("");
-
-const loading = ref(false);
-const showDeleteModal = ref(false);
-const deleteTargetId = ref<string | null>(null);
-const deleteTargetLabel = ref("this project progress");
+import {
+  detailStatusBadgeClass,
+  detailStatusLabel,
+} from "~/lib/detailStatus";
+import { useProjectProgressListPage } from "@/composables/useProjectProgressListPage";
 
 const formatDateDMY = (val?: string | null) => {
   if (!val) return "—";
@@ -55,123 +16,33 @@ const formatDateDMY = (val?: string | null) => {
   return `${day}/${month}/${year}`;
 };
 
-const stageColumns = computed(() =>
-  [...progressStageStore.items].sort((a, b) => a.sequence - b.sequence),
-);
-
-const stageDateCounts = computed(() => {
-  const counts: Record<string, { plan: number; actual: number }> = {};
-
-  for (const stage of stageColumns.value) {
-    counts[stage.code] = { plan: 0, actual: 0 };
-  }
-
-  for (const [code, value] of Object.entries(store.stageCounts ?? {})) {
-    if (!counts[code]) {
-      counts[code] = { plan: 0, actual: 0 };
-    }
-    counts[code].plan = Number(value?.plan ?? 0);
-    counts[code].actual = Number(value?.actual ?? 0);
-  }
-
-  return counts;
-});
-
-const tableColspan = computed(() => 4 + stageColumns.value.length);
-
-/** Selaras project-details / useProjectDetailsListPage */
-const detailStatusBadgeClass = (value: string | null | undefined) => ({
-  "bg-success": value === "active",
-  "bg-warning text-dark": value === "delay",
-  "bg-secondary": value === "closed" || !value,
-  "bg-danger": value === "cancelled",
-});
-
-const detailStatusLabel = (value: string | null | undefined) => {
-  if (value == null || value === "") return "—";
-  const map: Record<string, string> = {
-    active: "Active",
-    delay: "Delay",
-    closed: "Closed",
-    cancelled: "Cancelled",
-  };
-  return map[value] ?? value;
-};
-
-const fetchData = async () => {
-  loading.value = true;
-  try {
-    await getProjectProgress({
-      page: store.page,
-      limit: store.limit,
-      search: search.value || undefined,
-      stage: stage.value || undefined,
-      status: status.value || undefined,
-    });
-  } finally {
-    loading.value = false;
-  }
-};
-
-onMounted(async () => {
-  const res: any = await getProgressStages({
-    limit: 1000,
-    isActive: true,
-  });
-  progressStageStore.setItems(res.data.items);
-  await fetchData();
-});
-
-watch([search, stage, status], () => {
-  store.setPage(1);
-  fetchData();
-});
-
-const handleDelete = async (id: string, siteName?: string | null) => {
-  if (!canDelete.value) return;
-  deleteTargetId.value = id;
-  deleteTargetLabel.value = siteName?.trim() || "this project progress";
-  showDeleteModal.value = true;
-};
-
-const performDelete = async () => {
-  if (!deleteTargetId.value) return;
-  await handle(async () => {
-    await deleteProjectProgress(deleteTargetId.value!);
-    fetchData();
-  }, toastSuccessDeleted("projectProgress"));
-  showDeleteModal.value = false;
-  deleteTargetId.value = null;
-};
-
-const cancelDelete = () => {
-  showDeleteModal.value = false;
-  deleteTargetId.value = null;
-  deleteTargetLabel.value = "this project progress";
-};
-
-const prevPage = () => {
-  if (store.page > 1) {
-    store.setPage(store.page - 1);
-    fetchData();
-  }
-};
-
-const nextPage = () => {
-  if (store.page < store.totalPages) {
-    store.setPage(store.page + 1);
-    fetchData();
-  }
-};
-
-const showingStart = computed(() => {
-  if (store.total === 0) return 0;
-  return (store.page - 1) * store.limit + 1;
-});
-
-const showingEnd = computed(() =>
-  Math.min(store.page * store.limit, store.total),
-);
+const {
+  store,
+  canCreate,
+  canEdit,
+  canDelete,
+  canCreateProjectProgress,
+  exporting,
+  searchFilter,
+  stageFilter,
+  stageDateTypeFilter,
+  statusFilter,
+  showDeleteModal,
+  deleteTargetLabel,
+  stageColumns,
+  stageFilterOptions,
+  stageDateTypeEnabled,
+  stageDateCounts,
+  tableColspan,
+  onExportExcel,
+  handleDelete,
+  performDelete,
+  cancelDelete,
+  prevPage,
+  nextPage,
+  showingStart,
+  showingEnd,
+} = useProjectProgressListPage();
 </script>
 
 <template>
@@ -195,18 +66,35 @@ const showingEnd = computed(() =>
         class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pp-filter-one-line"
       >
         <input
-          v-model="search"
+          v-model="searchFilter"
           type="search"
           class="form-control form-control-sm pp-filter-search"
           placeholder="Project, PO, site…"
         />
-        <input
-          v-model="stage"
-          class="form-control form-control-sm flex-shrink-0 pp-filter-stage"
-          placeholder="Stage"
-        />
         <select
-          v-model="status"
+          v-model="stageFilter"
+          class="form-select form-select-sm flex-shrink-0 pp-filter-stage"
+        >
+          <option value="">All Stages</option>
+          <option
+            v-for="opt in stageFilterOptions"
+            :key="opt.code"
+            :value="opt.code"
+          >
+            {{ opt.label }}
+          </option>
+        </select>
+        <select
+          v-model="stageDateTypeFilter"
+          class="form-select form-select-sm flex-shrink-0 pp-filter-date-type"
+          :disabled="!stageDateTypeEnabled"
+        >
+          <option value="">Plan / Actual</option>
+          <option value="planned">Planned</option>
+          <option value="actual">Actual</option>
+        </select>
+        <select
+          v-model="statusFilter"
           class="form-select form-select-sm flex-shrink-0 pp-filter-status"
         >
           <option value="">All Status</option>
@@ -262,7 +150,7 @@ const showingEnd = computed(() =>
             </thead>
 
           <tbody>
-            <tr v-if="loading">
+            <tr v-if="store.loading">
               <td :colspan="tableColspan" class="text-center py-5 text-muted">
                 Loading…
               </td>
@@ -350,6 +238,8 @@ const showingEnd = computed(() =>
                   </span>
                 </div>
                 <div class="data-meta mt-1">
+                  <div>Created by: {{ item.createdBy || "-" }}</div>
+                  <div>Updated by: {{ item.updatedBy || "-" }}</div>
                   <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
                   <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                 </div>
@@ -365,7 +255,7 @@ const showingEnd = computed(() =>
               </td>
             </tr>
 
-            <tr v-if="!loading && store.items.length === 0">
+            <tr v-if="!store.loading && store.items.length === 0">
               <td :colspan="tableColspan" class="text-center text-muted py-5">
                 No data
               </td>
@@ -452,6 +342,11 @@ const showingEnd = computed(() =>
 }
 
 .pp-filter-stage {
+  width: 9.5rem;
+  min-width: 9.5rem;
+}
+
+.pp-filter-date-type {
   width: 8.5rem;
   min-width: 8.5rem;
 }

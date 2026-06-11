@@ -7,6 +7,12 @@ import { clients } from "~/server/db/schema/clients";
 import { partners } from "~/server/db/schema/partners";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
+import {
+  asJoinTable,
+  createUserAuditAliases,
+  mapRowAuditUsers,
+  userAuditNameSelect,
+} from "~/server/utils/userAuditJoin";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { toLocalTime } from "~/server/utils/datetime";
 import {
@@ -105,9 +111,12 @@ export default defineEventHandler(async (event) => {
   const pphSectionDppFiltered = Number(totalsRow[0]?.sumPphSectionDpp ?? 0);
   const pphSectionTaxFiltered = Number(totalsRow[0]?.sumPphSectionTax ?? 0);
 
+  const auditUsers = createUserAuditAliases();
+
   const rows = await db
     .select({
       ...getTableColumns(projectFinancials),
+      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
       projectName: projects.projectName,
       projectPoNumber: projects.poNumber,
       detailMaterialName: projectDetails.materialName,
@@ -125,6 +134,14 @@ export default defineEventHandler(async (event) => {
       partnerAddressMeta: partners.addressMeta,
     })
     .from(projectFinancials)
+    .leftJoin(
+      asJoinTable(auditUsers.creator),
+      eq(projectFinancials.createdUser, auditUsers.creator.id),
+    )
+    .leftJoin(
+      asJoinTable(auditUsers.updater),
+      eq(projectFinancials.updatedUser, auditUsers.updater.id),
+    )
     .leftJoin(projects, eq(projectFinancials.projectId, projects.id))
     .leftJoin(
       projectDetails,
@@ -138,11 +155,14 @@ export default defineEventHandler(async (event) => {
     .offset(offset);
 
   return successResponse(event, "Project financials retrieved", {
-    items: rows.map((row) => ({
-      ...row,
-      createdAt: toLocalTime(row.createdAt),
-      updatedAt: toLocalTime(row.updatedAt),
-    })),
+    items: rows.map((row) => {
+      const mapped = mapRowAuditUsers(row);
+      return {
+        ...mapped,
+        createdAt: toLocalTime(row.createdAt),
+        updatedAt: toLocalTime(row.updatedAt),
+      };
+    }),
     page,
     limit,
     total,

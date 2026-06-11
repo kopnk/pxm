@@ -35,6 +35,11 @@ export const useAuditStore = defineStore("audit", {
     total: 0,
     totalPages: 1,
     loading: false,
+    filters: {
+      search: "",
+      action: "",
+      targetTable: "",
+    },
   }),
 
   actions: {
@@ -54,6 +59,12 @@ export const useAuditStore = defineStore("audit", {
 
     setLoading(value: boolean) {
       this.loading = value;
+    },
+
+    setFilters(
+      filters: Partial<{ search: string; action: string; targetTable: string }>,
+    ) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     removeItems(ids: string[]) {

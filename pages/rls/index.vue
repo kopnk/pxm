@@ -11,15 +11,16 @@ import {
 
 const {
   store,
-  search,
-  role,
-  isActive,
-  menuSearch,
+  searchFilter,
+  roleFilter,
+  isActiveFilter,
+  menuSearchFilter,
   actionFilter,
   filteredUsers,
   visibleMenus,
   tableRows,
   hasActiveFilters,
+  canEditUserRls,
   isChecked,
   onToggle,
 } = useRlsListPage();
@@ -40,7 +41,7 @@ const {
         <div class="col-lg-3 col-md-6">
           <label class="label-field d-block mb-1">Search user</label>
           <input
-            v-model="search"
+            v-model="searchFilter"
             class="form-control"
             placeholder="Email, name, role..."
           />
@@ -48,7 +49,7 @@ const {
 
         <div class="col-lg-2 col-md-3 col-6">
           <label class="label-field d-block mb-1">Role</label>
-          <select v-model="role" class="form-select">
+          <select v-model="roleFilter" class="form-select">
             <option value="">All roles</option>
             <option value="admin">Admin</option>
             <option value="staff">Staff</option>
@@ -57,7 +58,7 @@ const {
 
         <div class="col-lg-2 col-md-3 col-6">
           <label class="label-field d-block mb-1">Status</label>
-          <select v-model="isActive" class="form-select">
+          <select v-model="isActiveFilter" class="form-select">
             <option value="">All status</option>
             <option value="true">Active</option>
             <option value="false">Inactive</option>
@@ -81,7 +82,7 @@ const {
         <div class="col-lg-3 col-md-8">
           <label class="label-field d-block mb-1">Search menu</label>
           <input
-            v-model="menuSearch"
+            v-model="menuSearchFilter"
             class="form-control"
             placeholder="Projects, Tax In, Clients..."
           />
@@ -110,7 +111,10 @@ const {
           <tr
             v-for="row in tableRows"
             :key="`${row.userId}-${row.action}`"
-            :class="{ 'rls-row-saving': store.savingUserId === row.userId }"
+            :class="{
+              'rls-row-saving': store.savingUserId === row.userId,
+              'rls-user-even': row.userIndex % 2 === 1,
+            }"
           >
             <td
               v-if="row.showUser"
@@ -119,6 +123,12 @@ const {
             >
               <div class="fw-semibold" style="font-size: 0.95rem">
                 {{ row.email }}
+              </div>
+              <div
+                v-if="row.firstName || row.lastName"
+                class="data-value"
+              >
+                {{ [row.firstName, row.lastName].filter(Boolean).join(" ") }}
               </div>
               <div class="data-meta text-uppercase">{{ row.role }}</div>
             </td>
@@ -134,6 +144,7 @@ const {
                 type="checkbox"
                 class="form-check-input"
                 :checked="isChecked(row.userId, menu.key, row.action)"
+                :disabled="!canEditUserRls(row.role)"
                 :aria-label="`${row.email} ${row.action} ${menu.label}`"
                 @change="onToggle(row.userId, menu.key, row.action, $event)"
               />
@@ -176,6 +187,14 @@ const {
   left: 0;
   z-index: 1;
   background: #fff;
+}
+
+.rls-table tbody tr.rls-user-even td {
+  background-color: #f2f4f6;
+}
+
+.rls-table tbody tr.rls-user-even .rls-sticky-col {
+  background-color: #f2f4f6;
 }
 
 .rls-user-col {

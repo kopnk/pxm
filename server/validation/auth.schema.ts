@@ -21,7 +21,7 @@ export const loginSchema = z.object({
    * - Explicitly rejects characters commonly used in injection attempts
    */
   email: z
-    .string({ required_error: "Email is required" })
+    .string({ error: "Email is required" })
     .trim()
     .toLowerCase()
     .email("Invalid email format")
@@ -39,7 +39,7 @@ export const loginSchema = z.object({
    * - Maximum length prevents payload abuse
    */
   password: z
-    .string({ required_error: "Password is required" })
+    .string({ error: "Password is required" })
     .min(8, "Password must be at least 8 characters")
     .max(100, "Password exceeds maximum length"),
 });

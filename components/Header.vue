@@ -190,6 +190,12 @@ const taxesMenuActive = computed(() =>
               </NuxtLink>
             </li>
 
+            <li v-if="canRead('regions')">
+              <NuxtLink class="dropdown-item" to="/regions" active-class="active">
+                Regions
+              </NuxtLink>
+            </li>
+
             <li v-if="canRead('audit_log')">
               <NuxtLink class="dropdown-item" to="/audit"> Audit Log </NuxtLink>
             </li>

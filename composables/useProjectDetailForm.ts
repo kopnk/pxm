@@ -1,4 +1,5 @@
 import { computed, reactive, ref, watch } from "vue";
+import type { ProjectDetailItem } from "@/stores/projectDetails";
 import { apiFetch } from "~/utils/apiFetch";
 
 type ProjectDetailStatus = "active" | "delay" | "closed" | "cancelled";
@@ -34,13 +35,6 @@ export interface ProjectDetailFormState {
   remarksDelay: string | null;
   remarksCancel: string | null;
   taxOut: number | null;
-}
-
-interface ProjectDetailResponse extends Partial<ProjectDetailFormState> {
-  projectName?: string | null;
-  poNumber?: string | null;
-  regionId?: string | null;
-  subRegionId?: string | null;
 }
 
 const defaultForm = (): ProjectDetailFormState => ({
@@ -195,7 +189,7 @@ export const useProjectDetailForm = () => {
     form.projectId = null;
   };
 
-  const fillFromDetail = async (detail: ProjectDetailResponse) => {
+  const fillFromDetail = async (detail: ProjectDetailItem) => {
     isPreloading.value = true;
 
     Object.assign(form, {

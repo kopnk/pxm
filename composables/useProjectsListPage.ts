@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useProjectsStore } from "@/stores/projects";
 import { useProjectsApi } from "@/composables/useProjectsApi";
 import { useFormHandler } from "@/composables/useFormHandler";
@@ -6,6 +6,12 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { getApiErrorMessage } from "@/lib/apiError";
+import {
+  createStoreFilter,
+  useMetaPaginationRange,
+  watchDebouncedStoreSearch,
+  watchStoreFilters,
+} from "~/lib/listPage";
 
 export const useProjectsListPage = () => {
   const store = useProjectsStore();
@@ -20,28 +26,14 @@ export const useProjectsListPage = () => {
   const showDeleteModal = ref(false);
   const deleteTargetId = ref<string | null>(null);
 
-  const searchFilter = computed({
-    get: () => store.filters.search,
-    set: (value: string) => store.setFilters({ search: value }),
-  });
-
-  const statusFilter = computed({
-    get: () => store.filters.status,
-    set: (value: string) => store.setFilters({ status: value }),
-  });
+  const searchFilter = createStoreFilter(store, "search");
+  const statusFilter = createStoreFilter(store, "status");
 
   const deleteTargetProject = computed(() =>
     store.items.find((item) => item.id === deleteTargetId.value),
   );
 
-  const showingStart = computed(() => {
-    if (store.meta.total === 0) return 0;
-    return (store.meta.page - 1) * store.meta.limit + 1;
-  });
-
-  const showingEnd = computed(() =>
-    Math.min(store.meta.page * store.meta.limit, store.meta.total),
-  );
+  const { showingStart, showingEnd } = useMetaPaginationRange(store.meta);
 
   const fetchProjects = async (page = store.meta.page, showToast = true) => {
     try {
@@ -65,11 +57,14 @@ export const useProjectsListPage = () => {
     void fetchProjects(1).catch(() => {});
   });
 
-  watch(
-    () => [store.filters.search, store.filters.status],
-    () => {
-      void fetchProjects(1).catch(() => {});
-    },
+  watchDebouncedStoreSearch(
+    () => store.filters.search,
+    () => void fetchProjects(1).catch(() => {}),
+  );
+
+  watchStoreFilters(
+    () => [store.filters.status] as const,
+    () => void fetchProjects(1).catch(() => {}),
   );
 
   const openDeleteModal = (id: string) => {
@@ -128,7 +123,7 @@ export const useProjectsListPage = () => {
   const getRowNumber = (index: number) =>
     (store.meta.page - 1) * store.meta.limit + index + 1;
 
-  const formatCurrency = (value: string | number | null) => {
+  const formatCurrency = (value: string | number | null | undefined) => {
     if (value === null || value === undefined || value === "") return "-";
 
     const numberValue = Number(value);

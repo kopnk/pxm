@@ -1,117 +1,354 @@
 <script setup lang="ts">
+import { useUsersListPage } from "@/composables/useUsersListPage";
+import { formatListTimestamp } from "@/utils/formatListTimestamp";
+
 definePageMeta({});
 
-import { onMounted } from "vue";
-import { useFormHandler } from "@/composables/useFormHandler";
-import { toastSuccessDeleted } from "@/composables/useToastMessages";
-import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
-const usersStore = useUsersStore();
-const usersApi = useUsersApi();
-const authStore = useAuthStore();
-const { handle } = useFormHandler();
-
-const rowNumber = (index: number) => {
-  const page = usersStore.meta?.page ?? 1;
-  const limit = usersStore.meta?.limit ?? DEFAULT_PAGE_LIMIT;
-  return (page - 1) * limit + index + 1;
-};
-
-onMounted(async () => {
-  await usersApi.getUsers({ page: 1, limit: DEFAULT_PAGE_LIMIT });
-});
-
-const onDelete = async (id: string) => {
-  const confirmed = confirm("Delete user?");
-  if (!confirmed) return;
-
-  await handle(async () => {
-    await usersApi.deleteUser(id);
-    await usersApi.getUsers({
-      page: usersStore.meta?.page ?? 1,
-      limit: usersStore.meta?.limit ?? DEFAULT_PAGE_LIMIT,
-    });
-  }, toastSuccessDeleted("user"));
-};
+const {
+  store,
+  canCreate,
+  canEdit,
+  canEditUser,
+  canDeleteUser,
+  expandedRow,
+  deletingId,
+  resettingId,
+  showDeleteModal,
+  showResetModal,
+  deleteTargetUser,
+  resetTargetUser,
+  searchFilter,
+  roleFilter,
+  isActiveFilter,
+  showingStart,
+  showingEnd,
+  openDeleteModal,
+  cancelDelete,
+  performDelete,
+  openResetModal,
+  cancelReset,
+  performReset,
+  nextPage,
+  prevPage,
+  toggleRow,
+  getRowNumber,
+} = useUsersListPage();
 </script>
 
 <template>
-  <div class="container py-4">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div class="container-fluid py-4 px-3">
+    <div
+      class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
+    >
       <h4 class="text-brand mb-0">Users</h4>
 
-      <NuxtLink
-        v-if="authStore.canAccess('users', 'create')"
-        to="/users/signup"
-        class="btn btn-primary"
-      >
+      <NuxtLink v-if="canCreate" to="/users/signup" class="btn btn-primary">
         + New user
       </NuxtLink>
     </div>
 
+    <div class="card mb-3 border-0 shadow-sm">
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 users-filter-one-line"
+      >
+        <input
+          v-model="searchFilter"
+          type="search"
+          class="form-control form-control-sm users-filter-search"
+          placeholder="Email, name, phone, region…"
+        />
+        <select
+          v-model="roleFilter"
+          class="form-select form-select-sm flex-shrink-0 users-filter-role"
+        >
+          <option value="">All roles</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+        </select>
+        <select
+          v-model="isActiveFilter"
+          class="form-select form-select-sm flex-shrink-0 users-filter-status"
+        >
+          <option value="">All status</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+    </div>
+
     <div class="card shadow-sm border-0">
-      <div class="table-responsive">
-        <table class="table table-sm table-striped table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th style="width: 60px">No</th>
-              <th>Email</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Region</th>
-              <th>Area</th>
-              <th>Role</th>
-              <th>Active</th>
-              <th>Avatar URL</th>
-              <th>Last login</th>
-              <th>Created at</th>
-              <th>Updated at</th>
-            </tr>
-          </thead>
+      <div class="card-body p-0">
+        <div class="table-wrapper">
+          <table class="table table-striped table-users mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="text-center" width="64">No</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Region</th>
+                <th>Area</th>
+                <th>Role</th>
+                <th>Reset password</th>
+                <th>Last login</th>
+                <th>Status</th>
+              </tr>
+            </thead>
 
-          <tbody>
-            <tr v-for="(u, index) in usersStore.items" :key="u.id">
-              <td class="text-center">
-                <NuxtLink
-                  v-if="authStore.canAccess('users', 'delete')"
-                  to="#"
-                  class="text-danger text-decoration-none"
-                  title="Delete user"
-                  @click.prevent="onDelete(u.id)"
-                >
-                  {{ rowNumber(index) }}
-                </NuxtLink>
-                <span v-else>{{ rowNumber(index) }}</span>
-              </td>
+            <tbody>
+              <tr v-if="store.loading">
+                <td colspan="10" class="text-center py-3">Loading...</td>
+              </tr>
 
-              <td>
-                <NuxtLink
-                  v-if="authStore.canAccess('users', 'update')"
-                  :to="`/users/update?id=${u.id}`"
-                  class="text-decoration-none"
-                >
-                  {{ u.email }}
-                </NuxtLink>
-                <span v-else>{{ u.email }}</span>
-              </td>
+              <template v-for="(item, index) in store.items" :key="item.id">
+                <tr>
+                  <td
+                    class="text-center text-muted fw-semibold"
+                    style="cursor: pointer"
+                    @click="toggleRow(item.id)"
+                  >
+                    {{ getRowNumber(index) }}
+                  </td>
 
-              <td>{{ u.firstName }} {{ u.lastName }}</td>
-              <td>{{ u.phone }}</td>
-              <td>{{ u.region }}</td>
-              <td>{{ u.area }}</td>
-              <td>{{ u.role }}</td>
-              <td>{{ u.isActive }}</td>
-              <td>{{ u.avatarUrl }}</td>
-              <td>{{ u.lastLoginAt }}</td>
-              <td>{{ u.createdAt }}</td>
-              <td>{{ u.updatedAt }}</td>
-            </tr>
+                  <td>
+                    <NuxtLink
+                      v-if="canEditUser(item.role)"
+                      :to="`/users/update?id=${item.id}`"
+                      class="text-primary fw-semibold text-decoration-none"
+                    >
+                      {{ item.email }}
+                    </NuxtLink>
+                    <span v-else class="fw-semibold">{{ item.email }}</span>
+                  </td>
 
-            <tr v-if="!usersStore.items.length">
-              <td colspan="12" class="text-center text-muted py-4">No data</td>
-            </tr>
-          </tbody>
-        </table>
+                  <td>{{ item.firstName }} {{ item.lastName }}</td>
+                  <td>{{ item.phone || "-" }}</td>
+                  <td>{{ item.region || "-" }}</td>
+                  <td>{{ item.area || "-" }}</td>
+                  <td class="text-uppercase">{{ item.role }}</td>
+
+                  <td>
+                    <button
+                      v-if="canEditUser(item.role)"
+                      type="button"
+                      class="btn btn-outline-warning btn-sm"
+                      :disabled="resettingId === item.id"
+                      @click="openResetModal(item.id)"
+                    >
+                      {{ resettingId === item.id ? "…" : "Reset" }}
+                    </button>
+                    <span v-else class="data-meta">-</span>
+                  </td>
+
+                  <td class="data-meta text-nowrap">
+                    {{ formatListTimestamp(item.lastLoginAt) }}
+                  </td>
+
+                  <td>
+                    <div>
+                      <span
+                        class="badge me-2"
+                        :class="item.isActive ? 'bg-success' : 'bg-secondary'"
+                      >
+                        {{ item.isActive ? "Active" : "Inactive" }}
+                      </span>
+                    </div>
+                    <div
+                      v-if="item.mustChangePassword"
+                      class="data-meta mt-1"
+                    >
+                      Must change password
+                    </div>
+                    <div class="data-meta mt-1">
+                      <div>Created by: {{ item.createdBy || "-" }}</div>
+                      <div>Updated by: {{ item.updatedBy || "-" }}</div>
+                      <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
+                      <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
+                    </div>
+                    <span
+                      v-if="canDeleteUser(item.role)"
+                      class="text-danger fw-semibold d-block mt-1"
+                      style="cursor: pointer"
+                      @click.stop="openDeleteModal(item.id)"
+                    >
+                      <span v-if="deletingId === item.id">...</span>
+                      <span v-else>×</span>
+                    </span>
+                  </td>
+                </tr>
+
+                <tr v-if="expandedRow === item.id" class="bg-light">
+                  <td colspan="10">
+                    <div class="p-4">
+                      <div class="mb-0">
+                        <div class="data-label">Avatar URL</div>
+                        <div class="data-value">{{ item.avatarUrl || "-" }}</div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <tr v-if="!store.loading && store.items.length === 0">
+                <td colspan="10" class="text-center text-muted py-3">
+                  No data available
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div class="data-meta">
+        Showing
+        {{ showingStart }}
+        -
+        {{ showingEnd }}
+        of {{ store.meta.total }} entries
+      </div>
+
+      <AppPagination
+        :current-page="store.meta.page"
+        :total-pages="store.meta.totalPages"
+        @prev="prevPage"
+        @next="nextPage"
+      />
+    </div>
+
+    <div
+      v-if="showDeleteModal"
+      class="modal d-block"
+      tabindex="-1"
+      style="background: rgba(0, 0, 0, 0.45)"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm delete</h5>
+            <button
+              type="button"
+              class="btn-close"
+              aria-label="Close"
+              :disabled="!!deletingId"
+              @click="cancelDelete"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <p class="mb-0">
+              Delete
+              <span class="fw-bold">{{
+                deleteTargetUser?.email || "this user"
+              }}</span
+              >?
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              :disabled="!!deletingId"
+              @click="cancelDelete"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-danger"
+              :disabled="!!deletingId"
+              @click="performDelete"
+            >
+              {{ deletingId ? "Deleting..." : "Delete" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showResetModal"
+      class="modal d-block"
+      tabindex="-1"
+      style="background: rgba(0, 0, 0, 0.45)"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Reset password</h5>
+            <button
+              type="button"
+              class="btn-close"
+              aria-label="Close"
+              :disabled="!!resettingId"
+              @click="cancelReset"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <p class="mb-2">
+              Reset password for
+              <span class="fw-bold">{{
+                resetTargetUser?.email || "this user"
+              }}</span
+              >?
+            </p>
+            <p class="data-meta mb-0">
+              Password will be set to the default. The user must change it on
+              first login.
+            </p>
+          </div>
+
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              :disabled="!!resettingId"
+              @click="cancelReset"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-warning"
+              :disabled="!!resettingId"
+              @click="performReset"
+            >
+              {{ resettingId ? "Resetting..." : "Reset password" }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped lang="scss">
+.users-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.users-filter-search {
+  min-width: 0;
+  flex: 1 1 24rem;
+  max-width: 48rem;
+}
+
+.users-filter-role,
+.users-filter-status {
+  width: 10.5rem;
+  min-width: 10.5rem;
+}
+
+.table-users {
+  th,
+  td {
+    font-size: 0.9rem;
+  }
+}
+</style>

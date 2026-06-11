@@ -1,3 +1,5 @@
+import { usePartnersStore } from "@/stores/partners";
+import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { apiFetch } from "~/utils/apiFetch";
 
 export type PartnerPayload = {
@@ -23,19 +25,34 @@ export type PartnerPayload = {
 };
 
 export const usePartnersApi = () => {
+  const store = usePartnersStore();
+
   const getPartners = async (params?: {
     page?: number;
     limit?: number;
-    search?: string;
-    isActive?: boolean;
   }) => {
-    return await apiFetch("/api/partners", {
-      query: params,
-    });
+    store.setLoading(true);
+
+    try {
+      const isActive = store.filters.isActive;
+      const query: Record<string, string | number | boolean> = {
+        page: params?.page ?? store.page,
+        limit: params?.limit ?? store.limit ?? DEFAULT_PAGE_LIMIT,
+      };
+
+      if (store.filters.search) query.search = store.filters.search;
+      if (isActive !== "") query.isActive = isActive === "true";
+
+      const res: any = await apiFetch("/api/partners", { query });
+      store.setPartners(res.data);
+    } finally {
+      store.setLoading(false);
+    }
   };
 
   const getPartnerById = async (id: string) => {
-    return await apiFetch(`/api/partners/${id}`);
+    const res: any = await apiFetch(`/api/partners/${id}`);
+    return res.data;
   };
 
   const createPartner = async (payload: PartnerPayload) => {
@@ -53,9 +70,10 @@ export const usePartnersApi = () => {
   };
 
   const deletePartner = async (id: string) => {
-    return await apiFetch(`/api/partners/${id}`, {
+    await apiFetch(`/api/partners/${id}`, {
       method: "DELETE",
     });
+    store.removePartner(id);
   };
 
   return {

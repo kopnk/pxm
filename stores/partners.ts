@@ -20,6 +20,8 @@ interface Partner {
   contactEmail: string | null;
   rating: number | null;
   isActive: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +42,10 @@ export const usePartnersStore = defineStore("partners", {
     total: 0,
     totalPages: 1,
     loading: false,
+    filters: {
+      search: "",
+      isActive: "" as "" | "true" | "false",
+    },
   }),
 
   actions: {
@@ -53,6 +59,14 @@ export const usePartnersStore = defineStore("partners", {
 
     setLoading(val: boolean) {
       this.loading = val;
+    },
+
+    setFilters(filters: Partial<{ search: string; isActive: "" | "true" | "false" }>) {
+      this.filters = { ...this.filters, ...filters };
+    },
+
+    removePartner(id: string) {
+      this.items = this.items.filter((item) => item.id !== id);
     },
   },
 });

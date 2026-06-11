@@ -5,6 +5,7 @@ import {
   type RlsAction,
   type RlsResource,
 } from "~/lib/rls";
+import { canManageUserInList } from "~/lib/userRoles";
 import { useRlsApi } from "@/composables/useRlsApi";
 import { useNotify } from "@/composables/useNotify";
 
@@ -19,22 +20,45 @@ export const useRlsListPage = () => {
   const { store, getRlsMatrix, updateUserPermissions } = useRlsApi();
   const notify = useNotify();
 
-  const search = ref("");
-  const role = ref("");
-  const isActive = ref("");
-  const menuSearch = ref("");
-  const actionFilter = ref<"" | RlsAction>("");
+  const searchFilter = computed({
+    get: () => store.filters.search,
+    set: (value: string) => store.setFilters({ search: value }),
+  });
+
+  const roleFilter = computed({
+    get: () => store.filters.role,
+    set: (value: string) => store.setFilters({ role: value }),
+  });
+
+  const isActiveFilter = computed({
+    get: () => store.filters.isActive,
+    set: (value: "" | "true" | "false") => store.setFilters({ isActive: value }),
+  });
+
+  const menuSearchFilter = computed({
+    get: () => store.filters.menuSearch,
+    set: (value: string) => store.setFilters({ menuSearch: value }),
+  });
+
+  const actionFilter = computed({
+    get: () => store.filters.actionFilter,
+    set: (value: "" | RlsAction) => store.setFilters({ actionFilter: value }),
+  });
+
+  const canEditUserRls = (role?: string | null) => canManageUserInList(role);
 
   const filteredUsers = computed(() => {
-    const q = search.value.trim().toLowerCase();
+    const q = store.filters.search.trim().toLowerCase();
 
     return store.users.filter((user) => {
-      if (role.value && user.role?.toLowerCase() !== role.value) {
+      if (!canEditUserRls(user.role)) return false;
+
+      if (store.filters.role && user.role?.toLowerCase() !== store.filters.role) {
         return false;
       }
 
-      if (isActive.value !== "") {
-        const active = isActive.value === "true";
+      if (store.filters.isActive !== "") {
+        const active = store.filters.isActive === "true";
         if (Boolean(user.isActive) !== active) return false;
       }
 
@@ -55,7 +79,7 @@ export const useRlsListPage = () => {
   });
 
   const visibleMenus = computed(() => {
-    const q = menuSearch.value.trim().toLowerCase();
+    const q = store.filters.menuSearch.trim().toLowerCase();
     if (!q) return [...RLS_MENU_REGISTRY];
 
     return RLS_MENU_REGISTRY.filter(
@@ -66,31 +90,37 @@ export const useRlsListPage = () => {
   });
 
   const visibleActions = computed(() => {
-    if (!actionFilter.value) return [...RLS_ACTIONS];
-    return [actionFilter.value];
+    if (!store.filters.actionFilter) return [...RLS_ACTIONS];
+    return [store.filters.actionFilter];
   });
 
   const tableRows = computed(() => {
     const rows: Array<{
       userId: string;
       email: string;
+      firstName: string;
+      lastName: string;
       role: string;
       action: RlsAction;
       rowSpan: number;
       showUser: boolean;
+      userIndex: number;
     }> = [];
 
     const actions = visibleActions.value;
 
-    for (const user of filteredUsers.value) {
+    for (const [userIndex, user] of filteredUsers.value.entries()) {
       actions.forEach((action, actionIndex) => {
         rows.push({
           userId: user.id,
           email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
           role: user.role,
           action,
           rowSpan: actions.length,
           showUser: actionIndex === 0,
+          userIndex,
         });
       });
     }
@@ -116,6 +146,13 @@ export const useRlsListPage = () => {
     const user = store.users.find((row) => row.id === userId);
     if (!user) return;
 
+    if (!canEditUserRls(user.role)) {
+      const input = event.target as HTMLInputElement;
+      input.checked = !input.checked;
+      notify.warning("Superadmin permissions cannot be modified");
+      return;
+    }
+
     const input = event.target as HTMLInputElement;
     const nextValue = input.checked;
 
@@ -137,11 +174,11 @@ export const useRlsListPage = () => {
 
   const hasActiveFilters = computed(
     () =>
-      Boolean(search.value.trim()) ||
-      Boolean(role.value) ||
-      isActive.value !== "" ||
-      Boolean(menuSearch.value.trim()) ||
-      Boolean(actionFilter.value),
+      Boolean(store.filters.search.trim()) ||
+      Boolean(store.filters.role) ||
+      store.filters.isActive !== "" ||
+      Boolean(store.filters.menuSearch.trim()) ||
+      Boolean(store.filters.actionFilter),
   );
 
   onMounted(() => {
@@ -150,16 +187,17 @@ export const useRlsListPage = () => {
 
   return {
     store,
-    search,
-    role,
-    isActive,
-    menuSearch,
+    searchFilter,
+    roleFilter,
+    isActiveFilter,
+    menuSearchFilter,
     actionFilter,
     filteredUsers,
     visibleMenus,
     visibleActions,
     tableRows,
     hasActiveFilters,
+    canEditUserRls,
     isChecked,
     onToggle,
   };

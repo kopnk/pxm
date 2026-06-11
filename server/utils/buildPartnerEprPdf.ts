@@ -140,7 +140,7 @@ export async function buildPartnerEprPdfBuffer(
   const logoPath = logoCandidates.find((p) => existsSync(p));
   if (logoPath) {
     const logo = readFileSync(logoPath);
-    doc.image(logo, ml + 8, y + 8, { fit: [wLeft - 16, h1 - 16], align: "left" });
+    doc.image(logo, ml + 8, y + 8, { fit: [wLeft - 16, h1 - 16] });
   } else {
     doc.font(FONT_BOLD).fontSize(11).text("KOPINDOSAT", ml + 8, y + 8, {
       width: wLeft - 16,

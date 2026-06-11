@@ -170,6 +170,8 @@ const onExportExcel = () => {
                     </span>
 
                     <div class="data-meta mt-1">
+                      <div>Created by: {{ item.createdBy || "-" }}</div>
+                      <div>Updated by: {{ item.updatedBy || "-" }}</div>
                       <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
                       <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
                     </div>
@@ -213,6 +215,12 @@ const onExportExcel = () => {
                           </div>
 
                           <div class="data-meta mt-3">
+                            Created by: {{ item.createdBy || "-" }}
+                          </div>
+                          <div class="data-meta">
+                            Updated by: {{ item.updatedBy || "-" }}
+                          </div>
+                          <div class="data-meta">
                             Created: {{ formatListTimestamp(item.createdAt) }}
                           </div>
                           <div class="data-meta">

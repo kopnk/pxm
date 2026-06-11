@@ -111,6 +111,9 @@ export const projectFinancials = pgTable(
       .references(() => users.id)
       .notNull(),
 
+    updatedUser: uuid("updated_user")
+      .references(() => users.id),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

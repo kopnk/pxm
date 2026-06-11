@@ -22,14 +22,14 @@
         <div class="col-lg-4">
           <label class="form-label small text-muted mb-1">Project / PO</label>
           <input
-            v-model="projectKeyword"
+            v-model="projectKeywordFilter"
             class="form-control form-control-sm"
             placeholder="Search Project Name or PO number"
           />
         </div>
         <div class="col-lg-4">
           <label class="form-label small text-muted mb-1">Region</label>
-          <select v-model="regionFilter" class="form-select form-select-sm">
+          <select v-model="regionFilterModel" class="form-select form-select-sm">
             <option value="">All Region</option>
             <option
               v-for="region in regionOptions"
@@ -42,7 +42,7 @@
         </div>
         <div class="col-lg-4">
           <label class="form-label small text-muted mb-1">Sub Region</label>
-          <select v-model="subRegionFilter" class="form-select form-select-sm">
+          <select v-model="subRegionFilterModel" class="form-select form-select-sm">
             <option value="">All Sub Region</option>
             <option v-for="sub in subRegionOptions" :key="sub" :value="sub">
               {{ sub }}
@@ -147,8 +147,8 @@
       </div>
       <div v-else class="stage-pipeline-chart-wrap">
         <Line
-          :data="stagePipelineChart"
-          :options="dashboardStageChartOptions"
+          :data="stagePipelineChart as any"
+          :options="(dashboardStageChartOptions as any)"
         />
       </div>
     </div>
@@ -185,6 +185,9 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  BarController,
+  LineController,
   Tooltip,
   Legend,
 } from "chart.js";
@@ -192,6 +195,7 @@ import { Line } from "vue-chartjs";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useDashboardRefreshSocket } from "@/composables/useDashboardRefreshSocket";
 import { useNotify } from "@/composables/useNotify";
+import { useDashboardStore } from "@/stores/dashboard";
 import {
   useDashboardProgressStageChart,
   dashboardStageChartOptions,
@@ -251,6 +255,9 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  BarController,
+  LineController,
   Tooltip,
   Legend,
 );
@@ -262,18 +269,30 @@ ChartJS.register(
 const loading = ref(false);
 const errorMessage = ref("");
 const notify = useNotify();
+const dashboardStore = useDashboardStore();
 const { isConnected, connect, disconnect } = useDashboardRefreshSocket();
+
+const projectKeywordFilter = computed({
+  get: () => dashboardStore.filters.projectKeyword,
+  set: (value: string) =>
+    dashboardStore.setFilters({ projectKeyword: value }),
+});
+
+const regionFilterModel = computed({
+  get: () => dashboardStore.filters.regionFilter,
+  set: (value: string) => dashboardStore.setFilters({ regionFilter: value }),
+});
+
+const subRegionFilterModel = computed({
+  get: () => dashboardStore.filters.subRegionFilter,
+  set: (value: string) =>
+    dashboardStore.setFilters({ subRegionFilter: value }),
+});
 
 const projects = ref<ProjectRow[]>([]);
 const details = ref<ProjectDetailRow[]>([]);
 const progressRows = ref<ProjectProgressRow[]>([]);
 const financialRows = ref<ProjectFinancialRow[]>([]);
-
-/* FILTER STATE:
-   Jika semua kosong, dashboard otomatis menampilkan seluruh project/data. */
-const projectKeyword = ref("");
-const regionFilter = ref("");
-const subRegionFilter = ref("");
 
 const activePanel = ref<string | null>(null);
 /* REMARK:
@@ -311,7 +330,12 @@ const subRegionOptions = computed(() => {
   for (const row of details.value) {
     const sub = row.subRegionName?.trim();
     if (!sub) continue;
-    if (regionFilter.value && row.regionName !== regionFilter.value) continue;
+    if (
+      dashboardStore.filters.regionFilter &&
+      row.regionName !== dashboardStore.filters.regionFilter
+    ) {
+      continue;
+    }
     unique.add(sub);
   }
   return [...unique].sort((a, b) => a.localeCompare(b));
@@ -320,9 +344,9 @@ const subRegionOptions = computed(() => {
 /* DATA TERFILTER:
    Semua KPI/chart memakai data ini agar sinkron dengan filter dashboard. */
 const filteredProjects = computed(() => {
-  const keyword = projectKeyword.value.trim().toLowerCase();
-  const region = regionFilter.value;
-  const subRegion = subRegionFilter.value;
+  const keyword = dashboardStore.filters.projectKeyword.trim().toLowerCase();
+  const region = dashboardStore.filters.regionFilter;
+  const subRegion = dashboardStore.filters.subRegionFilter;
 
   return projects.value.filter((project) => {
     const matchKeyword =
@@ -349,8 +373,8 @@ const filteredProjectIds = computed(() => {
 });
 
 const filteredDetails = computed(() => {
-  const region = regionFilter.value;
-  const subRegion = subRegionFilter.value;
+  const region = dashboardStore.filters.regionFilter;
+  const subRegion = dashboardStore.filters.subRegionFilter;
 
   return details.value.filter((row) => {
     if (!filteredProjectIds.value.has(row.projectId)) return false;
@@ -380,21 +404,22 @@ const filteredFinancialRows = computed(() => {
   });
 });
 
+const projectCount = computed(() => filteredProjects.value.length);
+const detailCount = computed(() => filteredDetails.value.length);
+
 const {
   loadProgressStages,
   stagePipelineChart,
   hasPipelineStages,
   stagesLoadError,
   stagesLoading,
-} = useDashboardProgressStageChart(filteredProgressRows);
+} = useDashboardProgressStageChart(filteredProgressRows, detailCount);
 
 /* =========================================================
    FLOW 3/6 - KPI TURUNAN (COMPUTED)
    Fungsi: mengubah data mentah jadi angka siap tampil.
    Contoh output: CPI/SPI, Progress %, PV/EV/AC, Profit.
    ========================================================= */
-const projectCount = computed(() => filteredProjects.value.length);
-const detailCount = computed(() => filteredDetails.value.length);
 
 const cpi = computed(() => cpiSeries.value.at(-1) ?? 0);
 const spi = computed(() => spiSeries.value.at(-1) ?? 0);
@@ -463,7 +488,7 @@ const poPriceTaxRateLabel = computed(() => {
   }
 
   if (rates.size === 1) {
-    const value = [...rates][0];
+    const value = [...rates][0] ?? 0;
     return `${Number.isInteger(value) ? value.toFixed(0) : value}%`;
   }
 
@@ -859,16 +884,24 @@ onUnmounted(() => {
   disconnect();
 });
 
-watch([projectKeyword, regionFilter, subRegionFilter], () => {
-  if (
-    subRegionFilter.value &&
-    !subRegionOptions.value.includes(subRegionFilter.value)
-  ) {
-    subRegionFilter.value = "";
-    return;
-  }
-  rebuildSeries();
-});
+watch(
+  () =>
+    [
+      dashboardStore.filters.projectKeyword,
+      dashboardStore.filters.regionFilter,
+      dashboardStore.filters.subRegionFilter,
+    ] as const,
+  () => {
+    if (
+      dashboardStore.filters.subRegionFilter &&
+      !subRegionOptions.value.includes(dashboardStore.filters.subRegionFilter)
+    ) {
+      dashboardStore.setFilters({ subRegionFilter: "" });
+      return;
+    }
+    rebuildSeries();
+  },
+);
 </script>
 
 <style scoped>
@@ -1070,8 +1103,8 @@ watch([projectKeyword, regionFilter, subRegionFilter], () => {
 
 .stage-pipeline-chart-wrap {
   position: relative;
-  min-height: 300px;
-  height: 320px;
+  min-height: 340px;
+  height: 380px;
   margin-top: 0.35rem;
 }
 

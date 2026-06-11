@@ -49,6 +49,7 @@ export interface ProjectDetailItem {
 
   createdUser: string | null;
   createdBy: string | null;
+  updatedBy?: string | null;
 }
 
 export interface ProjectDetailsState {
@@ -58,6 +59,10 @@ export interface ProjectDetailsState {
   total: number;
   totalPages: number;
   loading: boolean;
+  filters: {
+    search: string;
+    status: string;
+  };
 }
 
 /* ================= STORE ================= */
@@ -69,6 +74,10 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
     total: 0,
     totalPages: 0,
     loading: false,
+    filters: {
+      search: "",
+      status: "",
+    },
   }),
 
   actions: {
@@ -110,6 +119,10 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
 
     setLoading(value: boolean) {
       this.loading = value;
+    },
+
+    setFilters(filters: Partial<{ search: string; status: string }>) {
+      this.filters = { ...this.filters, ...filters };
     },
 
     /* ===== RESET ===== */

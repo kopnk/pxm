@@ -9,6 +9,7 @@ export const AUDIT_ACTION_OPTIONS = [
   "LOGIN",
   "LOGOUT",
   "CHANGE_PASSWORD",
+  "RESET_PASSWORD",
 ] as const;
 
 export type AuditActionOption = (typeof AUDIT_ACTION_OPTIONS)[number];
@@ -19,22 +20,19 @@ export const useAuditApi = () => {
   const getAuditLogs = async (params?: {
     page?: number;
     limit?: number;
-    search?: string;
     actorId?: string;
-    action?: string;
-    targetTable?: string;
   }) => {
     store.setLoading(true);
     try {
       const query: Record<string, string | number> = {
-        page: params?.page ?? 1,
-        limit: params?.limit ?? DEFAULT_PAGE_LIMIT,
+        page: params?.page ?? store.page,
+        limit: params?.limit ?? store.limit ?? DEFAULT_PAGE_LIMIT,
       };
 
-      if (params?.search) query.search = params.search;
+      if (store.filters.search) query.search = store.filters.search;
       if (params?.actorId) query.actorId = params.actorId;
-      if (params?.action) query.action = params.action;
-      if (params?.targetTable) query.targetTable = params.targetTable;
+      if (store.filters.action) query.action = store.filters.action;
+      if (store.filters.targetTable) query.targetTable = store.filters.targetTable;
 
       const res: any = await apiFetch("/api/audit", { query });
       store.setAuditList(res.data);

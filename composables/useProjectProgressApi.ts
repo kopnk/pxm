@@ -13,11 +13,8 @@ export const useProjectProgressApi = () => {
   const getProjectProgress = async (params?: {
     page?: number;
     limit?: number;
-    search?: string;
     project?: string;
     detail?: string;
-    stage?: string;
-    status?: string;
   }) => {
 
     store.setLoading(true);
@@ -28,11 +25,12 @@ export const useProjectProgressApi = () => {
         query: {
           page: params?.page ?? store.page,
           limit: params?.limit ?? store.limit,
-          search: params?.search,
+          search: store.filters.search || undefined,
           project: params?.project,
           detail: params?.detail,
-          stage: params?.stage,
-          status: params?.status,
+          stage: store.filters.stage || undefined,
+          stageDateType: store.filters.stageDateType || undefined,
+          status: store.filters.status || undefined,
         },
       });
 

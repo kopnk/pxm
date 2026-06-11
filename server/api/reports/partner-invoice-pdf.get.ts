@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const first = rows[0];
+  const first = rows[0]!;
   if (!first) {
     throw createError({
       statusCode: 404,

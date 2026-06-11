@@ -9,6 +9,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime } from "~/server/utils/datetime";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -65,13 +66,13 @@ export default defineEventHandler(async (event) => {
         signatoryTitle: body.signatoryTitle ?? oldData.signatoryTitle,
         isActive: body.isActive ?? oldData.isActive,
 
-        // ✅ DATABASE TIME CENTRALIZED
+        updatedUser: userId,
         updatedAt: dbTime(),
       })
       .where(eq(clients.id, id))
       .returning();
 
-    const row = rows[0];
+    const row = requireFirstRow(rows, "Client not found");
 
     /* ================= AUDIT ================= */
     await logAudit({

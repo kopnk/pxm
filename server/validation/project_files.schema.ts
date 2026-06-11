@@ -15,6 +15,8 @@ export const createProjectFileSchema = z.object({
   fileUrl: z.string().url(),
   fileSize: z.number().optional(),
   mimeType: z.string().optional(),
+  version: z.number().int().positive().optional(),
+  isArchived: z.boolean().optional(),
 });
 
 export const updateProjectFileSchema = createProjectFileSchema.partial();

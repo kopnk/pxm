@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
       firstName: users.firstName,
       lastName: users.lastName,
       isActive: users.isActive,
+      mustChangePassword: users.mustChangePassword,
     })
     .from(users)
     .where(eq(users.email, email))
@@ -100,6 +101,7 @@ export default defineEventHandler(async (event) => {
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
+      mustChangePassword: user.mustChangePassword ?? false,
     },
     session: {
       id: session.id,

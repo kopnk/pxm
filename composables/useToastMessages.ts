@@ -16,6 +16,7 @@ export const ToastEntity = {
   profile: "Profile",
   password: "Password",
   auditLog: "Audit log",
+  region: "Region",
 } as const;
 
 export type ToastEntityKey = keyof typeof ToastEntity;

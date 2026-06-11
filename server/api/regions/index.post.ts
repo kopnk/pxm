@@ -7,6 +7,8 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { dbTime } from "~/server/utils/dbTime";
+import { requireFirstRow } from "~/server/utils/requireFirstRow";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
 
 type BulkNode = {
   name: string;
@@ -15,8 +17,6 @@ type BulkNode = {
 };
 
 export default defineEventHandler(async (event) => {
-
-  /* ================= AUTH ================= */
   const forbidden = requireRole(event, ["superadmin", "admin"]);
   if (forbidden) return forbidden;
 
@@ -27,23 +27,20 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event);
 
-  /* ================= BULK INSERT ================= */
   if (body?.bulk === true) {
-
     if (!Array.isArray(body.items)) {
       throw createError({
         statusCode: 400,
-        statusMessage: "Invalid bulk payload"
+        statusMessage: "Invalid bulk payload",
       });
     }
 
     const createdIds: string[] = [];
 
     await db.transaction(async (tx) => {
-
       async function insertNode(
         node: BulkNode,
-        parentId: string | null = null
+        parentId: string | null = null,
       ) {
         const rows = await tx
           .insert(regions)
@@ -51,14 +48,14 @@ export default defineEventHandler(async (event) => {
             name: node.name,
             type: node.type,
             parentId,
-
-            // 🔥 DB authoritative time
+            createdUser: userId,
+            updatedUser: userId,
             createdAt: dbTime(),
             updatedAt: dbTime(),
           })
           .returning();
 
-        const created = rows[0];
+        const created = requireFirstRow(rows, "Region not created");
         createdIds.push(created.id);
 
         if (node.children?.length) {
@@ -88,30 +85,27 @@ export default defineEventHandler(async (event) => {
       event,
       "Bulk regions created",
       { totalCreated: createdIds.length },
-      201
+      201,
     );
   }
 
-  /* ================= SINGLE INSERT ================= */
   const payload = parseBody(createRegionSchema, body);
 
   const created = await db.transaction(async (tx) => {
-
     const rows = await tx
       .insert(regions)
       .values({
         name: payload.name,
-        code: payload.code ?? null,
         type: payload.type,
-        parentId: payload.parentId ?? null,
-
-        // 🔥 DB authoritative time
+        parentId: payload.type === "region" ? null : (payload.parentId ?? null),
+        createdUser: userId,
+        updatedUser: userId,
         createdAt: dbTime(),
         updatedAt: dbTime(),
       })
       .returning();
 
-    const createdRow = rows[0];
+    const createdRow = requireFirstRow(rows, "Region not created");
 
     await logAudit({
       event,
@@ -128,7 +122,7 @@ export default defineEventHandler(async (event) => {
   return successResponse(
     event,
     "Region created",
-    created,
-    201
+    mapLocalTimestamps(created),
+    201,
   );
 });
