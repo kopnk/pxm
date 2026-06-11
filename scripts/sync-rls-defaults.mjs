@@ -1,9 +1,9 @@
 import "dotenv/config";
 import pg from "pg";
-import {
-  buildAdminDefaultMatrix,
-  buildStaffDefaultMatrix,
-} from "../lib/rls.ts";
+import { createJiti } from "jiti";
+
+const jiti = createJiti(import.meta.url);
+const { buildAdminDefaultMatrix, buildStaffDefaultMatrix } = jiti("../lib/rls.ts");
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
