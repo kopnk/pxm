@@ -1,6 +1,5 @@
 import { computed, onMounted, ref } from "vue";
 import {
-  RLS_ACTIONS,
   RLS_MENU_REGISTRY,
   type RlsAction,
   type RlsResource,
@@ -16,9 +15,17 @@ export const RLS_ACTION_LABELS: Record<RlsAction, string> = {
   delete: "Delete",
 };
 
+export const RLS_ACTIONS_ORDER: RlsAction[] = [
+  "create",
+  "read",
+  "update",
+  "delete",
+];
+
 export const useRlsListPage = () => {
   const { store, getRlsMatrix, updateUserPermissions } = useRlsApi();
   const notify = useNotify();
+  const expandedRow = ref<string | null>(null);
 
   const searchFilter = computed({
     get: () => store.filters.search,
@@ -38,11 +45,6 @@ export const useRlsListPage = () => {
   const menuSearchFilter = computed({
     get: () => store.filters.menuSearch,
     set: (value: string) => store.setFilters({ menuSearch: value }),
-  });
-
-  const actionFilter = computed({
-    get: () => store.filters.actionFilter,
-    set: (value: "" | RlsAction) => store.setFilters({ actionFilter: value }),
   });
 
   const canEditUserRls = (role?: string | null) => canManageUserInList(role);
@@ -89,44 +91,14 @@ export const useRlsListPage = () => {
     );
   });
 
-  const visibleActions = computed(() => {
-    if (!store.filters.actionFilter) return [...RLS_ACTIONS];
-    return [store.filters.actionFilter];
-  });
+  const toggleRow = (userId: string) => {
+    expandedRow.value = expandedRow.value === userId ? null : userId;
+  };
 
-  const tableRows = computed(() => {
-    const rows: Array<{
-      userId: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      role: string;
-      action: RlsAction;
-      rowSpan: number;
-      showUser: boolean;
-      userIndex: number;
-    }> = [];
+  const getRowNumber = (index: number) => index + 1;
 
-    const actions = visibleActions.value;
-
-    for (const [userIndex, user] of filteredUsers.value.entries()) {
-      actions.forEach((action, actionIndex) => {
-        rows.push({
-          userId: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          action,
-          rowSpan: actions.length,
-          showUser: actionIndex === 0,
-          userIndex,
-        });
-      });
-    }
-
-    return rows;
-  });
+  const getUserFullName = (firstName: string, lastName: string) =>
+    [firstName, lastName].filter(Boolean).join(" ") || "-";
 
   const isChecked = (
     userId: string,
@@ -177,8 +149,7 @@ export const useRlsListPage = () => {
       Boolean(store.filters.search.trim()) ||
       Boolean(store.filters.role) ||
       store.filters.isActive !== "" ||
-      Boolean(store.filters.menuSearch.trim()) ||
-      Boolean(store.filters.actionFilter),
+      Boolean(store.filters.menuSearch.trim()),
   );
 
   onMounted(() => {
@@ -187,17 +158,18 @@ export const useRlsListPage = () => {
 
   return {
     store,
+    expandedRow,
     searchFilter,
     roleFilter,
     isActiveFilter,
     menuSearchFilter,
-    actionFilter,
     filteredUsers,
     visibleMenus,
-    visibleActions,
-    tableRows,
     hasActiveFilters,
     canEditUserRls,
+    toggleRow,
+    getRowNumber,
+    getUserFullName,
     isChecked,
     onToggle,
   };

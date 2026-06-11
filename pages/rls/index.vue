@@ -3,24 +3,26 @@ definePageMeta({
   middleware: ["superadmin"],
 });
 
-import { RLS_ACTIONS } from "~/lib/rls";
 import {
+  RLS_ACTIONS_ORDER,
   RLS_ACTION_LABELS,
   useRlsListPage,
 } from "@/composables/useRlsListPage";
 
 const {
   store,
+  expandedRow,
   searchFilter,
   roleFilter,
   isActiveFilter,
   menuSearchFilter,
-  actionFilter,
   filteredUsers,
   visibleMenus,
-  tableRows,
   hasActiveFilters,
   canEditUserRls,
+  toggleRow,
+  getRowNumber,
+  getUserFullName,
   isChecked,
   onToggle,
 } = useRlsListPage();
@@ -28,190 +30,251 @@ const {
 
 <template>
   <div class="container-fluid py-4 px-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-      <h1 class="h4 mb-0">RLS — Role Access Matrix</h1>
+    <div
+      class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
+    >
+      <h4 class="text-brand mb-0">Role Access</h4>
       <span v-if="!store.loading" class="data-meta">
         {{ filteredUsers.length }} user{{ filteredUsers.length === 1 ? "" : "s" }}
-        · {{ visibleMenus.length }} menu{{ visibleMenus.length === 1 ? "" : "s" }}
       </span>
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div class="card-body row g-2 align-items-end">
-        <div class="col-lg-3 col-md-6">
-          <label class="label-field d-block mb-1">Search user</label>
-          <input
-            v-model="searchFilter"
-            class="form-control"
-            placeholder="Email, name, role..."
-          />
-        </div>
-
-        <div class="col-lg-2 col-md-3 col-6">
-          <label class="label-field d-block mb-1">Role</label>
-          <select v-model="roleFilter" class="form-select">
-            <option value="">All roles</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
-        </div>
-
-        <div class="col-lg-2 col-md-3 col-6">
-          <label class="label-field d-block mb-1">Status</label>
-          <select v-model="isActiveFilter" class="form-select">
-            <option value="">All status</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
-          </select>
-        </div>
-
-        <div class="col-lg-2 col-md-4 col-6">
-          <label class="label-field d-block mb-1">Action</label>
-          <select v-model="actionFilter" class="form-select">
-            <option value="">All actions</option>
-            <option
-              v-for="action in RLS_ACTIONS"
-              :key="action"
-              :value="action"
-            >
-              {{ RLS_ACTION_LABELS[action] }}
-            </option>
-          </select>
-        </div>
-
-        <div class="col-lg-3 col-md-8">
-          <label class="label-field d-block mb-1">Search menu</label>
-          <input
-            v-model="menuSearchFilter"
-            class="form-control"
-            placeholder="Projects, Tax In, Clients..."
-          />
-        </div>
+      <div
+        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 rls-filter-one-line"
+      >
+        <input
+          v-model="searchFilter"
+          type="search"
+          class="form-control form-control-sm rls-filter-search"
+          placeholder="Email, name, role…"
+        />
+        <select
+          v-model="roleFilter"
+          class="form-select form-select-sm flex-shrink-0 rls-filter-select"
+        >
+          <option value="">All roles</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+        </select>
+        <select
+          v-model="isActiveFilter"
+          class="form-select form-select-sm flex-shrink-0 rls-filter-select"
+        >
+          <option value="">All status</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+        <input
+          v-model="menuSearchFilter"
+          type="search"
+          class="form-control form-control-sm flex-shrink-0 rls-filter-menu"
+          placeholder="Filter menu in panel…"
+        />
       </div>
     </div>
 
-    <div v-if="store.loading" class="text-center py-5 data-meta">Loading…</div>
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-0">
+        <div class="table-wrapper">
+          <table class="table table-striped table-users mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="text-center" width="64">No</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Permissions</th>
+              </tr>
+            </thead>
 
-    <div v-else class="table-responsive rls-table-wrap">
-      <table class="table table-bordered table-sm align-middle rls-table mb-0">
-        <thead>
-          <tr>
-            <th class="rls-sticky-col rls-user-col">User</th>
-            <th class="rls-action-col">Action</th>
-            <th
-              v-for="menu in visibleMenus"
-              :key="menu.key"
-              class="text-center"
-            >
-              {{ menu.label }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="row in tableRows"
-            :key="`${row.userId}-${row.action}`"
-            :class="{
-              'rls-row-saving': store.savingUserId === row.userId,
-              'rls-user-even': row.userIndex % 2 === 1,
-            }"
-          >
-            <td
-              v-if="row.showUser"
-              :rowspan="row.rowSpan"
-              class="rls-sticky-col rls-user-col"
-            >
-              <div class="fw-semibold" style="font-size: 0.95rem">
-                {{ row.email }}
-              </div>
-              <div
-                v-if="row.firstName || row.lastName"
-                class="data-value"
-              >
-                {{ [row.firstName, row.lastName].filter(Boolean).join(" ") }}
-              </div>
-              <div class="data-meta text-uppercase">{{ row.role }}</div>
-            </td>
-            <td class="rls-action-col data-meta">
-              {{ RLS_ACTION_LABELS[row.action] }}
-            </td>
-            <td
-              v-for="menu in visibleMenus"
-              :key="`${row.userId}-${row.action}-${menu.key}`"
-              class="text-center"
-            >
-              <input
-                type="checkbox"
-                class="form-check-input"
-                :checked="isChecked(row.userId, menu.key, row.action)"
-                :disabled="!canEditUserRls(row.role)"
-                :aria-label="`${row.email} ${row.action} ${menu.label}`"
-                @change="onToggle(row.userId, menu.key, row.action, $event)"
-              />
-            </td>
-          </tr>
-          <tr v-if="!tableRows.length">
-            <td
-              :colspan="2 + visibleMenus.length"
-              class="text-center data-meta py-4"
-            >
-              {{
-                store.users.length && hasActiveFilters
-                  ? "No users match the current filters."
-                  : "No users found."
-              }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            <tbody>
+              <tr v-if="store.loading">
+                <td colspan="6" class="text-center py-3">Loading...</td>
+              </tr>
+
+              <template v-for="(user, index) in filteredUsers" :key="user.id">
+                <tr
+                  :class="{
+                    'rls-row-saving': store.savingUserId === user.id,
+                  }"
+                >
+                  <td
+                    class="text-center text-muted fw-semibold"
+                    style="cursor: pointer"
+                    :title="expandedRow === user.id ? 'Collapse' : 'Expand permissions'"
+                    @click="toggleRow(user.id)"
+                  >
+                    {{ getRowNumber(index) }}
+                  </td>
+
+                  <td>
+                    <span class="fw-semibold">{{ user.email }}</span>
+                  </td>
+
+                  <td>{{ getUserFullName(user.firstName, user.lastName) }}</td>
+
+                  <td class="text-uppercase">{{ user.role }}</td>
+
+                  <td>
+                    <span
+                      class="badge"
+                      :class="user.isActive ? 'bg-success' : 'bg-secondary'"
+                    >
+                      {{ user.isActive ? "Active" : "Inactive" }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary btn-sm"
+                      @click="toggleRow(user.id)"
+                    >
+                      {{
+                        expandedRow === user.id
+                          ? "Hide permissions"
+                          : "Edit permissions"
+                      }}
+                    </button>
+                    <div class="data-meta mt-1">
+                      {{ visibleMenus.length }} menu{{
+                        visibleMenus.length === 1 ? "" : "s"
+                      }}
+                    </div>
+                  </td>
+                </tr>
+
+                <tr
+                  v-if="expandedRow === user.id"
+                  class="bg-light"
+                >
+                  <td colspan="6" class="p-0">
+                    <div
+                      class="p-3"
+                      :class="{
+                        'rls-panel-saving': store.savingUserId === user.id,
+                      }"
+                    >
+                      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <div>
+                          <div class="data-label">Permissions for</div>
+                          <div class="data-value">{{ user.email }}</div>
+                        </div>
+                        <span class="data-meta">
+                          Click checkboxes to save immediately
+                        </span>
+                      </div>
+
+                      <div class="table-scroll-x">
+                        <table class="table table-sm table-bordered table-users mb-0 rls-perm-table">
+                          <thead class="table-light">
+                            <tr>
+                              <th style="min-width: 10rem">Menu</th>
+                              <th
+                                v-for="action in RLS_ACTIONS_ORDER"
+                                :key="action"
+                                class="text-center"
+                                style="min-width: 5rem"
+                              >
+                                {{ RLS_ACTION_LABELS[action] }}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              v-for="menu in visibleMenus"
+                              :key="menu.key"
+                            >
+                              <td>
+                                <div class="fw-semibold">{{ menu.label }}</div>
+                                <div class="data-meta">{{ menu.key }}</div>
+                              </td>
+                              <td
+                                v-for="action in RLS_ACTIONS_ORDER"
+                                :key="`${menu.key}-${action}`"
+                                class="text-center align-middle"
+                              >
+                                <input
+                                  type="checkbox"
+                                  class="form-check-input"
+                                  :checked="isChecked(user.id, menu.key, action)"
+                                  :disabled="!canEditUserRls(user.role)"
+                                  :aria-label="`${user.email} ${menu.label} ${action}`"
+                                  @change="
+                                    onToggle(user.id, menu.key, action, $event)
+                                  "
+                                />
+                              </td>
+                            </tr>
+                            <tr v-if="!visibleMenus.length">
+                              <td
+                                :colspan="1 + RLS_ACTIONS_ORDER.length"
+                                class="text-center data-meta py-3"
+                              >
+                                No menus match the current filter.
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+
+              <tr v-if="!store.loading && !filteredUsers.length">
+                <td colspan="6" class="text-center text-muted py-3">
+                  {{
+                    store.users.length && hasActiveFilters
+                      ? "No users match the current filters."
+                      : "No data available"
+                  }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.rls-table-wrap {
-  max-height: calc(100vh - 17rem);
-  overflow: auto;
+.rls-filter-one-line {
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
-.rls-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: #f8f9fa;
-  white-space: nowrap;
+.rls-filter-search {
+  min-width: 0;
+  flex: 1 1 20rem;
+  max-width: 36rem;
 }
 
-.rls-sticky-col {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: #fff;
+.rls-filter-select {
+  width: 10.5rem;
+  min-width: 10.5rem;
 }
 
-.rls-table tbody tr.rls-user-even td {
-  background-color: #f2f4f6;
-}
-
-.rls-table tbody tr.rls-user-even .rls-sticky-col {
-  background-color: #f2f4f6;
-}
-
-.rls-user-col {
+.rls-filter-menu {
+  width: 14rem;
   min-width: 14rem;
 }
 
-.rls-action-col {
-  min-width: 5.5rem;
-  white-space: nowrap;
+.table-scroll-x {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
-.rls-table thead .rls-sticky-col {
-  z-index: 3;
-  background: #f8f9fa;
+.rls-perm-table {
+  min-width: 36rem;
 }
 
-.rls-row-saving {
+.rls-row-saving,
+.rls-panel-saving {
   opacity: 0.65;
 }
 </style>
