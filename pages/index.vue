@@ -199,6 +199,7 @@ import { useDashboardStore } from "@/stores/dashboard";
 import {
   useDashboardProgressStageChart,
   dashboardStageChartOptions,
+  stageBarPercentLabelsPlugin,
 } from "@/composables/useDashboardProgressStageChart";
 
 type ProjectRow = {
@@ -260,6 +261,7 @@ ChartJS.register(
   LineController,
   Tooltip,
   Legend,
+  stageBarPercentLabelsPlugin,
 );
 
 /* =========================================================

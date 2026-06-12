@@ -60,6 +60,17 @@ function hasActualDate(
   return Boolean(String(st?.actual_approve_date ?? "").trim());
 }
 
+function formatStageBarPercent(completed: number, remaining: number) {
+  const total = completed + remaining;
+  if (total <= 0) return { completedPct: 0, remainingPct: 0, total: 0 };
+  const completedPct = Math.round((completed / total) * 100);
+  return {
+    completedPct,
+    remainingPct: 100 - completedPct,
+    total,
+  };
+}
+
 /** Per stage: detail line terfilter vs sudah / belum actual. */
 export function computeStageDetailBarCounts(
   rows: DashboardProgressStageRow[],
@@ -209,6 +220,7 @@ export function useDashboardProgressStageChart(
           borderWidth: 2,
           fill: false,
           order: 1,
+          stack: "planned-line",
           yAxisID: "y",
         },
         {
@@ -223,6 +235,7 @@ export function useDashboardProgressStageChart(
           borderWidth: 2,
           fill: false,
           order: 1,
+          stack: "actual-line",
           yAxisID: "y",
         },
       ],
@@ -241,6 +254,68 @@ export function useDashboardProgressStageChart(
   };
 }
 
+/** Label persentase di dalam segmen batang Completed / Remaining. */
+export const stageBarPercentLabelsPlugin = {
+  id: "stageBarPercentLabels",
+  afterDatasetsDraw(chart: {
+    ctx: CanvasRenderingContext2D;
+    data: { datasets: { label?: string; data: unknown[] }[] };
+    getDatasetMeta: (index: number) => {
+      data: {
+        getProps: (
+          props: string[],
+          useFinalPosition?: boolean,
+        ) => { x: number; y: number; base: number };
+      }[];
+    };
+  }) {
+    const { ctx, data } = chart;
+    const completedIdx = data.datasets.findIndex((d) => d.label === "Completed");
+    const remainingIdx = data.datasets.findIndex((d) => d.label === "Remaining");
+    if (completedIdx < 0 || remainingIdx < 0) return;
+
+    const completedMeta = chart.getDatasetMeta(completedIdx);
+    const remainingMeta = chart.getDatasetMeta(remainingIdx);
+
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font =
+      '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+    for (let i = 0; i < completedMeta.data.length; i++) {
+      const completed = Number(data.datasets[completedIdx]?.data[i] ?? 0);
+      const remaining = Number(data.datasets[remainingIdx]?.data[i] ?? 0);
+      const { completedPct, remainingPct } = formatStageBarPercent(
+        completed,
+        remaining,
+      );
+
+      const completedBar = completedMeta.data[i];
+      if (completed > 0 && completedPct >= 8 && completedBar) {
+        const props = completedBar.getProps(["x", "y", "base"], true);
+        const midY = (props.y + props.base) / 2;
+        if (Math.abs(props.y - props.base) >= 14) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(`${completedPct}%`, props.x, midY);
+        }
+      }
+
+      const remainingBar = remainingMeta.data[i];
+      if (remaining > 0 && remainingPct >= 8 && remainingBar) {
+        const props = remainingBar.getProps(["x", "y", "base"], true);
+        const midY = (props.y + props.base) / 2;
+        if (Math.abs(props.y - props.base) >= 14) {
+          ctx.fillStyle = "#495057";
+          ctx.fillText(`${remainingPct}%`, props.x, midY);
+        }
+      }
+    }
+
+    ctx.restore();
+  },
+};
+
 /** Opsi Chart.js khusus chart stage (garis + batang bertumpuk per detail line). */
 export const dashboardStageChartOptions = {
   responsive: true,
@@ -253,11 +328,50 @@ export const dashboardStageChartOptions = {
     legend: { position: "top" as const },
     tooltip: {
       callbacks: {
+        label(
+          context: {
+            dataset: { label?: string };
+            parsed?: { y?: number };
+            chart: { data: { datasets: { label?: string }[] } };
+            dataIndex: number;
+          },
+        ) {
+          const label = context.dataset.label ?? "";
+          const value = Number(context.parsed?.y ?? 0);
+          const barLabels = new Set(["Completed", "Remaining"]);
+
+          if (!barLabels.has(label)) {
+            return `${label}: ${value}`;
+          }
+
+          const datasets = context.chart.data.datasets;
+          const completedIdx = datasets.findIndex((d) => d.label === "Completed");
+          const remainingIdx = datasets.findIndex((d) => d.label === "Remaining");
+          const completed = Number(
+            datasets[completedIdx]?.label === "Completed"
+              ? datasets[completedIdx]?.data?.[context.dataIndex]
+              : 0,
+          );
+          const remaining = Number(
+            datasets[remainingIdx]?.label === "Remaining"
+              ? datasets[remainingIdx]?.data?.[context.dataIndex]
+              : 0,
+          );
+          const { completedPct, remainingPct, total } = formatStageBarPercent(
+            completed,
+            remaining,
+          );
+          if (total <= 0) return `${label}: ${value}`;
+
+          const pct = label === "Completed" ? completedPct : remainingPct;
+          return `${label}: ${value} (${pct}%)`;
+        },
         footer(
           tooltipItems: {
             datasetIndex: number;
             parsed?: { y?: number };
-            chart: { data: { datasets: { label?: string }[] } };
+            dataIndex: number;
+            chart: { data: { datasets: { label?: string; data?: unknown[] }[] } };
           }[],
         ) {
           const barLabels = new Set(["Completed", "Remaining"]);
@@ -268,19 +382,19 @@ export const dashboardStageChartOptions = {
           );
           if (!hasBar) return "";
 
-          const completedItem = tooltipItems.find(
-            (item) =>
-              item.chart.data.datasets[item.datasetIndex]?.label ===
-              "Completed",
+          const first = tooltipItems[0];
+          if (!first) return "";
+
+          const datasets = first.chart.data.datasets;
+          const completedIdx = datasets.findIndex((d) => d.label === "Completed");
+          const remainingIdx = datasets.findIndex((d) => d.label === "Remaining");
+          const completed = Number(
+            datasets[completedIdx]?.data?.[first.dataIndex] ?? 0,
           );
-          const remainingItem = tooltipItems.find(
-            (item) =>
-              item.chart.data.datasets[item.datasetIndex]?.label ===
-              "Remaining",
+          const remaining = Number(
+            datasets[remainingIdx]?.data?.[first.dataIndex] ?? 0,
           );
-          const completed = Number(completedItem?.parsed?.y ?? 0);
-          const remaining = Number(remainingItem?.parsed?.y ?? 0);
-          const total = completed + remaining;
+          const { total } = formatStageBarPercent(completed, remaining);
           if (total <= 0) return "";
           return `Total detail lines: ${total}`;
         },
