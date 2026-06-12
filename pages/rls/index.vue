@@ -20,6 +20,7 @@ const {
   visibleMenus,
   hasActiveFilters,
   canEditUserRls,
+  isPermissionDisabled,
   toggleRow,
   getRowNumber,
   getUserFullName,
@@ -200,7 +201,7 @@ const {
                                   type="checkbox"
                                   class="form-check-input"
                                   :checked="isChecked(user.id, menu.key, action)"
-                                  :disabled="!canEditUserRls(user.role)"
+                                  :disabled="isPermissionDisabled(user.role, action)"
                                   :aria-label="`${user.email} ${menu.label} ${action}`"
                                   @change="
                                     onToggle(user.id, menu.key, action, $event)

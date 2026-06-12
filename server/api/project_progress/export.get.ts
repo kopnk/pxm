@@ -13,7 +13,7 @@ import {
   type ProjectProgressExportRow,
 } from "~/server/utils/buildProjectProgressExportAoa";
 import { projectProgressExportQueryZ } from "~/server/validation/project_progress.schema";
-import { toLocalDate } from "~/server/utils/datetime";
+import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { buildTotalPages } from "~/server/utils/pagination";
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
@@ -166,7 +166,7 @@ export default defineEventHandler(async (event) => {
   }));
 
   const matrix = buildProjectProgressExportAoa(exportRows);
-  const dateLabel = toLocalDate(new Date()) ?? "export";
+  const dateLabel = exportFileDateLabel();
 
   return successResponse(event, "Project progress export matrix ready", {
     matrix,

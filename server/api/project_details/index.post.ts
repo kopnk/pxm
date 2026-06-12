@@ -68,7 +68,7 @@ function buildProjectDetailSelect(tx: DbClient | DbTransaction) {
       subRegionName: sub.name,
       regionName: region.name,
 
-      createdBy: users.firstName,
+      createdBy: users.email,
     })
     .from(projectDetails)
     .leftJoin(projects, eq(projectDetails.projectId, projects.id))

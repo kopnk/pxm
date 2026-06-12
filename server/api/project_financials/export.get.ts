@@ -19,7 +19,7 @@ import {
   paginateMergedExportRows,
 } from "~/server/utils/mergeProjectFinancialsExportByDetail";
 import { projectFinancialsExportQueryZ } from "~/server/validation/project_financials.schema";
-import { toLocalDate } from "~/server/utils/datetime";
+import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { firstQuery } from "~/server/utils/firstQuery";
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
@@ -151,8 +151,7 @@ export default defineEventHandler(async (event) => {
   const mergedPage = paginateMergedExportRows(mergedAll, page, limit);
 
   const matrix = buildProjectFinancialsExportAoa(mergedPage);
-  const dateLabel =
-    toLocalDate(mergedPage[0]?.createdAt ?? null) ?? "export";
+  const dateLabel = exportFileDateLabel();
 
   return successResponse(event, "Project financials export matrix ready", {
     matrix,

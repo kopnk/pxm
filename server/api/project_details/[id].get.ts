@@ -87,7 +87,7 @@ export default defineEventHandler(async (event) => {
       regionId: region.id,
 
       /* ===== Audit ===== */
-      createdBy: users.firstName,
+      createdBy: users.email,
     })
     .from(projectDetails)
     .leftJoin(projects, eq(projectDetails.projectId, projects.id))

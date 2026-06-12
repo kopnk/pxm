@@ -1,7 +1,5 @@
-export function formatCreatorName(
-  firstName?: string | null,
-  lastName?: string | null,
-): string | null {
-  const name = [firstName, lastName].filter(Boolean).join(" ").trim();
-  return name || null;
+/** Label audit user — email (immutable), bukan first/last name. */
+export function formatAuditUserEmail(email?: string | null): string | null {
+  const value = String(email ?? "").trim();
+  return value || null;
 }

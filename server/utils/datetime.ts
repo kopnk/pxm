@@ -48,6 +48,11 @@ export function toLocalDate(date?: Date | string | null) {
   return `${pick(parts, "year")}-${pick(parts, "month")}-${pick(parts, "day")}`;
 }
 
+/** Tanggal hari ini (WIB) untuk nama file export Excel (`YYYY-MM-DD`). */
+export function exportFileDateLabel(): string {
+  return toLocalDate(new Date()) ?? "export";
+}
+
 /** Map `createdAt` / `updatedAt` on a row to WIB strings for API responses. */
 export function mapLocalTimestamps<
   T extends {
