@@ -3,11 +3,19 @@ import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useProjectProgressApi } from "@/composables/useProjectProgressApi";
+import { useProjectFilesApi } from "@/composables/useProjectFilesApi";
 import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useProgressStageStore } from "@/stores/progressStage";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessCreated } from "@/composables/useToastMessages";
+import { useNotify } from "@/composables/useNotify";
+import {
+  PROJECT_FILE_REF_TABLE,
+  saveRefDocuments,
+  useRefDocumentFields,
+} from "@/composables/useProjectRefDocuments";
 import { apiFetch } from "~/utils/apiFetch";
+import ProgressStageDocCells from "@/components/form/ProgressStageDocCells.vue";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
 import type {
   ProjectProgressStageData,
@@ -17,11 +25,23 @@ import type {
 const router = useRouter();
 
 const { createProjectProgress } = useProjectProgressApi();
+const { uploadProjectFile, createProjectFileByUrl } = useProjectFilesApi();
 const { getProgressStages } = useProgressStageApi();
 
 const progressStageStore = useProgressStageStore();
 
 const { loading, handle } = useFormHandler();
+const notify = useNotify();
+
+const stageCodes = () => stages.value.map((s) => s.code);
+const {
+  files: selectedDocFiles,
+  urls: selectedDocUrls,
+  syncSlots: syncDocSlots,
+  setUrl: setDocUrl,
+  setFileFromEvent: onDocFileChange,
+  hasPending: hasPendingDocuments,
+} = useRefDocumentFields(stageCodes);
 
 const projects = ref<any[]>([]);
 const projectSearch = ref("");
@@ -109,6 +129,7 @@ const row = (code: string): StageForm => {
 
 const initStageRows = () => {
   form.stageData = {};
+  syncDocSlots();
   for (const s of stages.value) {
     form.stageData[s.code] = emptyStage();
   }
@@ -167,7 +188,7 @@ const handleSubmit = async () => {
     }
   }
 
-  await createProjectProgress({
+  const created: any = await createProjectProgress({
     projectId: form.projectId,
     projectDetailId: form.projectDetailId,
 
@@ -178,7 +199,26 @@ const handleSubmit = async () => {
     remarksCancel: form.remarksCancel ?? null,
   });
 
-  router.push("/project-progress");
+  const createdId = created?.data?.id as string | undefined;
+  if (createdId && hasPendingDocuments()) {
+    try {
+      await saveRefDocuments(
+        { uploadProjectFile, createProjectFileByUrl },
+        PROJECT_FILE_REF_TABLE.PROGRESS,
+        createdId,
+        selectedDocFiles,
+        selectedDocUrls,
+      );
+    } catch (err: any) {
+      notify.warning(
+        err?.data?.message ||
+          err?.message ||
+          "Project progress created, but document save failed",
+      );
+    }
+  }
+
+  await router.push("/project-progress");
 };
 
 onMounted(async () => {
@@ -252,6 +292,8 @@ onMounted(async () => {
                 <th style="min-width: 160px">Plan / submit</th>
                 <th style="min-width: 160px">Actual / approve</th>
                 <th style="min-width: 140px">Status</th>
+                <th style="min-width: 200px">Document URL</th>
+                <th style="min-width: 180px">Upload file</th>
               </tr>
             </thead>
             <tbody>
@@ -283,6 +325,12 @@ onMounted(async () => {
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </td>
+                <ProgressStageDocCells
+                  :url="selectedDocUrls[s.code] ?? ''"
+                  :selected-file-name="selectedDocFiles[s.code]?.name ?? null"
+                  @update:url="setDocUrl(s.code, $event)"
+                  @file-change="onDocFileChange(s.code, $event)"
+                />
               </tr>
             </tbody>
           </table>

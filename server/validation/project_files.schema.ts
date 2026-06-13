@@ -1,18 +1,34 @@
 import { z } from "zod";
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
+export const externalFileUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(2048)
+  .refine(
+    (value) => !/^(javascript|data|vbscript):/i.test(value),
+    "Invalid URL scheme",
+  )
+  .refine(
+    (value) => !/supabase\.co\/storage/i.test(value),
+    "Use Upload File for Supabase storage",
+  );
+
 export const uploadProjectFileSchema = z.object({
   refTable: z.string().min(1),
   refId: z.string().uuid(),
   fileCategory: z.string().min(1),
+  externalUrl: externalFileUrlSchema.optional(),
+  fileName: z.string().trim().min(1).max(255).optional(),
 });
 
 export const createProjectFileSchema = z.object({
   refTable: z.string().min(1),
   refId: z.string().uuid(),
   fileCategory: z.string().min(1),
-  fileName: z.string().optional(),
-  fileUrl: z.string().url(),
+  fileName: z.string().trim().min(1).max(255).optional(),
+  fileUrl: externalFileUrlSchema,
   fileSize: z.number().optional(),
   mimeType: z.string().optional(),
   version: z.number().int().positive().optional(),

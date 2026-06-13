@@ -3,8 +3,14 @@ import { computed, reactive, ref, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useProjectFinancialsApi } from "@/composables/useProjectFinancialsApi";
 import { useProjectFilesApi } from "@/composables/useProjectFilesApi";
+import {
+  financialDocCategories,
+  saveFinancialDocuments,
+} from "@/composables/useProjectFinancialDocuments";
+import { useRefDocumentFields } from "@/composables/useProjectRefDocuments";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessCreated } from "@/composables/useToastMessages";
+import { useNotify } from "@/composables/useNotify";
 import { apiFetch } from "~/utils/apiFetch";
 import {
   emptyProjectFinancialForm,
@@ -15,13 +21,15 @@ import {
   pfPercentFromAmount,
 } from "@/composables/useProjectFinancialForm";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import FinancialDocumentUrlFile from "@/components/form/FinancialDocumentUrlFile.vue";
 
 definePageMeta({});
 
 const router = useRouter();
 const { createProjectFinancial } = useProjectFinancialsApi();
-const { uploadProjectFile } = useProjectFilesApi();
+const { uploadProjectFile, createProjectFileByUrl } = useProjectFilesApi();
 const { loading, handle } = useFormHandler();
+const notify = useNotify();
 
 const projects = ref<{ id: string; projectName?: string; poNumber?: string }[]>(
   [],
@@ -42,16 +50,15 @@ const detailTaxOutAmountSeed = ref<number | null>(null);
 
 const form = reactive(emptyProjectFinancialForm());
 const selectedFlow = ref<"" | "in" | "out">("");
-const selectedDocFiles = reactive<Record<string, File | null>>({
-  partner_po: null,
-  partner_invoice: null,
-  partner_tax: null,
-  balap: null,
-  bast: null,
-  client_po: null,
-  client_invoice: null,
-  client_tax: null,
-});
+const {
+  files: selectedDocFiles,
+  urls: selectedDocUrls,
+  syncSlots: syncDocSlots,
+  setUrl: setDocUrl,
+  setFileFromEvent: onDocFileChange,
+  hasPending: hasPendingDocuments,
+} = useRefDocumentFields(financialDocCategories);
+syncDocSlots();
 
 const selectedProject = computed(() =>
   projects.value.find((p) => p.id === form.projectId),
@@ -231,27 +238,24 @@ const handleSubmit = async () => {
 
   const created: any = await createProjectFinancial(buildProjectFinancialPayload(form));
   const createdId = created?.data?.id as string | undefined;
-  if (createdId) {
-    const entries = Object.entries(selectedDocFiles).filter(([, file]) => !!file);
-    for (const [fileCategory, file] of entries) {
-      await uploadProjectFile({
-        refTable: "project_financials",
-        refId: createdId,
-        fileCategory,
-        file: file as File,
-      });
+  if (createdId && hasPendingDocuments()) {
+    try {
+      await saveFinancialDocuments(
+        { uploadProjectFile, createProjectFileByUrl },
+        createdId,
+        selectedDocFiles,
+        selectedDocUrls,
+      );
+    } catch (err: any) {
+      notify.warning(
+        err?.data?.message ||
+          err?.message ||
+          "Project financial created, but document save failed",
+      );
     }
   }
-  router.push("/project-financials");
+  await router.push("/project-financials");
 };
-
-const onDocFileChange = (category: string, event: Event) => {
-  const input = event.target as HTMLInputElement | null;
-  selectedDocFiles[category] = input?.files?.[0] ?? null;
-};
-
-const docFileLabel = (category: string) =>
-  selectedDocFiles[category]?.name || "Upload file";
 </script>
 
 <template>
@@ -394,29 +398,26 @@ const docFileLabel = (category: string) =>
         </div>
       </div>
 
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner PO</label>
         <input v-model="form.poNumberPartner" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner PO Date</label>
         <input v-model="form.poDatePartner" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Partner PO File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('partner_po', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("partner_po") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.partner_po"
+        @update:model-value="setDocUrl('partner_po', $event)"
+        file-label="Partner PO File"
+        :selected-file-name="selectedDocFiles.partner_po?.name ?? null"
+        @file-change="onDocFileChange('partner_po', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">Partner Invoice</label>
         <input v-model="form.invoiceNumberPartner" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner Invoice Date</label>
         <input
           v-model="form.invoiceDatePartner"
@@ -424,70 +425,58 @@ const docFileLabel = (category: string) =>
           class="form-control"
         />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Partner Invoice File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('partner_invoice', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("partner_invoice") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.partner_invoice"
+        @update:model-value="setDocUrl('partner_invoice', $event)"
+        file-label="Partner Invoice File"
+        :selected-file-name="selectedDocFiles.partner_invoice?.name ?? null"
+        @file-change="onDocFileChange('partner_invoice', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">Partner Tax Invoice (FP)</label>
         <input v-model="form.fpNumberPartner" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner FP Date</label>
         <input v-model="form.fpDatePartner" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Partner FP File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('partner_tax', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("partner_tax") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.partner_tax"
+        @update:model-value="setDocUrl('partner_tax', $event)"
+        file-label="Partner FP File"
+        :selected-file-name="selectedDocFiles.partner_tax?.name ?? null"
+        @file-change="onDocFileChange('partner_tax', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">Balap Number</label>
         <input v-model="form.balapNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Balap Date</label>
         <input v-model="form.balapDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Balap File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('balap', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("balap") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.balap"
+        @update:model-value="setDocUrl('balap', $event)"
+        file-label="Balap File"
+        :selected-file-name="selectedDocFiles.balap?.name ?? null"
+        @file-change="onDocFileChange('balap', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">BAST Number</label>
         <input v-model="form.bastNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">BAST Date</label>
         <input v-model="form.bastDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">BAST File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('bast', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("bast") }}</div>
-      </div>
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.bast"
+        @update:model-value="setDocUrl('bast', $event)"
+        file-label="BAST File"
+        :selected-file-name="selectedDocFiles.bast?.name ?? null"
+        @file-change="onDocFileChange('bast', $event)"
+      />
 
       <div class="col-md-4">
         <label class="form-label">VB Number</label>
@@ -559,25 +548,22 @@ const docFileLabel = (category: string) =>
         </div>
       </div>
 
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client PO</label>
         <input v-model="form.poNumberClient" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client PO Date</label>
         <input v-model="form.poDateClient" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Client PO File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('client_po', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("client_po") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.client_po"
+        @update:model-value="setDocUrl('client_po', $event)"
+        file-label="Client PO File"
+        :selected-file-name="selectedDocFiles.client_po?.name ?? null"
+        @file-change="onDocFileChange('client_po', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">Client Invoice</label>
         <input v-model="form.invoiceNumberClient" class="form-control" />
         <div class="data-meta mt-1">
@@ -594,7 +580,7 @@ const docFileLabel = (category: string) =>
           </span>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client Invoice Date</label>
         <input
           v-model="form.invoiceDateClient"
@@ -602,70 +588,58 @@ const docFileLabel = (category: string) =>
           class="form-control"
         />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Client Invoice File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('client_invoice', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("client_invoice") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.client_invoice"
+        @update:model-value="setDocUrl('client_invoice', $event)"
+        file-label="Client Invoice File"
+        :selected-file-name="selectedDocFiles.client_invoice?.name ?? null"
+        @file-change="onDocFileChange('client_invoice', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">Client Tax Invoice (FP)</label>
         <input v-model="form.fpNumberClient" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client FP Date</label>
         <input v-model="form.fpDateClient" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Client FP File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('client_tax', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("client_tax") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.client_tax"
+        @update:model-value="setDocUrl('client_tax', $event)"
+        file-label="Client FP File"
+        :selected-file-name="selectedDocFiles.client_tax?.name ?? null"
+        @file-change="onDocFileChange('client_tax', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">Balap Number</label>
         <input v-model="form.balapNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Balap Date</label>
         <input v-model="form.balapDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Balap File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('balap', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("balap") }}</div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.balap"
+        @update:model-value="setDocUrl('balap', $event)"
+        file-label="Balap File"
+        :selected-file-name="selectedDocFiles.balap?.name ?? null"
+        @file-change="onDocFileChange('balap', $event)"
+      />
+      <div class="col-md-3">
         <label class="form-label">BAST Number</label>
         <input v-model="form.bastNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">BAST Date</label>
         <input v-model="form.bastDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">BAST File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('bast', $event)"
-        />
-        <div class="data-meta mt-1">{{ docFileLabel("bast") }}</div>
-      </div>
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.bast"
+        @update:model-value="setDocUrl('bast', $event)"
+        file-label="BAST File"
+        :selected-file-name="selectedDocFiles.bast?.name ?? null"
+        @file-change="onDocFileChange('bast', $event)"
+      />
 
       <div class="col-md-4">
         <label class="form-label">Paid Number</label>
@@ -675,7 +649,7 @@ const docFileLabel = (category: string) =>
         <label class="form-label">Paid Date</label>
         <input v-model="form.paidDate" type="date" class="form-control" />
         <div class="form-text">
-          Disinkronkan dengan stage PAID (Actual) di Project Progress untuk line ini.
+          When saved, syncs with the PAID (Actual) date on Project Progress for this project detail.
         </div>
       </div>
 

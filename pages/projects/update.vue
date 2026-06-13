@@ -8,6 +8,7 @@ import { useProjectForm } from "@/composables/useProjectForm";
 import { useNotify } from "@/composables/useNotify";
 import {
   useProjectFilesApi,
+  isExternalProjectFile,
   type ProjectFileItem,
 } from "@/composables/useProjectFilesApi";
 import { useAuthStore } from "@/stores/auth";
@@ -21,7 +22,7 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const { getProjectById, updateProject } = useProjectsApi();
-const { getProjectFiles, uploadProjectFile, deleteProjectFile } = useProjectFilesApi();
+const { getProjectFiles, uploadProjectFile, createProjectFileByUrl, deleteProjectFile } = useProjectFilesApi();
 const { loading: saving, handle } = useFormHandler();
 const notify = useNotify();
 const {
@@ -47,6 +48,7 @@ if (!id) {
 const loading = ref(false);
 const formLoading = computed(() => loading.value || saving.value);
 const selectedFile = ref<File | null>(null);
+const documentUrl = ref("");
 const uploadInput = ref<HTMLInputElement | null>(null);
 const projectFiles = ref<ProjectFileItem[]>([]);
 const deletingFileId = ref<string | null>(null);
@@ -103,6 +105,34 @@ const onDocumentChange = (event: Event) => {
   selectedFile.value = input?.files?.[0] ?? null;
 };
 
+const resetDocumentFields = () => {
+  selectedFile.value = null;
+  documentUrl.value = "";
+  if (uploadInput.value) uploadInput.value.value = "";
+};
+
+const saveProjectDocument = async (projectId: string) => {
+  if (selectedFile.value) {
+    await uploadProjectFile({
+      refTable: "projects",
+      refId: projectId,
+      fileCategory: fileCategory.value,
+      file: selectedFile.value,
+    });
+    return;
+  }
+
+  const trimmedUrl = documentUrl.value.trim();
+  if (!trimmedUrl) return;
+
+  await createProjectFileByUrl({
+    refTable: "projects",
+    refId: projectId,
+    fileCategory: fileCategory.value,
+    externalUrl: trimmedUrl,
+  });
+};
+
 const handleSubmit = async () => {
   if (!id) return;
 
@@ -116,18 +146,13 @@ const handleSubmit = async () => {
   await handle(async () => {
     await updateProject(id, buildPayload());
 
-    if (selectedFile.value) {
-      await uploadProjectFile({
-        refTable: "projects",
-        refId: id,
-        fileCategory: fileCategory.value,
-        file: selectedFile.value,
-      });
+    const hasNewDocument =
+      selectedFile.value || documentUrl.value.trim().length > 0;
 
+    if (hasNewDocument) {
+      await saveProjectDocument(id);
       await loadProjectFiles();
-
-      selectedFile.value = null;
-      if (uploadInput.value) uploadInput.value.value = "";
+      resetDocumentFields();
     }
 
     router.push("/projects");
@@ -231,7 +256,7 @@ onMounted(fetchProject);
 
         <div class="col-12 col-md-6">
           <label class="form-label">Document Category</label>
-          <select v-model="fileCategory" class="form-select mb-2">
+          <select v-model="fileCategory" class="form-select">
             <option
               v-for="opt in fileCategoryOptions"
               :key="opt.value"
@@ -240,7 +265,25 @@ onMounted(fetchProject);
               {{ opt.label }}
             </option>
           </select>
-          <label class="form-label">Project Document</label>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label">Document URL</label>
+          <input
+            v-model="documentUrl"
+            type="text"
+            class="form-control"
+            placeholder="https://drive.google.com/..."
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <div class="data-meta mt-1">
+            Optional. External link (GDrive, local, etc.). Copy manually to access.
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          <label class="form-label">Upload File</label>
           <input
             ref="uploadInput"
             class="form-control"
@@ -268,15 +311,18 @@ onMounted(fetchProject);
               :key="file.id"
               class="d-flex align-items-center justify-content-between gap-2"
             >
-              <a
-                :href="file.fileUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-decoration-none"
-              >
-                [{{ String(file.fileCategory || "contract").toUpperCase() }}]
-                {{ file.fileName || "Unnamed file" }}
-              </a>
+              <div class="flex-grow-1 min-w-0">
+                <div class="data-value" style="font-size: 0.95rem">
+                  [{{ String(file.fileCategory || "contract").toUpperCase() }}]
+                  {{ file.fileName || "Unnamed file" }}
+                </div>
+                <div
+                  v-if="isExternalProjectFile(file)"
+                  class="data-meta text-break user-select-all"
+                >
+                  {{ file.fileUrl }}
+                </div>
+              </div>
               <button
                 v-if="canDeleteFile"
                 type="button"

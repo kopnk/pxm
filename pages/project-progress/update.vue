@@ -2,11 +2,22 @@
 import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProjectProgressApi } from "@/composables/useProjectProgressApi";
+import {
+  useProjectFilesApi,
+} from "@/composables/useProjectFilesApi";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessUpdated } from "@/composables/useToastMessages";
+import { useNotify } from "@/composables/useNotify";
 import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useProgressStageStore } from "@/stores/progressStage";
+import {
+  PROJECT_FILE_REF_TABLE,
+  saveRefDocuments,
+  useRefDocumentFields,
+} from "@/composables/useProjectRefDocuments";
+import { useProjectRefFilesList } from "@/composables/useProjectRefFilesList";
 import { apiFetch } from "~/utils/apiFetch";
+import ProgressStageDocCells from "@/components/form/ProgressStageDocCells.vue";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
 import type {
   ProjectProgressStageData,
@@ -19,8 +30,10 @@ const id = route.query.id as string;
 
 const { getProjectProgressById, updateProjectProgress } =
   useProjectProgressApi();
+const { uploadProjectFile, createProjectFileByUrl } = useProjectFilesApi();
 
 const { loading, handle } = useFormHandler();
+const notify = useNotify();
 const { getProgressStages } = useProgressStageApi();
 const progressStageStore = useProgressStageStore();
 
@@ -28,6 +41,25 @@ const projects = ref<any[]>([]);
 const projectSearch = ref("");
 const showProjectDropdown = ref(false);
 const projectDetails = ref<any[]>([]);
+
+const stageCodes = () => stages.value.map((s) => s.code);
+const {
+  files: selectedDocFiles,
+  urls: selectedDocUrls,
+  syncSlots: syncDocSlots,
+  setUrl: setDocUrl,
+  setFileFromEvent: onDocFileChange,
+  reset: resetDocumentFields,
+  hasPending: hasPendingDocuments,
+} = useRefDocumentFields(stageCodes);
+
+const {
+  deletingFileId,
+  canDelete: canDeleteDoc,
+  docsForCategory: docsForStage,
+  load: loadProjectFiles,
+  remove: removeProjectFile,
+} = useProjectRefFilesList(PROJECT_FILE_REF_TABLE.PROGRESS, () => id);
 
 const loadProjects = async () => {
   const res: any = await apiFetch("/api/projects", {
@@ -92,6 +124,7 @@ const row = (code: string): StageForm => {
 
 const mergeLoadedStageData = (loaded: Record<string, any> | null) => {
   form.stageData = {};
+  syncDocSlots();
   const src = loaded ?? {};
 
   for (const s of stages.value) {
@@ -172,6 +205,7 @@ onMounted(async () => {
   form.remarksCancel = data.remarksCancel ?? null;
 
   mergeLoadedStageData(data.stageData);
+  await loadProjectFiles();
 
   if (data.projectId) {
     const p = projects.value.find((x) => x.id === data.projectId);
@@ -211,7 +245,27 @@ const handleSubmit = async () => {
     remarksCancel: form.remarksCancel ?? null,
   });
 
-  router.push("/project-progress");
+  if (hasPendingDocuments()) {
+    try {
+      await saveRefDocuments(
+        { uploadProjectFile, createProjectFileByUrl },
+        PROJECT_FILE_REF_TABLE.PROGRESS,
+        id,
+        selectedDocFiles,
+        selectedDocUrls,
+      );
+      resetDocumentFields();
+    } catch (err: any) {
+      notify.warning(
+        err?.data?.message ||
+          err?.message ||
+          "Project progress updated, but document save failed",
+      );
+      throw err;
+    }
+  }
+
+  await router.push("/project-progress");
 };
 </script>
 
@@ -272,6 +326,8 @@ const handleSubmit = async () => {
                 <th style="min-width: 160px">Plan / submit</th>
                 <th style="min-width: 160px">Actual / approve</th>
                 <th style="min-width: 140px">Status</th>
+                <th style="min-width: 200px">Document URL</th>
+                <th style="min-width: 180px">Upload file</th>
               </tr>
             </thead>
             <tbody>
@@ -303,6 +359,16 @@ const handleSubmit = async () => {
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </td>
+                <ProgressStageDocCells
+                  :url="selectedDocUrls[s.code] ?? ''"
+                  :selected-file-name="selectedDocFiles[s.code]?.name ?? null"
+                  :existing-files="docsForStage(s.code)"
+                  :can-delete="canDeleteDoc"
+                  :deleting-id="deletingFileId"
+                  @update:url="setDocUrl(s.code, $event)"
+                  @file-change="onDocFileChange(s.code, $event)"
+                  @delete="removeProjectFile"
+                />
               </tr>
             </tbody>
           </table>

@@ -59,11 +59,6 @@ export const API_ACCESS_RULES: ApiAccessRule[] = [
   { pattern: /^\/api\/profile\/change-password(?:\/|$)/, method: M.POST, resource: "change_password", action: "update" },
   { pattern: /^\/api\/profile\/?$/, method: M.GET, resource: "profile", action: "read" },
   { pattern: /^\/api\/profile\/?$/, method: M.PUT, resource: "profile", action: "update" },
-  { pattern: /^\/api\/project_files\/?$/, method: M.GET, resource: "project_financials", action: "read" },
-  { pattern: /^\/api\/project_files\/?$/, method: M.POST, resource: "project_financials", action: "create" },
-  { pattern: /^\/api\/project_files\/[^/]+\/?$/, method: M.GET, resource: "project_financials", action: "read" },
-  { pattern: /^\/api\/project_files\/[^/]+\/?$/, method: M.PUT, resource: "project_financials", action: "update" },
-  { pattern: /^\/api\/project_files\/[^/]+\/?$/, method: M.DELETE, resource: "project_financials", action: "delete" },
   {
     pattern: /^\/api\/regions\/parent-options(?:\/|$)/,
     method: M.GET,
@@ -93,6 +88,11 @@ export function resolveApiAccess(
   const method = (event.node.req.method || "GET").toUpperCase();
 
   if (API_ACCESS_EXEMPT_PREFIXES.some((p) => pathOnly.startsWith(p))) {
+    return null;
+  }
+
+  // Handlers already enforce requireRole; refTable varies (projects / project_financials).
+  if (/^\/api\/project_files(?:\/|$)/.test(pathOnly)) {
     return null;
   }
 

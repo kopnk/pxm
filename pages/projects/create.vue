@@ -15,7 +15,7 @@ import FormSection from "@/components/form/FormSection.vue";
 const router = useRouter();
 const auth = useAuthStore();
 const { createProject } = useProjectsApi();
-const { uploadProjectFile } = useProjectFilesApi();
+const { uploadProjectFile, createProjectFileByUrl } = useProjectFilesApi();
 const { loading, handle } = useFormHandler();
 const notify = useNotify();
 const {
@@ -34,6 +34,7 @@ const {
 const projectNameInput = ref<HTMLInputElement | null>(null);
 const uploadInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
+const documentUrl = ref("");
 const fileCategory = ref("po");
 const fileCategoryOptions = [
   { value: "po", label: "PO" },
@@ -43,6 +44,34 @@ const fileCategoryOptions = [
 const onDocumentChange = (event: Event) => {
   const input = event.target as HTMLInputElement | null;
   selectedFile.value = input?.files?.[0] ?? null;
+};
+
+const resetDocumentFields = () => {
+  selectedFile.value = null;
+  documentUrl.value = "";
+  if (uploadInput.value) uploadInput.value.value = "";
+};
+
+const saveProjectDocument = async (projectId: string) => {
+  if (selectedFile.value) {
+    await uploadProjectFile({
+      refTable: "projects",
+      refId: projectId,
+      fileCategory: fileCategory.value,
+      file: selectedFile.value,
+    });
+    return;
+  }
+
+  const trimmedUrl = documentUrl.value.trim();
+  if (!trimmedUrl) return;
+
+  await createProjectFileByUrl({
+    refTable: "projects",
+    refId: projectId,
+    fileCategory: fileCategory.value,
+    externalUrl: trimmedUrl,
+  });
 };
 
 
@@ -75,23 +104,17 @@ const submit = async () => {
     const created: any = await createProject(buildPayload());
     const projectId = created?.data?.id as string | undefined;
 
-    if (projectId && selectedFile.value) {
+    if (projectId && (selectedFile.value || documentUrl.value.trim())) {
       try {
-        await uploadProjectFile({
-          refTable: "projects",
-          refId: projectId,
-          fileCategory: fileCategory.value,
-          file: selectedFile.value,
-        });
+        await saveProjectDocument(projectId);
       } catch (err: any) {
         notify.warning(
           err?.data?.message ||
             err?.message ||
-            "Project created, but document upload failed",
+            "Project created, but document save failed",
         );
       } finally {
-        selectedFile.value = null;
-        if (uploadInput.value) uploadInput.value.value = "";
+        resetDocumentFields();
       }
     }
 
@@ -181,7 +204,7 @@ const submit = async () => {
 
       <div class="col-12 col-md-6">
         <label class="form-label">Document Category</label>
-        <select v-model="fileCategory" class="form-select mb-2">
+        <select v-model="fileCategory" class="form-select">
           <option
             v-for="opt in fileCategoryOptions"
             :key="opt.value"
@@ -190,7 +213,25 @@ const submit = async () => {
             {{ opt.label }}
           </option>
         </select>
-        <label class="form-label">Project Document</label>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">Document URL</label>
+        <input
+          v-model="documentUrl"
+          type="text"
+          class="form-control"
+          placeholder="https://drive.google.com/..."
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <div class="data-meta mt-1">
+          Optional. External link (GDrive, local, etc.). Copy manually to access.
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">Upload File</label>
         <input
           ref="uploadInput"
           class="form-control"

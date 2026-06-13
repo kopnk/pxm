@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
 import { useProjectFinancialsApi } from "@/composables/useProjectFinancialsApi";
+import { useProjectFilesApi } from "@/composables/useProjectFilesApi";
 import {
-  useProjectFilesApi,
-  type ProjectFileItem,
-} from "@/composables/useProjectFilesApi";
+  financialDocCategories,
+  saveFinancialDocuments,
+} from "@/composables/useProjectFinancialDocuments";
+import {
+  PROJECT_FILE_REF_TABLE,
+  useRefDocumentFields,
+} from "@/composables/useProjectRefDocuments";
+import { useProjectRefFilesList } from "@/composables/useProjectRefFilesList";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessUpdated } from "@/composables/useToastMessages";
+import { useNotify } from "@/composables/useNotify";
 import { apiFetch } from "~/utils/apiFetch";
 import {
   emptyProjectFinancialForm,
@@ -19,19 +25,20 @@ import {
   pfAmountFromPercent,
 } from "@/composables/useProjectFinancialForm";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import FinancialDocumentUrlFile from "@/components/form/FinancialDocumentUrlFile.vue";
+import FinancialDocumentExistingList from "@/components/form/FinancialDocumentExistingList.vue";
 
 definePageMeta({});
 
 const route = useRoute();
 const router = useRouter();
-const auth = useAuthStore();
 const id = route.query.id as string | undefined;
 
 const { getProjectFinancialById, updateProjectFinancial } =
   useProjectFinancialsApi();
-const { getProjectFiles, uploadProjectFile, deleteProjectFile } =
-  useProjectFilesApi();
+const { uploadProjectFile, createProjectFileByUrl } = useProjectFilesApi();
 const { loading, handle } = useFormHandler();
+const notify = useNotify();
 
 const projects = ref<
   { id: string; projectName?: string; poNumber?: string; poDate?: string | null }[]
@@ -50,18 +57,24 @@ const details = ref<
 const pageLoading = ref(true);
 
 const form = reactive(emptyProjectFinancialForm());
-const selectedDocFiles = reactive<Record<string, File | null>>({
-  partner_po: null,
-  partner_invoice: null,
-  partner_tax: null,
-  balap: null,
-  bast: null,
-  client_po: null,
-  client_invoice: null,
-  client_tax: null,
-});
-const uploadedDocLinks = ref<Record<string, ProjectFileItem>>({});
-const deletingCategory = ref<string | null>(null);
+const {
+  files: selectedDocFiles,
+  urls: selectedDocUrls,
+  syncSlots: syncDocSlots,
+  setUrl: setDocUrl,
+  setFileFromEvent: onDocFileChange,
+  reset: resetDocumentFields,
+  hasPending: hasPendingDocuments,
+} = useRefDocumentFields(financialDocCategories);
+syncDocSlots();
+
+const {
+  deletingFileId,
+  canDelete: canDeleteDoc,
+  docsForCategory,
+  load: loadProjectFiles,
+  remove: removeProjectFile,
+} = useProjectRefFilesList(PROJECT_FILE_REF_TABLE.FINANCIALS, () => id);
 
 const selectedProject = computed(() =>
   projects.value.find((p) => p.id === form.projectId),
@@ -206,18 +219,13 @@ onMounted(async () => {
   applyFinancialRowToForm(res.data, form);
   await loadDetails(form.projectId);
   syncClientPoFromProject();
-  const docs = await getProjectFiles({
-    refTable: "project_financials",
-    refId: id,
-    limit: 100,
-  });
-  const latestByCategory: Record<string, ProjectFileItem> = {};
-  for (const item of docs) {
-    if (!latestByCategory[item.fileCategory]) {
-      latestByCategory[item.fileCategory] = item;
-    }
+  try {
+    await loadProjectFiles();
+  } catch (err: any) {
+    notify.warning(
+      err?.data?.message || err?.message || "Failed to load saved documents",
+    );
   }
-  uploadedDocLinks.value = latestByCategory;
   pageLoading.value = false;
 });
 
@@ -230,64 +238,31 @@ const handleSubmit = async () => {
     throw new Error("Partner is required");
   if (isOutFlow.value && !form.clientId.trim())
     throw new Error("Client is required");
+
   await updateProjectFinancial(id, buildProjectFinancialPayload(form));
-  const entries = Object.entries(selectedDocFiles).filter(([, file]) => !!file);
-  for (const [fileCategory, file] of entries) {
-    await uploadProjectFile({
-      refTable: "project_financials",
-      refId: id,
-      fileCategory,
-      file: file as File,
-    });
+
+  const hadPendingDocs = hasPendingDocuments();
+
+  if (hadPendingDocs) {
+    try {
+      await saveFinancialDocuments(
+        { uploadProjectFile, createProjectFileByUrl },
+        id,
+        selectedDocFiles,
+        selectedDocUrls,
+      );
+      resetDocumentFields();
+    } catch (err: any) {
+      notify.warning(
+        err?.data?.message ||
+          err?.message ||
+          "Project financial updated, but document save failed",
+      );
+      throw err;
+    }
   }
-  router.push("/project-financials");
-};
 
-const onDocFileChange = (category: string, event: Event) => {
-  const input = event.target as HTMLInputElement | null;
-  selectedDocFiles[category] = input?.files?.[0] ?? null;
-};
-
-const docFileLabel = (category: string) =>
-  selectedDocFiles[category]?.name || "Upload file";
-
-const canDeleteDoc = computed(() => auth.user?.role === "superadmin");
-
-const docDownloadLabel = (category: string) => {
-  switch (category) {
-    case "partner_po":
-    case "client_po":
-      return "Download PO";
-    case "partner_invoice":
-    case "client_invoice":
-      return "Download Invoice";
-    case "partner_tax":
-    case "client_tax":
-      return "Download FP";
-    case "balap":
-      return "Download Balap";
-    case "bast":
-      return "Download BAST";
-    default:
-      return "Download File";
-  }
-};
-
-const removeDoc = async (category: string) => {
-  if (!canDeleteDoc.value) return;
-  const row = uploadedDocLinks.value[category];
-  if (!row?.id) return;
-  if (!window.confirm("Delete this document permanently?")) return;
-
-  deletingCategory.value = category;
-  try {
-    await deleteProjectFile(row.id);
-    const next = { ...uploadedDocLinks.value };
-    delete next[category];
-    uploadedDocLinks.value = next;
-  } finally {
-    deletingCategory.value = null;
-  }
+  await router.push("/project-financials");
 };
 </script>
 
@@ -437,7 +412,7 @@ const removeDoc = async (category: string) => {
         </div>
       </div>
 
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner PO</label>
         <input v-model="form.poNumberPartner" class="form-control" />
         <div class="data-meta mt-1">
@@ -452,40 +427,24 @@ const removeDoc = async (category: string) => {
           <span v-else class="text-muted">Enter PO number to open PDF</span>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner PO Date</label>
         <input v-model="form.poDatePartner" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Partner PO File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('partner_po', $event)"
-        />
-        <div class="data-meta mt-1 d-flex align-items-center gap-2">
-          <a
-            v-if="uploadedDocLinks.partner_po?.fileUrl"
-            :href="uploadedDocLinks.partner_po.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("partner_po") }}
-          </a>
-          <span v-else>{{ docFileLabel("partner_po") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.partner_po?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0"
-            :disabled="deletingCategory === 'partner_po'"
-            @click="removeDoc('partner_po')"
-          >
-            {{ deletingCategory === "partner_po" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.partner_po"
+        @update:model-value="setDocUrl('partner_po', $event)"
+        file-label="Partner PO File"
+        :selected-file-name="selectedDocFiles.partner_po?.name ?? null"
+        @file-change="onDocFileChange('partner_po', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('partner_po')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">Partner Invoice</label>
         <input v-model="form.invoiceNumberPartner" class="form-control" />
         <div class="data-meta mt-1">
@@ -508,7 +467,7 @@ const removeDoc = async (category: string) => {
           </a>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner Invoice Date</label>
         <input
           v-model="form.invoiceDatePartner"
@@ -516,110 +475,62 @@ const removeDoc = async (category: string) => {
           class="form-control"
         />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Partner Invoice File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('partner_invoice', $event)"
-        />
-        <div class="data-meta mt-1 d-flex align-items-center gap-2">
-          <a
-            v-if="uploadedDocLinks.partner_invoice?.fileUrl"
-            :href="uploadedDocLinks.partner_invoice.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("partner_invoice") }}
-          </a>
-          <span v-else>{{ docFileLabel("partner_invoice") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.partner_invoice?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0"
-            :disabled="deletingCategory === 'partner_invoice'"
-            @click="removeDoc('partner_invoice')"
-          >
-            {{ deletingCategory === "partner_invoice" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.partner_invoice"
+        @update:model-value="setDocUrl('partner_invoice', $event)"
+        file-label="Partner Invoice File"
+        :selected-file-name="selectedDocFiles.partner_invoice?.name ?? null"
+        @file-change="onDocFileChange('partner_invoice', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('partner_invoice')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">Partner Tax Invoice (FP)</label>
         <input v-model="form.fpNumberPartner" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Partner FP Date</label>
         <input v-model="form.fpDatePartner" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Partner FP File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('partner_tax', $event)"
-        />
-        <div class="data-meta mt-1 d-flex align-items-center gap-2">
-          <a
-            v-if="uploadedDocLinks.partner_tax?.fileUrl"
-            :href="uploadedDocLinks.partner_tax.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("partner_tax") }}
-          </a>
-          <span v-else>{{ docFileLabel("partner_tax") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.partner_tax?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0"
-            :disabled="deletingCategory === 'partner_tax'"
-            @click="removeDoc('partner_tax')"
-          >
-            {{ deletingCategory === "partner_tax" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.partner_tax"
+        @update:model-value="setDocUrl('partner_tax', $event)"
+        file-label="Partner FP File"
+        :selected-file-name="selectedDocFiles.partner_tax?.name ?? null"
+        @file-change="onDocFileChange('partner_tax', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('partner_tax')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">Balap Number</label>
         <input v-model="form.balapNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Balap Date</label>
         <input v-model="form.balapDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Balap File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('balap', $event)"
-        />
-        <div class="data-meta mt-1 d-flex align-items-center gap-2">
-          <a
-            v-if="uploadedDocLinks.balap?.fileUrl"
-            :href="uploadedDocLinks.balap.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("balap") }}
-          </a>
-          <span v-else>{{ docFileLabel("balap") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.balap?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0"
-            :disabled="deletingCategory === 'balap'"
-            @click="removeDoc('balap')"
-          >
-            {{ deletingCategory === "balap" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.balap"
+        @update:model-value="setDocUrl('balap', $event)"
+        file-label="Balap File"
+        :selected-file-name="selectedDocFiles.balap?.name ?? null"
+        @file-change="onDocFileChange('balap', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('balap')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">BAST Number</label>
         <input v-model="form.bastNumber" class="form-control" />
         <div class="data-meta mt-1">
@@ -634,39 +545,23 @@ const removeDoc = async (category: string) => {
           <span v-else class="text-muted">Enter BAST number to open PDF</span>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">BAST Date</label>
         <input v-model="form.bastDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">BAST File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('bast', $event)"
-        />
-        <div class="data-meta mt-1 d-flex align-items-center gap-2">
-          <a
-            v-if="uploadedDocLinks.bast?.fileUrl"
-            :href="uploadedDocLinks.bast.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("bast") }}
-          </a>
-          <span v-else>{{ docFileLabel("bast") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.bast?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0"
-            :disabled="deletingCategory === 'bast'"
-            @click="removeDoc('bast')"
-          >
-            {{ deletingCategory === "bast" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.bast"
+        @update:model-value="setDocUrl('bast', $event)"
+        file-label="BAST File"
+        :selected-file-name="selectedDocFiles.bast?.name ?? null"
+        @file-change="onDocFileChange('bast', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('bast')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
 
       <div class="col-md-4">
         <label class="form-label">VB Number</label>
@@ -738,11 +633,11 @@ const removeDoc = async (category: string) => {
         </div>
       </div>
 
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client PO</label>
         <input v-model="form.poNumberClient" class="form-control" disabled />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client PO Date</label>
         <input
           v-model="form.poDateClient"
@@ -751,36 +646,20 @@ const removeDoc = async (category: string) => {
           disabled
         />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Client PO File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('client_po', $event)"
-        />
-        <div class="data-meta mt-1">
-          <a
-            v-if="uploadedDocLinks.client_po?.fileUrl"
-            :href="uploadedDocLinks.client_po.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("client_po") }}
-          </a>
-          <span v-else>{{ docFileLabel("client_po") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.client_po?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0 ms-2"
-            :disabled="deletingCategory === 'client_po'"
-            @click="removeDoc('client_po')"
-          >
-            {{ deletingCategory === "client_po" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.client_po"
+        @update:model-value="setDocUrl('client_po', $event)"
+        file-label="Client PO File"
+        :selected-file-name="selectedDocFiles.client_po?.name ?? null"
+        @file-change="onDocFileChange('client_po', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('client_po')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">Client Invoice</label>
         <input v-model="form.invoiceNumberClient" class="form-control" />
         <div class="data-meta mt-1">
@@ -797,7 +676,7 @@ const removeDoc = async (category: string) => {
           </span>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client Invoice Date</label>
         <input
           v-model="form.invoiceDateClient"
@@ -805,146 +684,82 @@ const removeDoc = async (category: string) => {
           class="form-control"
         />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Client Invoice File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('client_invoice', $event)"
-        />
-        <div class="data-meta mt-1">
-          <a
-            v-if="uploadedDocLinks.client_invoice?.fileUrl"
-            :href="uploadedDocLinks.client_invoice.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("client_invoice") }}
-          </a>
-          <span v-else>{{ docFileLabel("client_invoice") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.client_invoice?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0 ms-2"
-            :disabled="deletingCategory === 'client_invoice'"
-            @click="removeDoc('client_invoice')"
-          >
-            {{ deletingCategory === "client_invoice" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.client_invoice"
+        @update:model-value="setDocUrl('client_invoice', $event)"
+        file-label="Client Invoice File"
+        :selected-file-name="selectedDocFiles.client_invoice?.name ?? null"
+        @file-change="onDocFileChange('client_invoice', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('client_invoice')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">Client Tax Invoice (FP)</label>
         <input v-model="form.fpNumberClient" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Client FP Date</label>
         <input v-model="form.fpDateClient" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Client FP File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('client_tax', $event)"
-        />
-        <div class="data-meta mt-1">
-          <a
-            v-if="uploadedDocLinks.client_tax?.fileUrl"
-            :href="uploadedDocLinks.client_tax.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("client_tax") }}
-          </a>
-          <span v-else>{{ docFileLabel("client_tax") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.client_tax?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0 ms-2"
-            :disabled="deletingCategory === 'client_tax'"
-            @click="removeDoc('client_tax')"
-          >
-            {{ deletingCategory === "client_tax" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.client_tax"
+        @update:model-value="setDocUrl('client_tax', $event)"
+        file-label="Client FP File"
+        :selected-file-name="selectedDocFiles.client_tax?.name ?? null"
+        @file-change="onDocFileChange('client_tax', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('client_tax')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">Balap Number</label>
         <input v-model="form.balapNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Balap Date</label>
         <input v-model="form.balapDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Balap File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('balap', $event)"
-        />
-        <div class="data-meta mt-1">
-          <a
-            v-if="uploadedDocLinks.balap?.fileUrl"
-            :href="uploadedDocLinks.balap.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("balap") }}
-          </a>
-          <span v-else>{{ docFileLabel("balap") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.balap?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0 ms-2"
-            :disabled="deletingCategory === 'balap'"
-            @click="removeDoc('balap')"
-          >
-            {{ deletingCategory === "balap" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
-      <div class="col-md-4">
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.balap"
+        @update:model-value="setDocUrl('balap', $event)"
+        file-label="Balap File"
+        :selected-file-name="selectedDocFiles.balap?.name ?? null"
+        @file-change="onDocFileChange('balap', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('balap')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
+      <div class="col-md-3">
         <label class="form-label">BAST Number</label>
         <input v-model="form.bastNumber" class="form-control" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">BAST Date</label>
         <input v-model="form.bastDate" type="date" class="form-control" />
       </div>
-      <div class="col-md-4">
-        <label class="form-label">BAST File</label>
-        <input
-          class="form-control"
-          type="file"
-          accept=".pdf,.png,.jpg,.jpeg"
-          @change="onDocFileChange('bast', $event)"
-        />
-        <div class="data-meta mt-1">
-          <a
-            v-if="uploadedDocLinks.bast?.fileUrl"
-            :href="uploadedDocLinks.bast.fileUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ docDownloadLabel("bast") }}
-          </a>
-          <span v-else>{{ docFileLabel("bast") }}</span>
-          <button
-            v-if="canDeleteDoc && uploadedDocLinks.bast?.id"
-            type="button"
-            class="btn btn-sm btn-outline-danger px-2 py-0 ms-2"
-            :disabled="deletingCategory === 'bast'"
-            @click="removeDoc('bast')"
-          >
-            {{ deletingCategory === "bast" ? "..." : "🗑" }}
-          </button>
-        </div>
-      </div>
+      <FinancialDocumentUrlFile
+        :model-value="selectedDocUrls.bast"
+        @update:model-value="setDocUrl('bast', $event)"
+        file-label="BAST File"
+        :selected-file-name="selectedDocFiles.bast?.name ?? null"
+        @file-change="onDocFileChange('bast', $event)"
+      />
+      <FinancialDocumentExistingList
+        :files="docsForCategory('bast')"
+        :can-delete="canDeleteDoc"
+        :deleting-id="deletingFileId"
+        @delete="removeProjectFile"
+      />
 
       <div class="col-md-4">
         <label class="form-label">Paid Number</label>
@@ -954,7 +769,7 @@ const removeDoc = async (category: string) => {
         <label class="form-label">Paid Date</label>
         <input v-model="form.paidDate" type="date" class="form-control" />
         <div class="form-text">
-          Disinkronkan dengan stage PAID (Actual) di Project Progress untuk line ini.
+          When saved, syncs with the PAID (Actual) date on Project Progress for this project detail.
         </div>
       </div>
 
