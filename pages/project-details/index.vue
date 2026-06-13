@@ -78,7 +78,13 @@ const onExportExcel = () => {
             {{ option.label }}
           </option>
         </select>
-        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true"></span>
+        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
+        <span class="text-nowrap flex-shrink-0 small text-muted">
+          Total
+          <span class="fw-bold text-dark ms-1">{{
+            store.loading ? "…" : formatCurrency(store.listTotalPrice)
+          }}</span>
+        </span>
         <button
           type="button"
           class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"

@@ -41,6 +41,7 @@ export interface ProjectsMeta {
   limit: number;
   total: number;
   totalPages: number;
+  listTotalPoPrice: number;
 }
 
 export const useProjectsStore = defineStore("projects", {
@@ -51,6 +52,7 @@ export const useProjectsStore = defineStore("projects", {
       limit: DEFAULT_PAGE_LIMIT,
       total: 0,
       totalPages: 1,
+      listTotalPoPrice: 0,
     } as ProjectsMeta,
     loading: false,
     filters: {
@@ -62,7 +64,10 @@ export const useProjectsStore = defineStore("projects", {
   actions: {
     setProjects(items: Project[], meta: ProjectsMeta) {
       this.items = [...items];
-      this.meta = meta;
+      this.meta = {
+        ...meta,
+        listTotalPoPrice: Number(meta.listTotalPoPrice) || 0,
+      };
     },
 
     setLoading(val: boolean) {
@@ -88,6 +93,7 @@ export const useProjectsStore = defineStore("projects", {
         limit: DEFAULT_PAGE_LIMIT,
         total: 0,
         totalPages: 1,
+        listTotalPoPrice: 0,
       };
       this.filters.search = "";
       this.filters.status = "";

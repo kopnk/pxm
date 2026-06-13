@@ -32,6 +32,7 @@ export const useProjectDetailsApi = () => {
         limit: res.data.limit,
         total: res.data.total,
         totalPages: res.data.totalPages,
+        listTotalPrice: res.data.listTotalPrice,
       });
 
     } finally {

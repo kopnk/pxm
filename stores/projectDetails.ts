@@ -58,6 +58,7 @@ export interface ProjectDetailsState {
   limit: number;
   total: number;
   totalPages: number;
+  listTotalPrice: number;
   loading: boolean;
   filters: {
     search: string;
@@ -73,6 +74,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
     limit: DEFAULT_PAGE_LIMIT,
     total: 0,
     totalPages: 0,
+    listTotalPrice: 0,
     loading: false,
     filters: {
       search: "",
@@ -89,12 +91,14 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
       limit: number;
       total: number;
       totalPages: number;
+      listTotalPrice?: number;
     }) {
       this.items = [...payload.items]; // 🔥 force reactivity
       this.page = payload.page;
       this.limit = payload.limit;
       this.total = payload.total;
       this.totalPages = payload.totalPages;
+      this.listTotalPrice = Number(payload.listTotalPrice) || 0;
     },
 
     setItems(items: ProjectDetailItem[]) {
@@ -133,6 +137,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
       this.limit = DEFAULT_PAGE_LIMIT;
       this.total = 0;
       this.totalPages = 0;
+      this.listTotalPrice = 0;
       this.loading = false;
     },
   },

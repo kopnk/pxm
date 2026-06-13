@@ -3,7 +3,7 @@ import { db } from "~/server/db";
 
 import { projectDetails } from "~/server/db/schema/project_details";
 import { projects } from "~/server/db/schema/projects";
-import { count, eq, desc } from "drizzle-orm";
+import { count, eq, desc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   asJoinTable,
@@ -63,6 +63,21 @@ export default defineEventHandler(async (event) => {
 
   const total = Number(totalResult[0]?.value ?? 0);
   const totalPages = buildTotalPages(total, limit);
+
+  const totalPriceResult = await db
+    .select({
+      sumTotalPrice: sql<string>`coalesce(sum(${projectDetails.totalPrice}), 0)`.as(
+        "sum_total_price",
+      ),
+    })
+    .from(projectDetails)
+    .leftJoin(projects, eq(projectDetails.projectId, projects.id))
+    .leftJoin(pdCity, eq(projectDetails.cityKabId, pdCity.id))
+    .leftJoin(pdSub, eq(pdCity.parentId, pdSub.id))
+    .leftJoin(pdRegion, eq(pdSub.parentId, pdRegion.id))
+    .where(where);
+
+  const listTotalPrice = Number(totalPriceResult[0]?.sumTotalPrice ?? 0);
 
   /* ================= DATA ================= */
   const auditUsers = createUserAuditAliases();
@@ -151,5 +166,6 @@ export default defineEventHandler(async (event) => {
     limit,
     total,
     totalPages,
+    listTotalPrice,
   });
 });

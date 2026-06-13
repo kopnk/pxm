@@ -51,6 +51,18 @@ export default defineEventHandler(async (event) => {
   const total = Number(totalResult[0]?.value ?? 0);
   const totalPages = buildTotalPages(total, limit);
 
+  const totalPoPriceResult = await db
+    .select({
+      sumSubTotal: sql<string>`coalesce(sum(${projects.subTotal}), 0)`.as(
+        "sum_sub_total",
+      ),
+    })
+    .from(projects)
+    .leftJoin(clients, eq(clients.id, projects.clientId))
+    .where(where);
+
+  const listTotalPoPrice = Number(totalPoPriceResult[0]?.sumSubTotal ?? 0);
+
   /* ================= DATA ================= */
 
   /* One row per project: aggregate progress in a subquery (avoids join row multiplication). */
@@ -176,6 +188,7 @@ export default defineEventHandler(async (event) => {
     limit,
     total,
     totalPages,
+    listTotalPoPrice,
   });
 
 });
