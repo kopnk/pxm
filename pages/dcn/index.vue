@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useDcnListPage } from "@/composables/useDcnListPage";
-import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 const {
   store,
@@ -122,10 +121,12 @@ const displayType = (value: string | null | undefined) => {
                   </span>
                 </td>
                 <td>
-                  <div class="data-meta">Created by: {{ item.createdBy || "-" }}</div>
-                  <div class="data-meta">Updated by: {{ item.updatedBy || "-" }}</div>
-                  <div class="data-meta">Created: {{ formatListTimestamp(item.createdAt) }}</div>
-                  <div class="data-meta">Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
+                  <AppAuditMeta
+                    :created-by="item.createdBy"
+                    :updated-by="item.updatedBy"
+                    :created-at="item.createdAt"
+                    :updated-at="item.updatedAt"
+                  />
                   <div v-if="canDelete" class="mt-1">
                     <span
                       class="text-danger small fw-semibold"

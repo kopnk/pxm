@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  getPasswordRuleErrors,
+  PASSWORD_MIN_LENGTH,
+} from "~/lib/passwordPolicy";
 
 /**
  * CHANGE PASSWORD
@@ -8,7 +12,18 @@ export const changePasswordSchema = z
     currentPassword: z.string().optional(),
     newPassword: z
       .string({ error: "New password is required" })
-      .min(6, "New password must be at least 6 characters"),
+      .min(
+        PASSWORD_MIN_LENGTH,
+        `New password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+      )
+      .superRefine((value, ctx) => {
+        for (const message of getPasswordRuleErrors(value)) {
+          ctx.addIssue({
+            code: "custom",
+            message,
+          });
+        }
+      }),
     confirmPassword: z
       .string({ error: "Confirm password is required" }),
   })

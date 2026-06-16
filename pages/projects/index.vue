@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProjectsListPage } from "@/composables/useProjectsListPage";
 import { useProjectsExport } from "@/composables/useProjectsExport";
-import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 definePageMeta({});
 
@@ -175,12 +174,12 @@ const onExportExcel = () => {
                       {{ item.status }}
                     </span>
 
-                    <div class="data-meta mt-1">
-                      <div>Created by: {{ item.createdBy || "-" }}</div>
-                      <div>Updated by: {{ item.updatedBy || "-" }}</div>
-                      <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
-                      <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
-                    </div>
+                    <AppAuditMeta
+                      :created-by="item.createdBy"
+                      :updated-by="item.updatedBy"
+                      :created-at="item.createdAt"
+                      :updated-at="item.updatedAt"
+                    />
 
                     <span
                       v-if="canDelete"
@@ -220,18 +219,12 @@ const onExportExcel = () => {
                             <div class="data-value">{{ item.pm || "-" }}</div>
                           </div>
 
-                          <div class="data-meta mt-3">
-                            Created by: {{ item.createdBy || "-" }}
-                          </div>
-                          <div class="data-meta">
-                            Updated by: {{ item.updatedBy || "-" }}
-                          </div>
-                          <div class="data-meta">
-                            Created: {{ formatListTimestamp(item.createdAt) }}
-                          </div>
-                          <div class="data-meta">
-                            Updated: {{ formatListTimestamp(item.updatedAt) }}
-                          </div>
+                          <AppAuditMeta
+                            :created-by="item.createdBy"
+                            :updated-by="item.updatedBy"
+                            :created-at="item.createdAt"
+                            :updated-at="item.updatedAt"
+                          />
                         </div>
 
                         <!-- RIGHT SIDE : FINANCIAL -->

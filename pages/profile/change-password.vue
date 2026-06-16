@@ -4,6 +4,11 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { toastPasswordChangedSignInAgain } from "@/composables/useToastMessages";
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
+import {
+  getPasswordRuleErrors,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_RULES,
+} from "~/lib/passwordPolicy";
 
 const { changePassword } = useProfileApi();
 const { logout } = useAppLogout();
@@ -20,6 +25,14 @@ const newPassword = ref("");
 const confirmPassword = ref("");
 const show = ref(false);
 
+const passwordRuleStates = computed(() =>
+  PASSWORD_RULES.map((rule) => ({
+    key: rule.key,
+    label: rule.label,
+    valid: rule.test(newPassword.value),
+  })),
+);
+
 const resetForm = () => {
   currentPassword.value = "";
   newPassword.value = "";
@@ -32,12 +45,17 @@ const onCancel = () => {
 };
 
 const submit = async () => {
-  // FE validation tetap sama
-  if (newPassword.value !== confirmPassword.value) {
-    throw new Error("Password confirmation does not match");
-  }
-
   await handle(async () => {
+    const passwordErrors = getPasswordRuleErrors(newPassword.value);
+
+    if (passwordErrors.length > 0) {
+      throw new Error(`Password must include: ${passwordErrors.join(", ")}`);
+    }
+
+    if (newPassword.value !== confirmPassword.value) {
+      throw new Error("Password confirmation does not match");
+    }
+
     await changePassword({
       currentPassword: mustChangePassword.value
         ? undefined
@@ -89,8 +107,23 @@ const submit = async () => {
           :type="show ? 'text' : 'password'"
           class="form-control"
           required
-          minlength="8"
+          :minlength="PASSWORD_MIN_LENGTH"
         />
+        <div class="data-meta mt-2">
+          <div class="label-field mb-1">Password rules</div>
+          <ul class="mb-0 ps-3">
+            <li
+              v-for="rule in passwordRuleStates"
+              :key="rule.key"
+              :class="rule.valid ? 'text-success' : ''"
+            >
+              <span class="fw-semibold">
+                {{ rule.valid ? "OK" : "Required" }}
+              </span>
+              - {{ rule.label }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="col-12 position-relative">

@@ -81,10 +81,13 @@ export const useUsersApi = () => {
   };
 
   const resetUserPassword = async (id: string) => {
-    const res = await apiFetch<ApiEnvelope<{ id: string; mustChangePassword: boolean }>>(
-      `/api/users/${id}/reset-password`,
-      { method: "POST" },
-    );
+    const res = await apiFetch<
+      ApiEnvelope<{
+        id: string;
+        defaultPassword: string;
+        mustChangePassword: boolean;
+      }>
+    >(`/api/users/${id}/reset-password`, { method: "POST" });
     return res.data;
   };
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PASSWORD_MIN_LENGTH } from "~/lib/passwordPolicy";
 
 /**
  * LOGIN
@@ -40,7 +41,10 @@ export const loginSchema = z.object({
    */
   password: z
     .string({ error: "Password is required" })
-    .min(8, "Password must be at least 8 characters")
+    .min(
+      PASSWORD_MIN_LENGTH,
+      `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+    )
     .max(100, "Password exceeds maximum length"),
 });
 

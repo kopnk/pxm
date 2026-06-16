@@ -29,6 +29,7 @@ export const useUsersListPage = () => {
   const showResetModal = ref(false);
   const deleteTargetId = ref<string | null>(null);
   const resetTargetId = ref<string | null>(null);
+  const resetDefaultPassword = ref<string | null>(null);
 
   const searchFilter = createStoreFilter(store, "search");
   const roleFilter = createStoreFilter(store, "role");
@@ -127,6 +128,7 @@ export const useUsersListPage = () => {
     if (!target || !canEditUser(target.role)) return;
 
     resetTargetId.value = id;
+    resetDefaultPassword.value = null;
     showResetModal.value = true;
   };
 
@@ -134,6 +136,7 @@ export const useUsersListPage = () => {
     if (resettingId.value) return;
     showResetModal.value = false;
     resetTargetId.value = null;
+    resetDefaultPassword.value = null;
   };
 
   const performReset = async () => {
@@ -143,11 +146,10 @@ export const useUsersListPage = () => {
 
     try {
       resettingId.value = targetId;
-      await resetUserPassword(targetId);
+      const result = await resetUserPassword(targetId);
+      resetDefaultPassword.value = result.defaultPassword;
       notify.success("Password reset to default. User must change it on next login.");
       await fetchUsers(store.meta.page, false);
-      showResetModal.value = false;
-      resetTargetId.value = null;
     } catch (err: unknown) {
       notify.error(getApiErrorMessage(err, "Failed to reset password"));
     } finally {
@@ -189,6 +191,7 @@ export const useUsersListPage = () => {
     showResetModal,
     deleteTargetUser,
     resetTargetUser,
+    resetDefaultPassword,
     searchFilter,
     roleFilter,
     isActiveFilter,

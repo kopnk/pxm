@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
 
   return successResponse(event, "Password reset to default", {
     id: target.id,
+    defaultPassword: DEFAULT_USER_PASSWORD,
     mustChangePassword: true,
   });
 });

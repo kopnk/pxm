@@ -85,7 +85,7 @@ export const RLS_MENU_REGISTRY = [
     key: "profile",
     label: "Profile",
     route: "/profile",
-    adminDefault: "u",
+    adminDefault: "ru",
     staffDefault: "ru",
   },
   {

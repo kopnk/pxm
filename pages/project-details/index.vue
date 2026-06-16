@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProjectDetailsListPage } from "@/composables/useProjectDetailsListPage";
 import { useProjectDetailsExport } from "@/composables/useProjectDetailsExport";
-import { formatListTimestamp } from "@/utils/formatListTimestamp";
 
 const {
   store,
@@ -215,12 +214,12 @@ const onExportExcel = () => {
                     </span>
                   </div>
 
-                  <div class="data-meta mt-1">
-                    <div>Created by: {{ item.createdBy || "-" }}</div>
-                    <div>Updated by: {{ item.updatedBy || "-" }}</div>
-                    <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
-                    <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
-                  </div>
+                  <AppAuditMeta
+                    :created-by="item.createdBy"
+                    :updated-by="item.updatedBy"
+                    :created-at="item.createdAt"
+                    :updated-at="item.updatedAt"
+                  />
 
                   <div v-if="canDelete" class="mt-1">
                     <span

@@ -17,6 +17,7 @@ const {
   showResetModal,
   deleteTargetUser,
   resetTargetUser,
+  resetDefaultPassword,
   searchFilter,
   roleFilter,
   isActiveFilter,
@@ -159,12 +160,12 @@ const {
                     >
                       Must change password
                     </div>
-                    <div class="data-meta mt-1">
-                      <div>Created by: {{ item.createdBy || "-" }}</div>
-                      <div>Updated by: {{ item.updatedBy || "-" }}</div>
-                      <div>Created: {{ formatListTimestamp(item.createdAt) }}</div>
-                      <div>Updated: {{ formatListTimestamp(item.updatedAt) }}</div>
-                    </div>
+                    <AppAuditMeta
+                      :created-by="item.createdBy"
+                      :updated-by="item.updatedBy"
+                      :created-at="item.createdAt"
+                      :updated-at="item.updatedAt"
+                    />
                     <span
                       v-if="canDeleteUser(item.role)"
                       class="text-danger fw-semibold d-block mt-1"
@@ -296,7 +297,24 @@ const {
               }}</span
               >?
             </p>
-            <p class="data-meta mb-0">
+            <template v-if="resetDefaultPassword">
+              <div class="alert alert-success mb-3" role="alert">
+                Password has been reset successfully.
+              </div>
+              <div class="mb-2">
+                <div class="label-field">Default password</div>
+                <input
+                  class="form-control font-monospace"
+                  :value="resetDefaultPassword"
+                  readonly
+                />
+              </div>
+              <p class="data-meta mb-0">
+                Share this password with the user. The user must change it on
+                first login.
+              </p>
+            </template>
+            <p v-else class="data-meta mb-0">
               Password will be set to the default. The user must change it on
               first login.
             </p>
@@ -309,10 +327,11 @@ const {
               :disabled="!!resettingId"
               @click="cancelReset"
             >
-              Cancel
+              {{ resetDefaultPassword ? "Close" : "Cancel" }}
             </button>
 
             <button
+              v-if="!resetDefaultPassword"
               type="button"
               class="btn btn-warning"
               :disabled="!!resettingId"

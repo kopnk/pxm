@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { formatListTimestamp } from "@/utils/formatListTimestamp";
 import { useClientsListPage } from "@/composables/useClientsListPage";
 
 const {
@@ -116,12 +115,12 @@ const {
                       {{ c.isActive ? "Active" : "Inactive" }}
                     </span>
                   </div>
-                  <div class="data-meta mt-1">
-                    <div>Created by: {{ c.createdBy || "-" }}</div>
-                    <div>Updated by: {{ c.updatedBy || "-" }}</div>
-                    <div>Created: {{ formatListTimestamp(c.createdAt) }}</div>
-                    <div>Updated: {{ formatListTimestamp(c.updatedAt) }}</div>
-                  </div>
+                  <AppAuditMeta
+                    :created-by="c.createdBy"
+                    :updated-by="c.updatedBy"
+                    :created-at="c.createdAt"
+                    :updated-at="c.updatedAt"
+                  />
                   <span
                     v-if="canDelete"
                     class="text-danger fw-semibold"

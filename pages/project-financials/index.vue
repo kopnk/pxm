@@ -36,7 +36,6 @@ const {
   performDelete,
   formatCurrencyIdr,
   formatQty,
-  formatListTimestamp,
   getRowNumber,
   getFinancialStatusBadgeClass,
   formatFinancialStatusLabel,
@@ -425,20 +424,12 @@ const onExportExcel = () => {
                         {{ formatFinancialStatusLabel(item.status) }}
                       </span>
                     </div>
-                    <div class="data-meta mt-1">
-                      <div>
-                        Created by: {{ item.createdBy || "-" }}
-                      </div>
-                      <div>
-                        Updated by: {{ item.updatedBy || "-" }}
-                      </div>
-                      <div>
-                        Created: {{ formatListTimestamp(item.createdAt) }}
-                      </div>
-                      <div>
-                        Updated: {{ formatListTimestamp(item.updatedAt) }}
-                      </div>
-                    </div>
+                    <AppAuditMeta
+                      :created-by="item.createdBy"
+                      :updated-by="item.updatedBy"
+                      :created-at="item.createdAt"
+                      :updated-at="item.updatedAt"
+                    />
                     <div v-if="canDelete" class="mt-1">
                       <span
                         class="text-danger small fw-semibold"
