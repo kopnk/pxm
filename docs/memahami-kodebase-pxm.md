@@ -85,7 +85,7 @@ Inti yang perlu diingat: **komponen UI tidak menampung logika berat**, semua dip
 ### 4.1 Halaman (`pages/`)
 - `index.vue` umumnya list/table + filter + pagination.
 - `create.vue` dan `update.vue` memakai form reusable.
-- Route dinamis seperti `pages/users/[id].vue` untuk detail by param.
+- Route update saat ini umumnya memakai query `?id=...`, misalnya `pages/users/update.vue`.
 
 ### 4.2 Komponen (`components/`)
 - Fokus ke presentasi.

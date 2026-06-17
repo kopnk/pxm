@@ -3,6 +3,7 @@ import {
   registerDashboardPeer,
   unregisterDashboardPeer,
 } from "~/server/utils/dashboardRefreshHub";
+import { checkRateLimit } from "~/server/utils/rateLimit";
 
 export default defineWebSocketHandler({
   open(peer) {
@@ -32,6 +33,20 @@ export default defineWebSocketHandler({
     }
 
     if (payload?.type !== "refresh_request") return;
+    const limit = checkRateLimit("ws-dashboard-refresh", {
+      limit: 60,
+      windowMs: 60 * 1000,
+    });
+    if (!limit.allowed) {
+      peer.send(
+        JSON.stringify({
+          type: "socket_error",
+          message: `Too many refresh requests. Try again in ${limit.retryAfterSec}s`,
+        }),
+      );
+      return;
+    }
+
     broadcastDashboardRefresh(payload.source ?? "dashboard_socket");
   },
   close(peer) {

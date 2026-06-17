@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
+export const projectFileRefTableSchema = z.enum([
+  "projects",
+  "project_financials",
+  "project_progress",
+]);
+
 export const externalFileUrlSchema = z
   .string()
   .trim()
@@ -16,7 +22,7 @@ export const externalFileUrlSchema = z
   );
 
 export const uploadProjectFileSchema = z.object({
-  refTable: z.string().min(1),
+  refTable: projectFileRefTableSchema,
   refId: z.string().uuid(),
   fileCategory: z.string().min(1),
   externalUrl: externalFileUrlSchema.optional(),
@@ -24,7 +30,7 @@ export const uploadProjectFileSchema = z.object({
 });
 
 export const createProjectFileSchema = z.object({
-  refTable: z.string().min(1),
+  refTable: projectFileRefTableSchema,
   refId: z.string().uuid(),
   fileCategory: z.string().min(1),
   fileName: z.string().trim().min(1).max(255).optional(),
@@ -41,7 +47,7 @@ export const listProjectFilesSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(DEFAULT_PAGE_LIMIT),
   search: z.string().optional(),
-  refTable: z.string().optional(),
+  refTable: projectFileRefTableSchema.optional(),
   refId: z.string().uuid().optional(),
   fileCategory: z.string().optional(),
 });

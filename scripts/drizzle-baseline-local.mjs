@@ -1,18 +1,23 @@
 import "dotenv/config";
 import pg from "pg";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const { Client } = pg;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const existingEntries = [
-  { hash: "0000_chemical_fenris", createdAt: 1775701874181 },
-  { hash: "0001_align_project_financials", createdAt: 1775903889744 },
-  {
-    hash: "0002_drop_project_financials_amount_snapshots",
-    createdAt: 1776000000000,
-  },
-  { hash: "0003_drop_partner_tax_columns", createdAt: 1776038400000 },
-  { hash: "0004_dcn", createdAt: 1776100000000 },
-];
+const journal = JSON.parse(
+  readFileSync(
+    join(__dirname, "..", "server", "db", "migrations", "meta", "_journal.json"),
+    "utf8",
+  ),
+);
+
+const existingEntries = journal.entries.map((entry) => ({
+  hash: entry.tag,
+  createdAt: entry.when,
+}));
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,

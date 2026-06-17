@@ -29,7 +29,16 @@ defineEmits<{
             class="data-value"
             style="font-size: 0.95rem"
           >
-            {{ file.fileName || "Uploaded file" }}
+            <a
+              v-if="file.signedUrl"
+              :href="file.signedUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-decoration-none"
+            >
+              {{ file.fileName || "Uploaded file" }}
+            </a>
+            <span v-else>{{ file.fileName || "Uploaded file" }}</span>
           </div>
           <template v-else>
             <div class="data-label">Document URL</div>

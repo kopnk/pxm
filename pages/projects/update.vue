@@ -314,7 +314,19 @@ onMounted(fetchProject);
               <div class="flex-grow-1 min-w-0">
                 <div class="data-value" style="font-size: 0.95rem">
                   [{{ String(file.fileCategory || "contract").toUpperCase() }}]
-                  {{ file.fileName || "Unnamed file" }}
+                  <template v-if="!isExternalProjectFile(file)">
+                    <a
+                      v-if="file.signedUrl"
+                      :href="file.signedUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-decoration-none"
+                    >
+                      {{ file.fileName || "Unnamed file" }}
+                    </a>
+                    <span v-else>{{ file.fileName || "Unnamed file" }}</span>
+                  </template>
+                  <span v-else>{{ file.fileName || "Document URL" }}</span>
                 </div>
                 <div
                   v-if="isExternalProjectFile(file)"

@@ -407,7 +407,7 @@ const handleSubmit = async () => {
         <input v-model="form.poDatePartner" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.partner_po"
+        :model-value="selectedDocUrls.partner_po ?? ''"
         @update:model-value="setDocUrl('partner_po', $event)"
         file-label="Partner PO File"
         :selected-file-name="selectedDocFiles.partner_po?.name ?? null"
@@ -426,7 +426,7 @@ const handleSubmit = async () => {
         />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.partner_invoice"
+        :model-value="selectedDocUrls.partner_invoice ?? ''"
         @update:model-value="setDocUrl('partner_invoice', $event)"
         file-label="Partner Invoice File"
         :selected-file-name="selectedDocFiles.partner_invoice?.name ?? null"
@@ -441,7 +441,7 @@ const handleSubmit = async () => {
         <input v-model="form.fpDatePartner" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.partner_tax"
+        :model-value="selectedDocUrls.partner_tax ?? ''"
         @update:model-value="setDocUrl('partner_tax', $event)"
         file-label="Partner FP File"
         :selected-file-name="selectedDocFiles.partner_tax?.name ?? null"
@@ -456,7 +456,7 @@ const handleSubmit = async () => {
         <input v-model="form.balapDate" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.balap"
+        :model-value="selectedDocUrls.balap ?? ''"
         @update:model-value="setDocUrl('balap', $event)"
         file-label="Balap File"
         :selected-file-name="selectedDocFiles.balap?.name ?? null"
@@ -471,7 +471,7 @@ const handleSubmit = async () => {
         <input v-model="form.bastDate" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.bast"
+        :model-value="selectedDocUrls.bast ?? ''"
         @update:model-value="setDocUrl('bast', $event)"
         file-label="BAST File"
         :selected-file-name="selectedDocFiles.bast?.name ?? null"
@@ -557,7 +557,7 @@ const handleSubmit = async () => {
         <input v-model="form.poDateClient" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.client_po"
+        :model-value="selectedDocUrls.client_po ?? ''"
         @update:model-value="setDocUrl('client_po', $event)"
         file-label="Client PO File"
         :selected-file-name="selectedDocFiles.client_po?.name ?? null"
@@ -589,7 +589,7 @@ const handleSubmit = async () => {
         />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.client_invoice"
+        :model-value="selectedDocUrls.client_invoice ?? ''"
         @update:model-value="setDocUrl('client_invoice', $event)"
         file-label="Client Invoice File"
         :selected-file-name="selectedDocFiles.client_invoice?.name ?? null"
@@ -604,7 +604,7 @@ const handleSubmit = async () => {
         <input v-model="form.fpDateClient" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.client_tax"
+        :model-value="selectedDocUrls.client_tax ?? ''"
         @update:model-value="setDocUrl('client_tax', $event)"
         file-label="Client FP File"
         :selected-file-name="selectedDocFiles.client_tax?.name ?? null"
@@ -619,7 +619,7 @@ const handleSubmit = async () => {
         <input v-model="form.balapDate" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.balap"
+        :model-value="selectedDocUrls.balap ?? ''"
         @update:model-value="setDocUrl('balap', $event)"
         file-label="Balap File"
         :selected-file-name="selectedDocFiles.balap?.name ?? null"
@@ -634,7 +634,7 @@ const handleSubmit = async () => {
         <input v-model="form.bastDate" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
-        :model-value="selectedDocUrls.bast"
+        :model-value="selectedDocUrls.bast ?? ''"
         @update:model-value="setDocUrl('bast', $event)"
         file-label="BAST File"
         :selected-file-name="selectedDocFiles.bast?.name ?? null"

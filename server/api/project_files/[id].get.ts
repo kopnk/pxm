@@ -4,6 +4,7 @@ import { projectFiles } from "~/server/db/schema/project_files";
 import { eq, and, isNull } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
+import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -26,5 +27,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "File not found" });
   }
 
-  return successResponse(event, "File retrieved", file);
+  const [signedFile] = await withProjectFileSignedUrls([file]);
+  return successResponse(event, "File retrieved", signedFile);
 });

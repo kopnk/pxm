@@ -4,6 +4,7 @@ import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { getUserPermissionsMatrix } from "~/server/utils/rlsPermissions";
+import { verifyPartnerPoAccess } from "~/server/utils/partnerPoPdfAccess";
 
 export default defineEventHandler(async (event) => {
   const url = event.node.req.url || "";
@@ -17,13 +18,26 @@ export default defineEventHandler(async (event) => {
   }
 
   const pathOnly = url.split("?")[0] ?? "";
+  if (pathOnly === "/api/health" || pathOnly === "/api/ready") {
+    return;
+  }
+
   const queryString = url.includes("?") ? url.slice(url.indexOf("?") + 1) : "";
   const pdfParams = new URLSearchParams(queryString);
   if (
     pathOnly === "/api/reports/partner-po-pdf" &&
     pdfParams.get("access")?.trim()
   ) {
-    return;
+    const config = useRuntimeConfig(event);
+    const secret = String(config.partnerPoPdfSecret || "");
+    const po = pdfParams.get("po")?.trim() ?? "";
+    const access = pdfParams.get("access")?.trim() ?? "";
+    const verified = secret ? verifyPartnerPoAccess(access, secret) : null;
+
+    if (verified?.po === po) {
+      event.context.signedPartnerPoPdfAccess = { po };
+      return;
+    }
   }
 
   const sessionId = getCookie(event, "pxm_session");

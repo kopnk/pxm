@@ -7,6 +7,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { eq, and, isNull } from "drizzle-orm";
 import { logAudit } from "~/server/utils/audit";
+import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -49,6 +50,9 @@ export default defineEventHandler(async (event) => {
       .returning();
 
     const row = rows[0];
+    if (!row) {
+      throw createError({ statusCode: 500, statusMessage: "Update failed" });
+    }
 
     await logAudit({
       event,
@@ -63,5 +67,6 @@ export default defineEventHandler(async (event) => {
     return row;
   });
 
-  return successResponse(event, "File updated", updated);
+  const [signedFile] = await withProjectFileSignedUrls([updated]);
+  return successResponse(event, "File updated", signedFile);
 });

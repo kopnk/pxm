@@ -1,19 +1,24 @@
 import "dotenv/config";
 import pg from "pg";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const { Client } = pg;
 const client = new Client({ connectionString: process.env.DATABASE_URL });
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const baselineEntries = [
-  { hash: "0000_chemical_fenris", createdAt: 1775701874181 },
-  { hash: "0001_align_project_financials", createdAt: 1775903889744 },
-  {
-    hash: "0002_drop_project_financials_amount_snapshots",
-    createdAt: 1776000000000,
-  },
-  { hash: "0003_drop_partner_tax_columns", createdAt: 1776038400000 },
-  { hash: "0004_dcn", createdAt: 1776100000000 },
-];
+const journal = JSON.parse(
+  readFileSync(
+    join(__dirname, "..", "server", "db", "migrations", "meta", "_journal.json"),
+    "utf8",
+  ),
+);
+
+const baselineEntries = journal.entries.map((entry) => ({
+  hash: entry.tag,
+  createdAt: entry.when,
+}));
 
 await client.connect();
 await client.query(`CREATE SCHEMA IF NOT EXISTS "drizzle";`);
@@ -34,5 +39,8 @@ for (const entry of baselineEntries) {
   );
 }
 
-console.log("Drizzle migration state repaired to baseline 0000-0004.");
+console.log(
+  "Drizzle migration state repaired to journal:",
+  baselineEntries.map((entry) => entry.hash),
+);
 await client.end();

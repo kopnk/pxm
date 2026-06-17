@@ -8,6 +8,14 @@ export default defineEventHandler((event) => {
   const url = event.node.req.url || "";
   if (!url.startsWith("/api/")) return;
 
+  const pathOnly = url.split("?")[0] ?? "";
+  if (
+    pathOnly === "/api/reports/partner-po-pdf" &&
+    event.context.signedPartnerPoPdfAccess
+  ) {
+    return;
+  }
+
   const access = resolveApiAccess(event);
   if (!access) return;
 

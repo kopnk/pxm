@@ -17,6 +17,7 @@ import { mapLocalTimestamps } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
+import { mergePgNumeric, numToPgString } from "~/server/utils/pgNumeric";
 
 export default defineEventHandler(async (event) => {
   /* ================= AUTH ================= */
@@ -187,14 +188,14 @@ export default defineEventHandler(async (event) => {
         ? body.lineNumber
         : oldData.lineNumber,
 
-    quantity: quantityNum != null ? String(quantityNum) : null,
+    quantity: numToPgString(quantityNum, 2),
     uom:
       body.uom !== undefined
         ? body.uom
         : oldData.uom,
 
-    unitPrice: unitPriceNum != null ? String(unitPriceNum) : null,
-    totalPrice: totalPriceNum != null ? String(totalPriceNum) : null,
+    unitPrice: numToPgString(unitPriceNum, 2),
+    totalPrice: numToPgString(totalPriceNum, 2),
 
     status:
       body.status !== undefined
@@ -216,12 +217,7 @@ export default defineEventHandler(async (event) => {
         ? body.remarksCancel
         : oldData.remarksCancel,
 
-    taxOut:
-      body.taxOut !== undefined
-        ? body.taxOut != null
-          ? String(body.taxOut)
-          : null
-        : oldData.taxOut,
+    taxOut: mergePgNumeric(body.taxOut, oldData.taxOut, 4),
 
     updatedUser: userId,
     updatedAt: dbTime(),

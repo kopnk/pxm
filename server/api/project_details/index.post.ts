@@ -16,6 +16,7 @@ import { logAudit } from "~/server/utils/audit";
 import { eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { dbTime } from "~/server/utils/dbTime";
+import { numToPgString } from "~/server/utils/pgNumeric";
 
 /* =========================================================
    🔹 SELECT BUILDER (Hierarchy Join)
@@ -217,10 +218,10 @@ export default defineEventHandler(async (event) => {
             siteId: item.siteId ?? null,
             siteName: item.siteName ?? null,
 
-            quantity: quantity != null ? String(quantity) : null,
+            quantity: numToPgString(quantity, 2),
             uom: item.uom ?? null,
-            unitPrice: unitPrice != null ? String(unitPrice) : null,
-            totalPrice: totalPrice != null ? String(totalPrice) : null,
+            unitPrice: numToPgString(unitPrice, 2),
+            totalPrice: numToPgString(totalPrice, 2),
 
             status: item.status ?? "active",
 
@@ -229,10 +230,7 @@ export default defineEventHandler(async (event) => {
             remarksDelay: item.remarksDelay ?? null,
             remarksCancel: item.remarksCancel ?? null,
 
-            taxOut:
-              item.taxOut != null && item.taxOut !== undefined
-                ? String(item.taxOut)
-                : null,
+            taxOut: numToPgString(item.taxOut, 4),
 
             createdAt: now,
             updatedAt: now,

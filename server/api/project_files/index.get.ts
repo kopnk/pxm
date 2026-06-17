@@ -5,12 +5,14 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/server/utils/pagination";
 import { and, eq, ilike, desc, isNull, count } from "drizzle-orm";
+import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
+import { listProjectFilesSchema } from "~/server/validation/project_files.schema";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
   if (forbidden) return forbidden;
 
-  const query = getQuery(event);
+  const query = listProjectFilesSchema.parse(getQuery(event));
   const { page, limit, offset } = buildPagination(query);
 
   const conditions = [isNull(projectFiles.deletedAt)];
@@ -50,7 +52,7 @@ export default defineEventHandler(async (event) => {
     .offset(offset);
 
   return successResponse(event, "Files retrieved", {
-    items,
+    items: await withProjectFileSignedUrls(items),
     page,
     limit,
     total,

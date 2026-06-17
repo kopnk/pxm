@@ -86,9 +86,9 @@ export default defineEventHandler(async (event) => {
         paidNumber: pickStr(body.paidNumber, oldData.paidNumber),
         paidDate: pickStr(body.paidDate, oldData.paidDate),
 
-        taxIn: mergePgNumeric(body.taxIn, oldData.taxIn),
-        taxOut: mergePgNumeric(body.taxOut, oldData.taxOut),
-        pph: mergePgNumeric(body.pph, oldData.pph),
+        taxIn: mergePgNumeric(body.taxIn, oldData.taxIn, 4),
+        taxOut: mergePgNumeric(body.taxOut, oldData.taxOut, 4),
+        pph: mergePgNumeric(body.pph, oldData.pph, 4),
 
         note: pickStr(body.note, oldData.note),
         stage:
@@ -116,10 +116,11 @@ export default defineEventHandler(async (event) => {
         ),
         fpNumberPartner: pickStr(body.fpNumberPartner, oldData.fpNumberPartner),
         fpDatePartner: pickStr(body.fpDatePartner, oldData.fpDatePartner),
-        qtyPartner: mergePgNumeric(body.qtyPartner, oldData.qtyPartner),
+        qtyPartner: mergePgNumeric(body.qtyPartner, oldData.qtyPartner, 4),
         unitPricePartner: mergePgNumeric(
           body.unitPricePartner,
           oldData.unitPricePartner,
+          2,
         ),
 
         poNumberClient: pickStr(body.poNumberClient, oldData.poNumberClient),
@@ -134,10 +135,11 @@ export default defineEventHandler(async (event) => {
         ),
         fpNumberClient: pickStr(body.fpNumberClient, oldData.fpNumberClient),
         fpDateClient: pickStr(body.fpDateClient, oldData.fpDateClient),
-        qtyClient: mergePgNumeric(body.qtyClient, oldData.qtyClient),
+        qtyClient: mergePgNumeric(body.qtyClient, oldData.qtyClient, 4),
         unitPriceClient: mergePgNumeric(
           body.unitPriceClient,
           oldData.unitPriceClient,
+          2,
         ),
 
         updatedUser: userId,

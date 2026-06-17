@@ -8,6 +8,7 @@ export type ProjectFileItem = {
   fileCategory: string;
   fileName?: string | null;
   fileUrl: string;
+  signedUrl?: string | null;
   fileSize?: number | null;
   mimeType?: string | null;
   uploadedAt?: string | null;
@@ -20,6 +21,7 @@ const mapProjectFileItem = (row: Record<string, unknown>): ProjectFileItem => ({
   fileCategory: String(row.fileCategory ?? row.file_category ?? ""),
   fileName: (row.fileName ?? row.file_name ?? null) as string | null,
   fileUrl: String(row.fileUrl ?? row.file_url ?? ""),
+  signedUrl: (row.signedUrl ?? row.signed_url ?? null) as string | null,
   fileSize: (row.fileSize ?? row.file_size ?? null) as number | null,
   mimeType: (row.mimeType ?? row.mime_type ?? null) as string | null,
   uploadedAt: (row.uploadedAt ?? row.uploaded_at ?? null) as string | null,

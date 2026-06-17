@@ -330,9 +330,9 @@ export const dashboardStageChartOptions = {
       callbacks: {
         label(
           context: {
-            dataset: { label?: string };
+            dataset: { label?: string; data?: unknown[] };
             parsed?: { y?: number };
-            chart: { data: { datasets: { label?: string }[] } };
+            chart: { data: { datasets: { label?: string; data?: unknown[] }[] } };
             dataIndex: number;
           },
         ) {

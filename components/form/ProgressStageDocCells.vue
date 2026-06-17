@@ -80,7 +80,16 @@ const onUrlInput = (event: Event) => {
       class="d-flex align-items-start justify-content-between gap-1 mt-1"
     >
       <div class="data-meta min-w-0">
-        {{ file.fileName || "Uploaded file" }}
+        <a
+          v-if="file.signedUrl"
+          :href="file.signedUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-decoration-none"
+        >
+          {{ file.fileName || "Uploaded file" }}
+        </a>
+        <span v-else>{{ file.fileName || "Uploaded file" }}</span>
       </div>
       <button
         v-if="canDelete"

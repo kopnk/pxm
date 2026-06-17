@@ -12,6 +12,9 @@ declare module "h3" {
     };
     permissions?: RlsMatrix;
     rlsEnforced?: boolean;
+    signedPartnerPoPdfAccess?: {
+      po: string;
+    };
     session?: unknown;
   }
 }

@@ -4,10 +4,7 @@ import { successResponse } from "~/server/utils/response";
 import { logAudit } from "~/server/utils/audit";
 
 export default defineEventHandler(async (event) => {
-  console.log("===== [LOGOUT] START =====");
-
   const sessionId = getCookie(event, lucia.sessionCookieName);
-  console.log("SESSION ID:", sessionId);
 
   let actorId: string | null = null;
 
@@ -24,8 +21,6 @@ export default defineEventHandler(async (event) => {
        * 2. Invalidate session
        */
       await lucia.invalidateSession(sessionId);
-    //  console.log("SESSION INVALIDATED:", sessionId);
-
       /**
        * 3. Audit logout (AMAN)
        */
@@ -50,14 +45,11 @@ export default defineEventHandler(async (event) => {
     );
   }
 
-  console.log("===== [LOGOUT] END =====");
-
   return successResponse(
     event,
     actorId ? "Logged out successfully" : "No active session",
     {
       sessionInvalidated: !!actorId,
-      sessionId: sessionId ?? null,
     },
     200
   );
