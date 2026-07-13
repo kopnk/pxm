@@ -4,6 +4,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
@@ -13,7 +14,7 @@ import { getAwsRegion } from "~/server/utils/appFilesStorage";
 import { getAppUserRecordById } from "~/server/utils/appUserStore";
 import {
   getProjectDetailRecordById,
-  getProjectDetailListItemById,
+  getProjectDetailListItemsByIds,
   updateProjectDetailRecord,
 } from "~/server/utils/projectDetailStore";
 import { getProjectRecordById } from "~/server/utils/projectStore";
@@ -251,6 +252,22 @@ async function scanAllProjectProgressItems() {
   return items;
 }
 
+async function queryProjectProgressItemsByDetailId(projectDetailId: string) {
+  const response = await getDynamoDocumentClient().send(
+    new QueryCommand({
+      TableName: getTableName(),
+      IndexName: "gsi1",
+      KeyConditionExpression: "gsi1pk = :gsi1pk",
+      ExpressionAttributeValues: {
+        ":gsi1pk": `PROJECT_PROGRESS_DETAIL#${projectDetailId}`,
+      },
+      ScanIndexForward: false,
+    }),
+  );
+
+  return (response.Items ?? []) as ProjectProgressItem[];
+}
+
 async function buildAuditEmailMap(userIds: string[]) {
   const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
   const entries = await Promise.all(
@@ -270,8 +287,8 @@ async function enrichProjectProgressList(
     records.flatMap((record) => [record.createdUser ?? "", record.updatedUser ?? ""]),
   );
 
-  const details = await Promise.all(
-    records.map((record) => getProjectDetailListItemById(record.projectDetailId)),
+  const details = await getProjectDetailListItemsByIds(
+    records.map((record) => record.projectDetailId),
   );
 
   return records.map((record, index) => {
@@ -345,7 +362,9 @@ async function ensureUniqueProgressByDetail(
   projectDetailId: string,
   excludeId?: string,
 ) {
-  const existing = (await scanAllProjectProgressItems()).map(mapProjectProgressItem);
+  const existing = (await queryProjectProgressItemsByDetailId(projectDetailId)).map(
+    mapProjectProgressItem,
+  );
   const hit = existing.find(
     (record) =>
       record.projectDetailId === projectDetailId && record.id !== excludeId,
@@ -440,7 +459,7 @@ export async function getProjectProgressRecordById(progressId: string) {
 }
 
 export async function getProjectProgressRecordByDetailId(projectDetailId: string) {
-  const record = (await scanAllProjectProgressItems())
+  const record = (await queryProjectProgressItemsByDetailId(projectDetailId))
     .map(mapProjectProgressItem)
     .find((item) => item.projectDetailId === projectDetailId);
 

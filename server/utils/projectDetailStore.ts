@@ -1,9 +1,11 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  BatchGetCommand,
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
@@ -287,6 +289,59 @@ async function scanAllProjectDetailItems() {
   return items;
 }
 
+async function queryProjectDetailItemsByProjectId(projectId: string) {
+  const response = await getDynamoDocumentClient().send(
+    new QueryCommand({
+      TableName: getTableName(),
+      IndexName: "gsi1",
+      KeyConditionExpression: "gsi1pk = :gsi1pk",
+      ExpressionAttributeValues: {
+        ":gsi1pk": `PROJECT_DETAIL_PROJECT#${projectId}`,
+      },
+    }),
+  );
+
+  return (response.Items ?? []) as ProjectDetailItem[];
+}
+
+async function batchGetProjectDetailItemsByIds(detailIds: string[]) {
+  const uniqueIds = [...new Set(detailIds.map((id) => id.trim()).filter(Boolean))];
+  const tableName = getTableName();
+  const client = getDynamoDocumentClient();
+  const items: ProjectDetailItem[] = [];
+
+  for (let index = 0; index < uniqueIds.length; index += 100) {
+    const chunk = uniqueIds.slice(index, index + 100);
+    const response = await client.send(
+      new BatchGetCommand({
+        RequestItems: {
+          [tableName]: {
+            Keys: chunk.map((detailId) => ({
+              pk: buildProjectDetailPk(detailId),
+              sk: PROJECT_DETAIL_SK,
+            })),
+          },
+        },
+      }),
+    );
+
+    items.push(...(((response.Responses?.[tableName] ?? []) as ProjectDetailItem[])));
+  }
+
+  return items;
+}
+
+async function listProjectDetailItemsForFilters(
+  filters?: ProjectDetailsListFilterInput,
+) {
+  const projectId = String(filters?.projectId ?? "").trim();
+  if (projectId) {
+    return queryProjectDetailItemsByProjectId(projectId);
+  }
+
+  return scanAllProjectDetailItems();
+}
+
 async function buildAuditEmailMap(userIds: string[]) {
   const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
   const entries = await Promise.all(
@@ -421,7 +476,9 @@ export async function getProjectDetailListItemById(detailId: string) {
 export async function listProjectDetailRecords(
   filters?: ProjectDetailsListFilterInput,
 ) {
-  const records = (await scanAllProjectDetailItems()).map(mapProjectDetailItem);
+  const records = (await listProjectDetailItemsForFilters(filters)).map(
+    mapProjectDetailItem,
+  );
   const enriched = await enrichProjectDetailList(records);
 
   return enriched
@@ -433,6 +490,16 @@ export async function listProjectDetailRecords(
       if (createdCompare !== 0) return createdCompare;
       return b.id.localeCompare(a.id);
     });
+}
+
+export async function getProjectDetailListItemsByIds(detailIds: string[]) {
+  const records = (await batchGetProjectDetailItemsByIds(detailIds)).map(
+    mapProjectDetailItem,
+  );
+  const enriched = await enrichProjectDetailList(records);
+  const byId = new Map(enriched.map((record) => [record.id, record] as const));
+
+  return detailIds.map((detailId) => byId.get(detailId) ?? null);
 }
 
 export async function listProjectDetailRegionUsage(cityKabIds: string[]) {

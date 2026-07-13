@@ -4,6 +4,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
@@ -253,31 +254,30 @@ function toFilterRecord(
   };
 }
 
-async function scanAllProjectItems() {
-  const tableName = getTableName();
-  const client = getDynamoDocumentClient();
-  const items: ProjectItem[] = [];
-  let exclusiveStartKey: Record<string, unknown> | undefined;
+async function queryProjectItemsByStatus(status: ProjectStatus) {
+  const response = await getDynamoDocumentClient().send(
+    new QueryCommand({
+      TableName: getTableName(),
+      IndexName: "gsi1",
+      KeyConditionExpression: "gsi1pk = :gsi1pk",
+      ExpressionAttributeValues: {
+        ":gsi1pk": `PROJECT_STATUS#${status}`,
+      },
+    }),
+  );
 
-  do {
-    const response = await client.send(
-      new ScanCommand({
-        TableName: tableName,
-        FilterExpression: "entityType = :entityType",
-        ExpressionAttributeValues: {
-          ":entityType": PROJECT_ENTITY,
-        },
-        ExclusiveStartKey: exclusiveStartKey,
-      }),
-    );
+  return (response.Items ?? []) as ProjectItem[];
+}
 
-    items.push(...((response.Items ?? []) as ProjectItem[]));
-    exclusiveStartKey = response.LastEvaluatedKey as
-      | Record<string, unknown>
-      | undefined;
-  } while (exclusiveStartKey);
+async function listProjectItemsForFilters(filters?: ProjectsListFilterInput) {
+  const status = filters?.status as ProjectStatus | undefined;
+  if (status) {
+    return queryProjectItemsByStatus(status);
+  }
 
-  return items;
+  const statuses: ProjectStatus[] = ["active", "closed", "cancelled"];
+  const grouped = await Promise.all(statuses.map(queryProjectItemsByStatus));
+  return grouped.flat();
 }
 
 async function scanAllProjectFinancialCostItems() {
@@ -429,7 +429,7 @@ export async function getProjectListItemById(projectId: string) {
 }
 
 export async function listProjectRecords(filters?: ProjectsListFilterInput) {
-  const records = (await scanAllProjectItems()).map(mapProjectItem);
+  const records = (await listProjectItemsForFilters(filters)).map(mapProjectItem);
   const clientNameMap = await buildClientNameMap();
 
   const filtered = records

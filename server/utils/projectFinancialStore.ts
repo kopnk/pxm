@@ -4,6 +4,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  QueryCommand,
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
@@ -21,7 +22,7 @@ import { getAppUserRecordById } from "~/server/utils/appUserStore";
 import { getClientRecordById } from "~/server/utils/clientStore";
 import { getPartnerRecordById } from "~/server/utils/partnerStore";
 import {
-  getProjectDetailListItemById,
+  getProjectDetailListItemsByIds,
   getProjectDetailRecordById,
 } from "~/server/utils/projectDetailStore";
 import {
@@ -410,6 +411,33 @@ async function scanAllProjectFinancialItems() {
   return items;
 }
 
+async function queryProjectFinancialItemsByDetailId(projectDetailId: string) {
+  const response = await getDynamoDocumentClient().send(
+    new QueryCommand({
+      TableName: getTableName(),
+      IndexName: "gsi1",
+      KeyConditionExpression: "gsi1pk = :gsi1pk",
+      ExpressionAttributeValues: {
+        ":gsi1pk": `PROJECT_FINANCIAL_DETAIL#${projectDetailId}`,
+      },
+      ScanIndexForward: false,
+    }),
+  );
+
+  return (response.Items ?? []) as ProjectFinancialItem[];
+}
+
+async function listProjectFinancialItemsForFilters(
+  filters?: ProjectFinancialsListFilterInput,
+) {
+  const projectDetailId = String(filters?.projectDetailId ?? "").trim();
+  if (projectDetailId) {
+    return queryProjectFinancialItemsByDetailId(projectDetailId);
+  }
+
+  return scanAllProjectFinancialItems();
+}
+
 async function buildAuditEmailMap(userIds: string[]) {
   const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
   const entries = await Promise.all(
@@ -475,29 +503,27 @@ async function syncOutFlowPaidDateToProgress(input: {
 async function enrichProjectFinancialList(
   records: ProjectFinancialRecord[],
 ): Promise<ProjectFinancialListItem[]> {
+  const clientIds = [
+    ...new Set(records.map((record) => record.clientId).filter(Boolean) as string[]),
+  ];
+  const partnerIds = [
+    ...new Set(records.map((record) => record.partnerId).filter(Boolean) as string[]),
+  ];
   const [auditEmailMap, details, clients, partners] = await Promise.all([
     buildAuditEmailMap(
       records.flatMap((record) => [record.createdUser ?? "", record.updatedUser ?? ""]),
     ),
-    Promise.all(
-      records.map((record) => getProjectDetailListItemById(record.projectDetailId)),
-    ),
-    Promise.all(
-      records.map((record) =>
-        record.clientId ? getClientRecordById(record.clientId) : Promise.resolve(null),
-      ),
-    ),
-    Promise.all(
-      records.map((record) =>
-        record.partnerId ? getPartnerRecordById(record.partnerId) : Promise.resolve(null),
-      ),
-    ),
+    getProjectDetailListItemsByIds(records.map((record) => record.projectDetailId)),
+    Promise.all(clientIds.map(async (id) => [id, await getClientRecordById(id)] as const)),
+    Promise.all(partnerIds.map(async (id) => [id, await getPartnerRecordById(id)] as const)),
   ]);
+  const clientMap = new Map(clients);
+  const partnerMap = new Map(partners);
 
   return records.map((record, index) => {
     const detail = details[index];
-    const client = clients[index];
-    const partner = partners[index];
+    const client = record.clientId ? clientMap.get(record.clientId) ?? null : null;
+    const partner = record.partnerId ? partnerMap.get(record.partnerId) ?? null : null;
 
     return {
       ...record,
@@ -729,7 +755,9 @@ export async function getProjectFinancialListItemById(financialId: string) {
 export async function listProjectFinancialRecords(
   filters?: ProjectFinancialsListFilterInput,
 ) {
-  const records = (await scanAllProjectFinancialItems()).map(mapProjectFinancialItem);
+  const records = (await listProjectFinancialItemsForFilters(filters)).map(
+    mapProjectFinancialItem,
+  );
   const enriched = await enrichProjectFinancialList(records);
 
   return enriched
@@ -747,7 +775,7 @@ export async function getLatestFinancialByDetailId(input: {
   projectDetailId: string;
   flowDirection?: ProjectFinancialFlowDirection;
 }) {
-  const records = (await scanAllProjectFinancialItems())
+  const records = (await queryProjectFinancialItemsByDetailId(input.projectDetailId))
     .map(mapProjectFinancialItem)
     .filter((record) => {
       if (record.projectDetailId !== input.projectDetailId) return false;
