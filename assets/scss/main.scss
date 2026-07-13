@@ -78,7 +78,6 @@ body {
     }
   }
 }
-
 .text-brand {
   color: $primary;
 }
@@ -120,6 +119,45 @@ body {
   font-size: 0.85rem;
   color: #6c757d;
   font-family: "SFMono-Regular", "Menlo", "Monaco", "Courier New", monospace;
+}
+
+.number-helper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  padding: 0.28rem 0.65rem;
+  border: 1px solid rgba(193, 18, 31, 0.16);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(252, 191, 73, 0.18), rgba(94, 200, 242, 0.12)),
+    #fff;
+  color: #495057;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 0.25rem 0.75rem rgba(193, 18, 31, 0.06);
+}
+
+.number-helper::before {
+  content: "";
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #c1121f, #f77f00);
+  box-shadow: 0 0 0 0.18rem rgba(247, 127, 0, 0.12);
+}
+
+.number-helper-muted {
+  border-color: rgba(108, 117, 125, 0.16);
+  background:
+    linear-gradient(135deg, rgba(108, 117, 125, 0.08), rgba(94, 200, 242, 0.1)),
+    #fff;
+}
+
+.number-helper-muted::before {
+  background: linear-gradient(135deg, #6c757d, #5ec8f2);
+  box-shadow: 0 0 0 0.18rem rgba(94, 200, 242, 0.14);
 }
 
 /* =========================
@@ -181,7 +219,7 @@ input[type="number"] {
 /*.table-wrapper {
   width: 100%;
   max-height: calc(100vh - 160px); // header + footer
-  overflow: auto;                 // 🔥 dua arah kalau mau table yang scroll
+  overflow: auto;                 //  dua arah kalau mau table yang scroll
   border-radius: 8px;
 } */
 

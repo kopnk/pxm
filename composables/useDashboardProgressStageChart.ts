@@ -195,6 +195,7 @@ export function useDashboardProgressStageChart(
           stack: "detailLines",
           order: 2,
           yAxisID: "y",
+          pointStyle: "rect" as const,
         },
         {
           type: "bar" as const,
@@ -207,6 +208,7 @@ export function useDashboardProgressStageChart(
           stack: "detailLines",
           order: 2,
           yAxisID: "y",
+          pointStyle: "rect" as const,
         },
         {
           type: "line" as const,
@@ -222,6 +224,7 @@ export function useDashboardProgressStageChart(
           order: 1,
           stack: "planned-line",
           yAxisID: "y",
+          pointStyle: "line" as const,
         },
         {
           type: "line" as const,
@@ -237,6 +240,7 @@ export function useDashboardProgressStageChart(
           order: 1,
           stack: "actual-line",
           yAxisID: "y",
+          pointStyle: "line" as const,
         },
       ],
     };
@@ -325,9 +329,27 @@ export const dashboardStageChartOptions = {
     intersect: false,
   },
   plugins: {
-    legend: { position: "top" as const },
+    legend: {
+      position: "top" as const,
+      labels: {
+        usePointStyle: true,
+        pointStyleWidth: 44,
+        boxHeight: 8,
+      },
+    },
     tooltip: {
+      usePointStyle: true,
       callbacks: {
+        labelPointStyle(context: { dataset: { label?: string } }) {
+          const label = context.dataset.label ?? "";
+          return {
+            pointStyle:
+              label === "Planned" || label === "Actual"
+                ? ("line" as const)
+                : ("rect" as const),
+            rotation: 0,
+          };
+        },
         label(
           context: {
             dataset: { label?: string; data?: unknown[] };

@@ -4,6 +4,7 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { toastPasswordChangedSignInAgain } from "@/composables/useToastMessages";
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
+import { sessionExpiredSignInAgainMessage } from "~/lib/entityMessages";
 import {
   getPasswordRuleErrors,
   PASSWORD_MIN_LENGTH,
@@ -39,38 +40,87 @@ const resetForm = () => {
   confirmPassword.value = "";
 };
 
+const isUnauthorizedError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const statusCode =
+    "statusCode" in error && typeof error.statusCode === "number"
+      ? error.statusCode
+      : "data" in error &&
+          error.data &&
+          typeof error.data === "object" &&
+          "statusCode" in error.data &&
+          typeof error.data.statusCode === "number"
+        ? error.data.statusCode
+        : "response" in error &&
+            error.response &&
+            typeof error.response === "object" &&
+            "status" in error.response &&
+            typeof error.response.status === "number"
+          ? error.response.status
+          : 0;
+
+  return statusCode === 401;
+};
+
+const ensureActiveSession = async () => {
+  await auth.refreshSession();
+
+  if (!auth.user) {
+    await logout();
+    throw new Error(sessionExpiredSignInAgainMessage());
+  }
+};
+
 const onCancel = () => {
   if (mustChangePassword.value) return;
   void router.replace("/profile");
 };
 
 const submit = async () => {
-  await handle(async () => {
-    const passwordErrors = getPasswordRuleErrors(newPassword.value);
+  try {
+    await handle(async () => {
+      const passwordErrors = getPasswordRuleErrors(newPassword.value);
 
-    if (passwordErrors.length > 0) {
-      throw new Error(`Password must include: ${passwordErrors.join(", ")}`);
-    }
+      if (passwordErrors.length > 0) {
+        throw new Error(`Password must include: ${passwordErrors.join(", ")}`);
+      }
 
-    if (newPassword.value !== confirmPassword.value) {
-      throw new Error("Password confirmation does not match");
-    }
+      if (newPassword.value !== confirmPassword.value) {
+        throw new Error("Password confirmation does not match");
+      }
 
-    await changePassword({
-      currentPassword: mustChangePassword.value
-        ? undefined
-        : currentPassword.value,
-      newPassword: newPassword.value,
-      confirmPassword: confirmPassword.value,
-    });
+      await ensureActiveSession();
 
-    resetForm();
+      try {
+        await changePassword({
+          currentPassword: mustChangePassword.value
+            ? undefined
+            : currentPassword.value,
+          newPassword: newPassword.value,
+          confirmPassword: confirmPassword.value,
+        });
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          await logout();
+          throw new Error(sessionExpiredSignInAgainMessage());
+        }
 
-    // tetap kasih delay sebelum logout (logic sama)
-    setTimeout(async () => {
-      await logout();
-    }, 1200);
-  }, toastPasswordChangedSignInAgain());
+        throw error;
+      }
+
+      resetForm();
+
+      // tetap kasih delay sebelum logout (logic sama)
+      setTimeout(async () => {
+        await logout();
+      }, 1200);
+    }, toastPasswordChangedSignInAgain());
+  } catch {
+    // Toast error sudah ditangani di useFormHandler.
+  }
 };
 </script>
 

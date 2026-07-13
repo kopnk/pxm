@@ -7,9 +7,14 @@
           Data source: Projects, Details, Progress, Financials
         </p>
       </div>
-      <div class="ws-indicator" :class="isConnected ? 'connected' : 'disconnected'">
-        <span class="ws-dot"></span>
-        <span>{{ isConnected ? "WS Connected" : "WS Disconnected" }}</span>
+      <div class="dashboard-actions">
+        <button
+          class="btn btn-sm btn-outline-primary"
+          :disabled="loading"
+          @click="handleManualRefresh"
+        >
+          {{ loading ? "Refreshing..." : "Refresh Dashboard" }}
+        </button>
       </div>
     </div>
 
@@ -122,7 +127,7 @@
         <div class="summary-item">
           <span
             >AC
-            <span class="summary-hint">(Qty x Unit Price Partner)</span></span
+            <span class="summary-hint">(Qty x Partner Unit Price)</span></span
           >
           <span>{{ formatCurrency(acNow) }}</span>
         </div>
@@ -192,8 +197,7 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "vue-chartjs";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useDashboardRefreshSocket } from "@/composables/useDashboardRefreshSocket";
+import { computed, onMounted, ref, watch } from "vue";
 import { useNotify } from "@/composables/useNotify";
 import { useDashboardStore } from "@/stores/dashboard";
 import {
@@ -272,7 +276,6 @@ const loading = ref(false);
 const errorMessage = ref("");
 const notify = useNotify();
 const dashboardStore = useDashboardStore();
-const { isConnected, connect, disconnect } = useDashboardRefreshSocket();
 
 const projectKeywordFilter = computed({
   get: () => dashboardStore.filters.projectKeyword,
@@ -542,6 +545,7 @@ const cpiSpiChart = computed(() => ({
       borderColor: "#16a34a",
       backgroundColor: "rgba(22,163,74,0.2)",
       tension: 0.25,
+      pointStyle: "line" as const,
     },
     {
       label: "SPI",
@@ -549,6 +553,7 @@ const cpiSpiChart = computed(() => ({
       borderColor: "#d62828",
       backgroundColor: "rgba(214,40,40,0.2)",
       tension: 0.25,
+      pointStyle: "line" as const,
     },
   ],
 }));
@@ -562,6 +567,7 @@ const progressChart = computed(() => ({
       borderColor: "#1d3557",
       backgroundColor: "rgba(29,53,87,0.2)",
       tension: 0.25,
+      pointStyle: "line" as const,
     },
   ],
 }));
@@ -575,6 +581,7 @@ const sCurveChart = computed(() => ({
       borderColor: "#f77f00",
       backgroundColor: "rgba(247,127,0,0.2)",
       tension: 0.25,
+      pointStyle: "line" as const,
     },
     {
       label: "Actual %",
@@ -582,6 +589,7 @@ const sCurveChart = computed(() => ({
       borderColor: "#2a9d8f",
       backgroundColor: "rgba(42,157,143,0.2)",
       tension: 0.25,
+      pointStyle: "line" as const,
     },
   ],
 }));
@@ -594,7 +602,14 @@ const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { position: "top" as const },
+    legend: {
+      position: "top" as const,
+      labels: {
+        usePointStyle: true,
+        pointStyleWidth: 44,
+        boxHeight: 8,
+      },
+    },
   },
   scales: {
     y: {
@@ -651,6 +666,17 @@ async function loadDashboard() {
   } finally {
     loading.value = false;
   }
+}
+
+async function handleManualRefresh() {
+  await loadDashboard();
+
+  if (errorMessage.value) {
+    notify.error(errorMessage.value);
+    return;
+  }
+
+  notify.info("Dashboard refreshed");
 }
 
 /* =========================================================
@@ -879,11 +905,6 @@ const formatCurrency = (val: number) =>
    Saat komponen selesai mount, langsung load data dashboard. */
 onMounted(async () => {
   await loadDashboard();
-  connect(loadDashboard, (message) => notify.warning(message));
-});
-
-onUnmounted(() => {
-  disconnect();
 });
 
 watch(
@@ -932,38 +953,10 @@ watch(
   font-size: 0.9rem;
 }
 
-.ws-indicator {
-  display: inline-flex;
+.dashboard-actions {
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border: 1px solid #ececec;
-  border-radius: 999px;
-  padding: 0.25rem 0.6rem;
-  background: #fff;
-}
-
-.ws-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-}
-
-.ws-indicator.connected {
-  color: #198754;
-}
-
-.ws-indicator.connected .ws-dot {
-  background: #198754;
-}
-
-.ws-indicator.disconnected {
-  color: #dc3545;
-}
-
-.ws-indicator.disconnected .ws-dot {
-  background: #dc3545;
+  gap: 0.5rem;
 }
 
 .summary-grid {

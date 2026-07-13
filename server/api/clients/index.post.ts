@@ -1,6 +1,4 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { clients } from "~/server/db/schema/clients";
 import { parseBody } from "~/server/utils/zod";
 import { clientCreateSchema } from "~/server/validation/clients.schema";
 import { successResponse } from "~/server/utils/response";
@@ -8,8 +6,8 @@ import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { z } from "zod";
 import { toLocalTime } from "~/server/utils/datetime";
-import { dbTime } from "~/server/utils/dbTime";
 import { requireFirstRow } from "~/server/utils/requireFirstRow";
+import { createClientRecord } from "~/server/utils/clientStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -25,16 +23,42 @@ export default defineEventHandler(async (event) => {
   /* ================= BODY ================= */
   const rawBody = await readBody(event);
 
-  const schema = z.union([
-    clientCreateSchema,
-    z.array(clientCreateSchema)
-  ]);
-
-  const parsed = parseBody(schema, rawBody);
+  const parsed = Array.isArray(rawBody)
+    ? parseBody(z.array(clientCreateSchema), rawBody)
+    : parseBody(clientCreateSchema, rawBody);
   const payload = Array.isArray(parsed) ? parsed : [parsed];
 
   /* ================= TX ================= */
-  const created = await db.transaction(async (tx) => {
+  const created = await Promise.all(
+    payload.map(async (body) => {
+      const row = await createClientRecord({
+        name: body.name,
+        npwp: body.npwp ?? null,
+        bankName: body.bankName ?? null,
+        bankAccount: body.bankAccount ?? null,
+        addressText: body.addressText ?? null,
+        addressMeta: body.addressMeta ?? null,
+        contactName: body.contactName ?? null,
+        contactPhone: body.contactPhone ?? null,
+        contactEmail: body.contactEmail ?? null,
+        signatoryName: body.signatoryName ?? null,
+        signatoryTitle: body.signatoryTitle ?? null,
+        isActive: body.isActive ?? true,
+        createdUser: userId,
+        updatedUser: userId,
+      });
+
+      await logAudit({
+        event,
+        actorId: userId,
+        action: "CREATE",
+        targetTable: "clients",
+        targetId: row.id,
+        newData: row,
+      });
+
+      return row;
+      /*
 
     const rows = await tx
       .insert(clients)
@@ -73,7 +97,9 @@ export default defineEventHandler(async (event) => {
     }
 
     return rows;
-  });
+    */
+    }),
+  );
 
   /* ================= RESPONSE ================= */
   return successResponse(

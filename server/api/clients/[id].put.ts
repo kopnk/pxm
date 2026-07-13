@@ -1,15 +1,14 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { clients } from "~/server/db/schema/clients";
-import { eq } from "drizzle-orm";
 import { parseBody } from "~/server/utils/zod";
 import { clientUpdateSchema } from "~/server/validation/clients.schema";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime } from "~/server/utils/datetime";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
+import {
+  getClientRecordById,
+  updateClientRecord,
+} from "~/server/utils/clientStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -33,59 +32,41 @@ export default defineEventHandler(async (event) => {
     clientUpdateSchema,
     await readBody(event)
   );
+  const oldData = await getClientRecordById(id);
 
-  /* ================= TX ================= */
-  const updated = await db.transaction(async (tx) => {
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Client not found" });
+  }
 
-    const oldRows = await tx
-      .select()
-      .from(clients)
-      .where(eq(clients.id, id))
-      .limit(1);
+  const updated = await updateClientRecord(id, {
+    name: body.name ?? oldData.name,
+    npwp: body.npwp ?? oldData.npwp,
+    bankName: body.bankName ?? oldData.bankName,
+    bankAccount: body.bankAccount ?? oldData.bankAccount,
+    addressText: body.addressText ?? oldData.addressText,
+    addressMeta: body.addressMeta ?? oldData.addressMeta,
+    contactName: body.contactName ?? oldData.contactName,
+    contactPhone: body.contactPhone ?? oldData.contactPhone,
+    contactEmail:
+      body.contactEmail !== undefined ? body.contactEmail : oldData.contactEmail,
+    signatoryName: body.signatoryName ?? oldData.signatoryName,
+    signatoryTitle: body.signatoryTitle ?? oldData.signatoryTitle,
+    isActive: body.isActive ?? oldData.isActive,
+    updatedUser: userId,
+  });
 
-    const oldData = oldRows[0];
+  if (!updated) {
+    throw createError({ statusCode: 404, statusMessage: "Client not found" });
+  }
 
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "Client not found" });
-    }
-
-    /* ================= UPDATE ================= */
-    const rows = await tx
-      .update(clients)
-      .set({
-        name: body.name ?? oldData.name,
-        npwp: body.npwp ?? oldData.npwp,
-        bankName: body.bankName ?? oldData.bankName,
-        bankAccount: body.bankAccount ?? oldData.bankAccount,
-        addressText: body.addressText ?? oldData.addressText,
-        addressMeta: body.addressMeta ?? oldData.addressMeta,
-        contactName: body.contactName ?? oldData.contactName,
-        contactPhone: body.contactPhone ?? oldData.contactPhone,
-        contactEmail: body.contactEmail ?? oldData.contactEmail,
-        signatoryName: body.signatoryName ?? oldData.signatoryName,
-        signatoryTitle: body.signatoryTitle ?? oldData.signatoryTitle,
-        isActive: body.isActive ?? oldData.isActive,
-
-        updatedUser: userId,
-        updatedAt: dbTime(),
-      })
-      .where(eq(clients.id, id))
-      .returning();
-
-    const row = requireFirstRow(rows, "Client not found");
-
-    /* ================= AUDIT ================= */
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "clients",
-      targetId: id,
-      oldData,
-      newData: row,
-    });
-
-    return row;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "clients",
+    targetId: id,
+    oldData,
+    newData: updated,
   });
 
   /* ================= RESPONSE ================= */

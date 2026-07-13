@@ -1,5 +1,5 @@
 /**
- * PM2: cwd + explicit .env path so `pg` gets DATABASE_URL (fixes SASL "password must be a string").
+ * PM2: cwd + explicit .env path so the Nuxt server reads the intended AWS stage variables.
  * Always: pm2 delete pxm && pm2 start ecosystem.config.cjs  (restart alone keeps old flags)
  */
 const path = require("path");

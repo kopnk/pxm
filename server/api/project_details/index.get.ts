@@ -1,165 +1,35 @@
 import { defineEventHandler, getQuery } from "h3";
-import { db } from "~/server/db";
-
-import { projectDetails } from "~/server/db/schema/project_details";
-import { projects } from "~/server/db/schema/projects";
-import { count, eq, desc, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import {
-  asJoinTable,
-  createUserAuditAliases,
-  mapRowAuditUsers,
-  userAuditNameSelect,
-} from "~/server/utils/userAuditJoin";
-
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { toLocalTime } from "~/server/utils/datetime";
-import {
-  buildPagination,
-  buildTotalPages,
-} from "~/server/utils/pagination";
-import {
-  buildProjectDetailsListWhere,
-  pdCity,
-  pdSub,
-  pdRegion,
-} from "~/server/utils/projectDetailsListWhere";
+import { buildPagination, buildTotalPages } from "~/lib/pagination";
+import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
 
 export default defineEventHandler(async (event) => {
-  /* ================= AUTH ================= */
-  const forbidden = requireRole(event, [
-    "superadmin",
-    "admin",
-    "staff",
-  ]);
+  const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
   if (forbidden) return forbidden;
 
-  /* ================= QUERY ================= */
   const query = getQuery(event);
   const { page, limit, offset } = buildPagination(query);
-
-  const search = query.search?.toString().trim();
-  const projectId = query.projectId?.toString().trim();
-  const status = query.status?.toString().trim();
-  const cityKabId = query.cityKabId?.toString().trim();
-
-  const where = buildProjectDetailsListWhere({
-    search: search || undefined,
-    projectId: projectId || undefined,
-    status: status || undefined,
-    cityKabId: cityKabId || undefined,
+  const records = await listProjectDetailRecords({
+    search: query.search ? String(query.search) : undefined,
+    projectId: query.projectId ? String(query.projectId) : undefined,
+    status: query.status ? String(query.status) : undefined,
+    cityKabId: query.cityKabId ? String(query.cityKabId) : undefined,
   });
 
-  /* ================= COUNT ================= */
-  const totalResult = await db
-    .select({ value: count() })
-    .from(projectDetails)
-    .leftJoin(projects, eq(projectDetails.projectId, projects.id))
-    .leftJoin(pdCity, eq(projectDetails.cityKabId, pdCity.id))
-    .leftJoin(pdSub, eq(pdCity.parentId, pdSub.id))
-    .leftJoin(pdRegion, eq(pdSub.parentId, pdRegion.id))
-    .where(where);
-
-  const total = Number(totalResult[0]?.value ?? 0);
+  const total = records.length;
   const totalPages = buildTotalPages(total, limit);
+  const listTotalPrice = records.reduce(
+    (sum, record) => sum + Number(record.totalPrice || 0),
+    0,
+  );
+  const items = records.slice(offset, offset + limit).map((record) => ({
+    ...record,
+    createdAt: record.createdAt ? toLocalTime(record.createdAt) : null,
+    updatedAt: record.updatedAt ? toLocalTime(record.updatedAt) : null,
+  }));
 
-  const totalPriceResult = await db
-    .select({
-      sumTotalPrice: sql<string>`coalesce(sum(${projectDetails.totalPrice}), 0)`.as(
-        "sum_total_price",
-      ),
-    })
-    .from(projectDetails)
-    .leftJoin(projects, eq(projectDetails.projectId, projects.id))
-    .leftJoin(pdCity, eq(projectDetails.cityKabId, pdCity.id))
-    .leftJoin(pdSub, eq(pdCity.parentId, pdSub.id))
-    .leftJoin(pdRegion, eq(pdSub.parentId, pdRegion.id))
-    .where(where);
-
-  const listTotalPrice = Number(totalPriceResult[0]?.sumTotalPrice ?? 0);
-
-  /* ================= DATA ================= */
-  const auditUsers = createUserAuditAliases();
-
-  const rows = await db
-    .select({
-      id: projectDetails.id,
-      projectId: projectDetails.projectId,
-      cityKabId: projectDetails.cityKabId,
-
-      lineNumber: projectDetails.lineNumber,
-
-      systemkey: projectDetails.systemkey,
-      neId: projectDetails.neId,
-
-      materialId: projectDetails.materialId,
-      materialName: projectDetails.materialName,
-
-      siteId: projectDetails.siteId,
-      siteName: projectDetails.siteName,
-
-      picArea: projectDetails.picArea,
-
-      quantity: projectDetails.quantity,
-      uom: projectDetails.uom,
-
-      unitPrice: projectDetails.unitPrice,
-      totalPrice: projectDetails.totalPrice,
-
-      status: projectDetails.status,
-
-      remarksProjectsDetails: projectDetails.remarksProjectsDetails,
-      remarksDelay: projectDetails.remarksDelay,
-      remarksCancel: projectDetails.remarksCancel,
-      taxOut: projectDetails.taxOut,
-
-      createdAt: projectDetails.createdAt,
-      updatedAt: projectDetails.updatedAt,
-
-      projectName: projects.projectName,
-      poNumber: projects.poNumber,
-
-      cityKabName: pdCity.name,
-      subRegionName: pdSub.name,
-      regionName: pdRegion.name,
-
-      createdUser: projectDetails.createdUser,
-      ...userAuditNameSelect(auditUsers.creator, auditUsers.updater),
-    })
-    .from(projectDetails)
-    .leftJoin(projects, eq(projectDetails.projectId, projects.id))
-    .leftJoin(pdCity, eq(projectDetails.cityKabId, pdCity.id))
-    .leftJoin(pdSub, eq(pdCity.parentId, pdSub.id))
-    .leftJoin(pdRegion, eq(pdSub.parentId, pdRegion.id))
-    .leftJoin(
-      asJoinTable(auditUsers.creator),
-      eq(projectDetails.createdUser, auditUsers.creator.id),
-    )
-    .leftJoin(
-      asJoinTable(auditUsers.updater),
-      eq(projectDetails.updatedUser, auditUsers.updater.id),
-    )
-    .where(where)
-    .orderBy(desc(projectDetails.createdAt), desc(projectDetails.id))
-    .limit(limit)
-    .offset(offset);
-
-  /* ================= MAP DATA ================= */
-  const items = rows.map((row) => {
-    const mapped = mapRowAuditUsers(row);
-    return {
-    ...mapped,
-    quantity: row.quantity != null ? Number(row.quantity) : null,
-    unitPrice: row.unitPrice != null ? Number(row.unitPrice) : null,
-    totalPrice: row.totalPrice != null ? Number(row.totalPrice) : null,
-    taxOut: row.taxOut != null ? Number(row.taxOut) : null,
-    createdAt: row.createdAt ? toLocalTime(row.createdAt) : null,
-    updatedAt: row.updatedAt ? toLocalTime(row.updatedAt) : null,
-  };
-  });
-
-  /* ================= RESPONSE ================= */
   return successResponse(event, "Project details retrieved", {
     items,
     page,

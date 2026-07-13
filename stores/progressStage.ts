@@ -12,7 +12,10 @@ export interface ProgressStage {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  createdUser: string;
+  createdUser?: string | null;
+  updatedUser?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 }
 
 interface ProgressStageState {

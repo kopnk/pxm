@@ -1,15 +1,29 @@
-import type { SQL } from "drizzle-orm";
-import { and, eq } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { projects } from "~/server/db/schema/projects";
-import { regions } from "~/server/db/schema/regions";
-import { buildSearchOr } from "~/server/utils/searchAmountSql";
-
-/** Alias konsisten untuk join region (list + export). */
-export const pdCity = alias(regions, "pd_city");
-export const pdSub = alias(regions, "pd_sub");
-export const pdRegion = alias(regions, "pd_region");
+export type ProjectDetailsFilterRecord = {
+  systemkey: string | null;
+  neId: string | null;
+  materialName: string | null;
+  materialId: string | null;
+  siteId: string | null;
+  siteName: string | null;
+  picArea: string | null;
+  uom: string | null;
+  status: string | null;
+  remarksProjectsDetails: string | null;
+  remarksDelay: string | null;
+  remarksCancel: string | null;
+  projectName: string | null;
+  poNumber: string | null;
+  cityKabName: string | null;
+  subRegionName: string | null;
+  regionName: string | null;
+  lineNumber: number | null;
+  quantity: number | null;
+  unitPrice: number | null;
+  totalPrice: number | null;
+  taxOut: number | null;
+  projectId: string | null;
+  cityKabId: string | null;
+};
 
 export type ProjectDetailsListFilterInput = {
   search?: string;
@@ -18,62 +32,59 @@ export type ProjectDetailsListFilterInput = {
   cityKabId?: string;
 };
 
-/**
- * WHERE untuk `GET /api/project_details` (list) dan export Excel.
- */
-export function buildProjectDetailsListWhere(
-  input: ProjectDetailsListFilterInput,
-): SQL | undefined {
-  const conditions: SQL[] = [];
+function buildProjectDetailsSearchHaystack(record: ProjectDetailsFilterRecord) {
+  return [
+    record.systemkey ?? "",
+    record.neId ?? "",
+    record.materialName ?? "",
+    record.materialId ?? "",
+    record.siteId ?? "",
+    record.siteName ?? "",
+    record.picArea ?? "",
+    record.uom ?? "",
+    record.status ?? "",
+    record.remarksProjectsDetails ?? "",
+    record.remarksDelay ?? "",
+    record.remarksCancel ?? "",
+    record.projectName ?? "",
+    record.poNumber ?? "",
+    record.cityKabName ?? "",
+    record.subRegionName ?? "",
+    record.regionName ?? "",
+    record.lineNumber ?? "",
+    record.quantity ?? "",
+    record.unitPrice ?? "",
+    record.totalPrice ?? "",
+    record.taxOut ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+}
 
-  const search = input.search?.trim();
+export function matchesProjectDetailsListFilters(
+  record: ProjectDetailsFilterRecord,
+  input: ProjectDetailsListFilterInput,
+) {
+  const search = input.search?.trim().toLowerCase();
   const projectId = input.projectId?.trim();
-  const status = input.status?.trim();
+  const status = input.status?.trim().toLowerCase();
   const cityKabId = input.cityKabId?.trim();
 
-  if (search) {
-    const sOr = buildSearchOr(search, {
-      ilike: [
-        projectDetails.systemkey,
-        projectDetails.neId,
-        projectDetails.materialName,
-        projectDetails.materialId,
-        projectDetails.siteId,
-        projectDetails.siteName,
-        projectDetails.picArea,
-        projectDetails.uom,
-        projectDetails.status,
-        projectDetails.remarksProjectsDetails,
-        projectDetails.remarksDelay,
-        projectDetails.remarksCancel,
-        projects.projectName,
-        projects.poNumber,
-        pdCity.name,
-        pdSub.name,
-        pdRegion.name,
-      ],
-      asText: [
-        projectDetails.lineNumber,
-        projectDetails.quantity,
-        projectDetails.unitPrice,
-        projectDetails.totalPrice,
-        projectDetails.taxOut,
-      ],
-    });
-    if (sOr) conditions.push(sOr);
+  if (projectId && record.projectId !== projectId) {
+    return false;
   }
 
-  if (projectId) {
-    conditions.push(eq(projectDetails.projectId, projectId));
+  if (status && String(record.status ?? "").trim().toLowerCase() !== status) {
+    return false;
   }
 
-  if (status) {
-    conditions.push(eq(projectDetails.status, status));
+  if (cityKabId && record.cityKabId !== cityKabId) {
+    return false;
   }
 
-  if (cityKabId) {
-    conditions.push(eq(projectDetails.cityKabId, cityKabId));
+  if (search && !buildProjectDetailsSearchHaystack(record).includes(search)) {
+    return false;
   }
 
-  return conditions.length ? and(...conditions) : undefined;
+  return true;
 }

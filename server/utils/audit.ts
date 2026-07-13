@@ -1,11 +1,17 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 import type { H3Event } from "h3";
-import { db } from "~/server/db";
-import { auditLog } from "~/server/db/schema/audit_log";
+import { randomUUID } from "node:crypto";
 import {
   resolveAccessContext,
   serializeAccessContext,
   type AccessContext,
 } from "~/server/utils/accessContext";
+import { getAwsRegion } from "~/server/utils/appFilesStorage";
+import { getAppUserRecordById } from "~/server/utils/appUserStore";
 
 export type AuditAction =
   | "CREATE"
@@ -31,6 +37,40 @@ const TABLE_LABELS: Record<string, string> = {
   sessions: "Sessions",
 };
 
+let dynamoClient: DynamoDBDocumentClient | null = null;
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function getTableName() {
+  const tableName =
+    process.env.AWS_DYNAMODB_TABLE?.trim() ||
+    process.env.TABLE_NAME?.trim() ||
+    "";
+
+  if (!tableName) {
+    throw new Error("AWS_DYNAMODB_TABLE or TABLE_NAME is required.");
+  }
+
+  return tableName;
+}
+
+function getDynamoDocumentClient() {
+  if (!dynamoClient) {
+    dynamoClient = DynamoDBDocumentClient.from(
+      new DynamoDBClient({ region: getAwsRegion() }),
+      {
+        marshallOptions: {
+          removeUndefinedValues: true,
+        },
+      },
+    );
+  }
+
+  return dynamoClient;
+}
+
 function resolveLogAccessContext(event?: H3Event): AccessContext {
   if (event?.context?.accessContext) {
     return event.context.accessContext;
@@ -48,7 +88,8 @@ export function buildAuditDescription({
   targetTable: string;
   targetId?: string;
 }): string {
-  const tableLabel = TABLE_LABELS[targetTable] ?? targetTable.replace(/_/g, " ");
+  const tableLabel =
+    TABLE_LABELS[targetTable] ?? targetTable.replace(/_/g, " ");
 
   let description: string;
   switch (action) {
@@ -75,7 +116,7 @@ export function buildAuditDescription({
   }
 
   if (targetId) {
-    description += ` (${targetId.slice(0, 8)}…)`;
+    description += ` (${targetId.slice(0, 8)}...)`;
   }
 
   return description;
@@ -104,19 +145,46 @@ export async function logAudit({
 }) {
   try {
     const accessContext = resolveLogAccessContext(event);
+    const createdAt = nowIso();
+    const auditId = randomUUID();
+    const monthBucket = createdAt.slice(0, 7);
+    const actor = await getAppUserRecordById(actorId);
 
-    await db.insert(auditLog).values({
-      actorId,
-      action,
-      targetTable,
-      targetId,
-      oldData,
-      newData,
-      accessVia: accessVia ?? serializeAccessContext(accessContext),
-      description:
-        description ??
-        buildAuditDescription({ action, targetTable, targetId }),
-    });
+    await getDynamoDocumentClient().send(
+      new PutCommand({
+        TableName: getTableName(),
+        Item: {
+          pk: `AUDIT#${monthBucket}`,
+          sk: `${createdAt}#${auditId}`,
+          gsi1pk: `AUDIT_TARGET#${targetTable}`,
+          gsi1sk: `${createdAt}#${targetId ?? auditId}`,
+          gsi2pk: `AUDIT_ACTOR#${actorId}`,
+          gsi2sk: `${createdAt}#${auditId}`,
+          entityType: "AUDIT_LOG",
+          stage: process.env.PXM_STAGE?.trim() || "dev",
+          id: auditId,
+          actorId,
+          actorEmail: actor?.user.email ?? null,
+          actorRole: actor?.user.role ?? null,
+          actorName: actor
+            ? [actor.user.firstName, actor.user.lastName]
+                .filter(Boolean)
+                .join(" ")
+                .trim()
+            : null,
+          action,
+          targetTable,
+          targetId: targetId ?? null,
+          oldData: oldData ?? null,
+          newData: newData ?? null,
+          accessVia: accessVia ?? serializeAccessContext(accessContext),
+          description:
+            description ??
+            buildAuditDescription({ action, targetTable, targetId }),
+          createdAt,
+        },
+      }),
+    );
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error(

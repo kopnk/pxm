@@ -6,11 +6,15 @@ const {
   searchFilter,
   isActiveFilter,
   deletingId,
+  showDeleteModal,
+  deleteTargetClient,
   canCreate,
   canEdit,
   canDelete,
   changePage,
-  remove,
+  openDeleteModal,
+  cancelDelete,
+  performDelete,
   showingStart,
   showingEnd,
 } = useClientsListPage();
@@ -21,7 +25,7 @@ const {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Clients</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Clients</h4>
 
       <NuxtLink v-if="canCreate" to="/clients/create" class="btn btn-primary">
         + New Client
@@ -84,20 +88,20 @@ const {
                     {{ c.name }}
                   </NuxtLink>
                   <span v-else>{{ c.name }}</span>
-                  <div class="data-meta mt-1">{{ c.contactEmail || "—" }}</div>
+                  <div class="data-meta mt-1">{{ c.contactEmail || "-" }}</div>
                 </td>
 
                 <td>{{ c.npwp }}</td>
                 <td>
-                  <div class="fw-semibold">{{ c.bankName || "—" }}</div>
-                  <div class="data-meta">{{ c.bankAccount || "—" }}</div>
+                  <div class="fw-semibold">{{ c.bankName || "-" }}</div>
+                  <div class="data-meta">{{ c.bankAccount || "-" }}</div>
                 </td>
                 <td>
-                  <div class="fw-semibold">{{ c.contactName || "—" }}</div>
-                  <div class="data-meta">{{ c.contactPhone || "—" }}</div>
+                  <div class="fw-semibold">{{ c.contactName || "-" }}</div>
+                  <div class="data-meta">{{ c.contactPhone || "-" }}</div>
                 </td>
                 <td>
-                  {{ c.addressText || "—" }}
+                  {{ c.addressText || "-" }}
                   <div v-if="c.addressMeta">
                     <div class="data-meta mt-1">
                       {{ c.addressMeta.city }},
@@ -125,10 +129,10 @@ const {
                     v-if="canDelete"
                     class="text-danger fw-semibold"
                     style="cursor: pointer"
-                    @click.stop="remove(c.id, c.name)"
+                    @click.stop="openDeleteModal(c.id)"
                   >
                     <span v-if="deletingId === c.id">...</span>
-                    <span v-else>×</span>
+                    <span v-else>x</span>
                   </span>
                 </td>
               </tr>
@@ -160,5 +164,24 @@ const {
         @next="changePage(store.page + 1)"
       />
     </div>
+
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
+    >
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{
+          deleteTargetClient?.name || "this client"
+        }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>

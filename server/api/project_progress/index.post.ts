@@ -1,20 +1,15 @@
-import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { projectProgress, type StageData } from "~/server/db/schema/project_progress";
-import { projectDetails } from "~/server/db/schema/project_details";
+import { createError, defineEventHandler, readBody } from "h3";
+import { logAudit } from "~/server/utils/audit";
+import { requireRole } from "~/server/utils/authorize";
+import {
+  createProjectProgressRecord,
+  getProjectProgressListItemById,
+} from "~/server/utils/projectProgressStore";
+import { mapProjectProgressResponse } from "~/server/utils/projectProgressResponse";
+import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
+import { successResponse } from "~/server/utils/response";
 import { parseBody } from "~/server/utils/zod";
 import { createProjectProgressSchema } from "~/server/validation/project_progress.schema";
-import { successResponse } from "~/server/utils/response";
-import { requireRole } from "~/server/utils/authorize";
-import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
-import { toLocalTime } from "~/server/utils/datetime";
-import { validateStageDataKeys } from "~/server/utils/progressStageValidation";
-import {
-  syncOutFlowFinancialAfterProgressSave,
-} from "~/server/utils/syncProjectFinancialPaidWithProgress";
-import { eq } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -31,100 +26,32 @@ export default defineEventHandler(async (event) => {
   );
   await validateStageDataKeys(body.stageData);
 
-  const created = await db.transaction(async (tx) => {
-    const existing = await tx
-      .select()
-      .from(projectProgress)
-      .where(eq(projectProgress.projectDetailId, body.projectDetailId))
-      .limit(1);
-
-    if (existing.length) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Project progress already exists for this detail",
-      });
-    }
-
-    const stageData = body.stageData ?? {};
-
-    const detailRows = await tx
-      .select()
-      .from(projectDetails)
-      .where(eq(projectDetails.id, body.projectDetailId))
-      .limit(1);
-
-    const d = detailRows[0];
-
-    const hasRemarkPatch =
-      body.remarksProjectsDetails !== undefined ||
-      body.remarksDelay !== undefined ||
-      body.remarksCancel !== undefined;
-
-    if (d && hasRemarkPatch) {
-      await tx
-        .update(projectDetails)
-        .set({
-          remarksProjectsDetails:
-            body.remarksProjectsDetails !== undefined
-              ? body.remarksProjectsDetails
-              : d.remarksProjectsDetails,
-          remarksDelay:
-            body.remarksDelay !== undefined
-              ? body.remarksDelay
-              : d.remarksDelay,
-          remarksCancel:
-            body.remarksCancel !== undefined
-              ? body.remarksCancel
-              : d.remarksCancel,
-          updatedUser: userId,
-          updatedAt: dbTime(),
-        })
-        .where(eq(projectDetails.id, body.projectDetailId));
-    }
-
-    const rows = await tx
-      .insert(projectProgress)
-      .values({
-        projectId: body.projectId,
-        projectDetailId: body.projectDetailId,
-
-        stageData,
-
-        createdUser: userId,
-        createdAt: dbTime(),
-        updatedAt: dbTime(),
-      })
-      .returning();
-
-    const createdRow = requireFirstRow(rows, "Project progress not created");
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "CREATE",
-      targetTable: "project_progress",
-      targetId: createdRow.id,
-      newData: createdRow,
-    });
-
-    await syncOutFlowFinancialAfterProgressSave(tx, {
-      projectDetailId: createdRow.projectDetailId,
-      projectProgressId: createdRow.id,
-      stageData: (createdRow.stageData ?? {}) as StageData,
-    });
-
-    return createdRow;
+  const created = await createProjectProgressRecord({
+    projectId: body.projectId,
+    projectDetailId: body.projectDetailId,
+    stageData: body.stageData,
+    remarksProjectsDetails: body.remarksProjectsDetails,
+    remarksDelay: body.remarksDelay,
+    remarksCancel: body.remarksCancel,
+    createdUser: userId,
+    updatedUser: userId,
   });
+
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "CREATE",
+    targetTable: "project_progress",
+    targetId: created.id,
+    newData: created,
+  });
+
+  const createdItem = await getProjectProgressListItemById(created.id);
 
   return successResponse(
     event,
     "Project progress created",
-    {
-      ...created,
-
-      createdAt: toLocalTime(created.createdAt),
-      updatedAt: toLocalTime(created.updatedAt),
-    },
+    mapProjectProgressResponse(createdItem ?? created),
     201,
   );
 });

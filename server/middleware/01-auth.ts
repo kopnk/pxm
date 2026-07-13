@@ -1,10 +1,9 @@
-import { defineEventHandler, getCookie, createError } from "h3";
-import { lucia } from "~/server/auth/lucia";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
-import { getUserPermissionsMatrix } from "~/server/utils/rlsPermissions";
+import { defineEventHandler, createError } from "h3";
 import { verifyPartnerPoAccess } from "~/server/utils/partnerPoPdfAccess";
+import {
+  isCognitoAuthEnabled,
+  resolveAuthSession,
+} from "~/server/utils/cognitoAuth";
 
 export default defineEventHandler(async (event) => {
   const url = event.node.req.url || "";
@@ -40,43 +39,30 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const sessionId = getCookie(event, "pxm_session");
-  if (!sessionId) {
+  if (!isCognitoAuthEnabled()) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Cognito auth configuration is required",
+    });
+  }
+
+  const authSession = await resolveAuthSession(event);
+
+  if (!authSession) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  const { session, user: luciaUser } =
-    await lucia.validateSession(sessionId);
-
-  if (!session || !luciaUser) {
-    throw createError({ statusCode: 401, statusMessage: "Invalid session" });
-  }
-
-  const dbUser = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-      isActive: users.isActive,
-    })
-    .from(users)
-    .where(eq(users.id, luciaUser.id))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!dbUser || !dbUser.isActive) {
+  if (!authSession.appUser.user.isActive) {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
 
   event.context.user = {
-    id: dbUser.id,
-    email: dbUser.email,
-    role: dbUser.role ?? "staff",
-    isActive: Boolean(dbUser.isActive),
+    id: authSession.appUser.user.id,
+    email: authSession.appUser.user.email,
+    role: authSession.appUser.user.role ?? "staff",
+    isActive: Boolean(authSession.appUser.user.isActive),
+    mustChangePassword: Boolean(authSession.appUser.user.mustChangePassword),
   };
-  event.context.session = session;
-  event.context.permissions = await getUserPermissionsMatrix(
-    dbUser.id,
-    dbUser.role ?? "staff",
-  );
+  event.context.session = authSession.state;
+  event.context.permissions = authSession.appUser.permissions;
 });

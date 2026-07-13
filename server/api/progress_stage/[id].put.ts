@@ -1,13 +1,14 @@
-import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { progressStage } from "~/server/db/schema/progress_stage";
-import { eq } from "drizzle-orm";
+import { createError, defineEventHandler, readBody } from "h3";
+import { logAudit } from "~/server/utils/audit";
+import { requireRole } from "~/server/utils/authorize";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
+import {
+  getProgressStageRecordById,
+  updateProgressStageRecord,
+} from "~/server/utils/progressStageStore";
+import { successResponse } from "~/server/utils/response";
 import { parseBody } from "~/server/utils/zod";
 import { updateProgressStageSchema } from "~/server/validation/progress_stage.schema";
-import { successResponse } from "~/server/utils/response";
-import { requireRole } from "~/server/utils/authorize";
-import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
 
 export default defineEventHandler(async (event) => {
 
@@ -29,48 +30,32 @@ export default defineEventHandler(async (event) => {
     await readBody(event)
   );
 
-  const updated = await db.transaction(async (tx) => {
+  const oldData = await getProgressStageRecordById(id);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });
+  }
 
-    const oldRows = await tx
-      .select()
-      .from(progressStage)
-      .where(eq(progressStage.id, id))
-      .limit(1);
+  const updated = await updateProgressStageRecord(id, {
+    ...body,
+    updatedUser: userId,
+  });
+  if (!updated) {
+    throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });
+  }
 
-    const oldData = oldRows[0];
-
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });
-    }
-
-    const rows = await tx
-      .update(progressStage)
-      .set({
-        code: body.code ?? oldData.code,
-        name: body.name ?? oldData.name,
-        stageType: body.stageType ?? oldData.stageType,
-        sequence: body.sequence ?? oldData.sequence,
-        isRequired: body.isRequired ?? oldData.isRequired,
-        isActive: body.isActive ?? oldData.isActive,
-        updatedAt: dbTime(),
-      })
-      .where(eq(progressStage.id, id))
-      .returning();
-
-    const row = rows[0];
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "progress_stage",
-      targetId: id,
-      oldData,
-      newData: row,
-    });
-
-    return row;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "progress_stage",
+    targetId: id,
+    oldData,
+    newData: updated,
   });
 
-  return successResponse(event, "Progress stage updated", updated);
+  return successResponse(
+    event,
+    "Progress stage updated",
+    mapLocalTimestamps(updated),
+  );
 });

@@ -1,4 +1,5 @@
 import { apiFetch } from "~/utils/apiFetch";
+import type { ApiSuccessEnvelope } from "~/lib/apiEnvelope";
 import type { User } from "~/stores/users";
 
 type UsersListData = {
@@ -9,11 +10,6 @@ type UsersListData = {
   totalPages: number;
 };
 
-type ApiEnvelope<T> = {
-  success: boolean;
-  data: T;
-};
-
 export const useUsersApi = () => {
   const usersStore = useUsersStore();
 
@@ -21,7 +17,7 @@ export const useUsersApi = () => {
     usersStore.setLoading(true);
     try {
       const isActive = usersStore.filters.isActive;
-      const res = await apiFetch<ApiEnvelope<UsersListData>>("/api/users", {
+      const res = await apiFetch<ApiSuccessEnvelope<UsersListData>>("/api/users", {
         query: {
           page: params?.page ?? usersStore.meta.page,
           limit: params?.limit ?? usersStore.meta.limit,
@@ -47,7 +43,7 @@ export const useUsersApi = () => {
   };
 
   const getUserById = async (id: string) => {
-    const res = await apiFetch<ApiEnvelope<User>>(`/api/users/${id}`);
+    const res = await apiFetch<ApiSuccessEnvelope<User>>(`/api/users/${id}`);
     return res.data;
   };
 
@@ -81,14 +77,12 @@ export const useUsersApi = () => {
   };
 
   const resetUserPassword = async (id: string) => {
-    const res = await apiFetch<
-      ApiEnvelope<{
+    return apiFetch<
+      ApiSuccessEnvelope<{
         id: string;
-        defaultPassword: string;
         mustChangePassword: boolean;
       }>
     >(`/api/users/${id}/reset-password`, { method: "POST" });
-    return res.data;
   };
 
   return {

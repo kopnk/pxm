@@ -1,72 +1,49 @@
-import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { eq } from "drizzle-orm";
-
-import { successResponse } from "~/server/utils/response";
+import { createError, defineEventHandler } from "h3";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { logAudit } from "~/server/utils/audit";
+import { createHttpErrorFromUnknown } from "~/server/utils/httpError";
+import { ensureProjectDetailDeleteAllowed } from "~/server/utils/projectDeleteGuard";
+import {
+  deleteProjectDetailRecord,
+  getProjectDetailRecordById,
+} from "~/server/utils/projectDetailStore";
+import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
-  /* ================= AUTH ================= */
   const forbidden = requireDeleteSuperadmin(event);
   if (forbidden) return forbidden;
 
   const userId = event.context.user?.id;
   if (!userId) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Unauthorized",
-    });
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  /* ================= PARAM ================= */
   const id = event.context.params?.id;
   if (!id) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Invalid ID",
-    });
+    throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  const deleted = await db.transaction(async (tx) => {
-    /* ---------- GET OLD DATA FIRST ---------- */
-    const oldRows = await tx
-      .select()
-      .from(projectDetails)
-      .where(eq(projectDetails.id, id))
-      .limit(1);
+  const oldData = await getProjectDetailRecordById(id);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Project detail not found" });
+  }
 
-    const oldData = oldRows[0];
-    if (!oldData) return null;
+  try {
+    await ensureProjectDetailDeleteAllowed(id);
+  } catch (error: unknown) {
+    throw createHttpErrorFromUnknown(error, "Failed to delete project detail");
+  }
 
-    /* ---------- DELETE ---------- */
-    await tx
-      .delete(projectDetails)
-      .where(eq(projectDetails.id, id));
+  await deleteProjectDetailRecord(id);
 
-    /* ---------- AUDIT ---------- */
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "project_details",
-      targetId: id,
-      oldData,
-    });
-
-    return oldData;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "project_details",
+    targetId: id,
+    oldData,
   });
 
-  if (!deleted) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: "Project detail not found",
-    });
-  }
-
-  return successResponse(
-    event,
-    "Project detail deleted"
-  );
+  return successResponse(event, "Project detail deleted");
 });

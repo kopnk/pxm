@@ -1,7 +1,4 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { eq } from "drizzle-orm";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema/users";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { successResponse } from "~/server/utils/response";
@@ -15,6 +12,7 @@ import {
   upsertUserPermissionsMatrix,
 } from "~/server/utils/rlsPermissions";
 import { normalizeRlsMatrix } from "~/lib/rls";
+import { getAppUserRecordById } from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin"]);
@@ -29,22 +27,13 @@ export default defineEventHandler(async (event) => {
     userId: event.context.params?.userId,
   });
 
-  const target = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1)
-    .then((r) => r[0]);
+  const target = await getAppUserRecordById(userId);
 
   if (!target) {
     throw createError({ statusCode: 404, statusMessage: "User not found" });
   }
 
-  if (target.role?.toLowerCase() === "superadmin") {
+  if (target.user.role?.toLowerCase() === "superadmin") {
     throw createError({
       statusCode: 400,
       statusMessage: "Superadmin permissions cannot be modified",
@@ -52,28 +41,31 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = parseBody(rlsUpdateSchema, await readBody(event));
-  const permissions = normalizeRlsMatrix(body.permissions, target.role ?? "staff");
+  const permissions = normalizeRlsMatrix(
+    body.permissions,
+    target.user.role ?? "staff",
+  );
   const previous = await getUserPermissionsMatrix(
-    target.id,
-    target.role ?? "staff",
+    target.user.id,
+    target.user.role ?? "staff",
   );
 
-  await upsertUserPermissionsMatrix(target.id, permissions);
+  await upsertUserPermissionsMatrix(target.user.id, permissions);
 
   await logAudit({
     event,
     actorId,
     action: "UPDATE",
     targetTable: "user_permissions",
-    targetId: target.id,
-    oldData: { email: target.email, permissions: previous },
-    newData: { email: target.email, permissions },
+    targetId: target.user.id,
+    oldData: { email: target.user.email, permissions: previous },
+    newData: { email: target.user.email, permissions },
   });
 
   return successResponse(event, "User permissions updated", {
-    id: target.id,
-    email: target.email,
-    role: target.role,
+    id: target.user.id,
+    email: target.user.email,
+    role: target.user.role,
     permissions,
   });
 });

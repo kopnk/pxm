@@ -2,9 +2,17 @@
 .output
 .data
 .nuxt
+.nuxt-stage-dev
+.nuxt-prod-generate
+.nuxt-lambda-build
+.nuxt-verify-build
 .nitro
+.output-lambda
 .cache
 dist
+cdk.out
+.cdk-outputs
+.cdk.out-verify
 
 # Node dependencies
 node_modules
@@ -12,14 +20,35 @@ node_modules
 # Logs
 logs
 *.log
+.codex-dev-stage-*.out.log
+.codex-dev-stage-*.err.log
 
 # Misc
 cookies.txt
 .DS_Store
 .fleet
 .idea
+coverage
+*.tsbuildinfo
+
+# Local AI / editor metadata
+.cursor/
+.agent/
+.agents/
+.codex/
+.cursorrules
+AGENTS.md
 
 # Local env files
 .env
 .env.*
 !.env.example
+
+# Local secrets / certificates / exports
+*.pem
+*.key
+*.p12
+*.crt
+*.backup.json
+*backup*.json
+*.local.json

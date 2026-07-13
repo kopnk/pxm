@@ -1,9 +1,7 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
+import { getAppUserRecordById } from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -18,29 +16,9 @@ export default defineEventHandler(async (event) => {
   }
 
   /* ================= QUERY ================= */
-  const rows = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      phone: users.phone,
-      region: users.region,
-      area: users.area,
-      avatarUrl: users.avatarUrl,
-      role: users.role,
-      isActive: users.isActive,
-      lastLoginAt: users.lastLoginAt,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
-    .from(users)
-    .where(eq(users.id, authUser.id))
-    .limit(1);
+  const record = await getAppUserRecordById(authUser.id);
 
-  const user = rows[0];
-
-  if (!user) {
+  if (!record) {
     throw createError({
       statusCode: 404,
       statusMessage: "User not found",
@@ -49,11 +27,12 @@ export default defineEventHandler(async (event) => {
 
   /* ================= FORMAT ================= */
   return successResponse(event, "Profile retrieved", {
-    ...user,
-    createdAt: toLocalTime(user.createdAt),
-    updatedAt: toLocalTime(user.updatedAt),
-    lastLoginAt: user.lastLoginAt
-      ? toLocalTime(user.lastLoginAt)
+    ...record.user,
+    permissions: record.permissions,
+    createdAt: toLocalTime(record.user.createdAt),
+    updatedAt: toLocalTime(record.user.updatedAt),
+    lastLoginAt: record.user.lastLoginAt
+      ? toLocalTime(record.user.lastLoginAt)
       : null,
   });
 });

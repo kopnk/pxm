@@ -9,6 +9,7 @@ declare module "h3" {
       email: string;
       role: string;
       isActive: boolean;
+      mustChangePassword?: boolean;
     };
     permissions?: RlsMatrix;
     rlsEnforced?: boolean;

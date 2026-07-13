@@ -55,10 +55,15 @@ const {
 
 const {
   deletingFileId,
+  showDeleteModal: showDeleteFileModal,
+  deleteTargetFile,
   canDelete: canDeleteDoc,
   docsForCategory: docsForStage,
   load: loadProjectFiles,
+  requestDelete: requestDeleteProjectFile,
+  cancelDelete: cancelDeleteProjectFile,
   remove: removeProjectFile,
+  deleteMessage: projectFileDeleteMessage,
 } = useProjectRefFilesList(PROJECT_FILE_REF_TABLE.PROGRESS, () => id);
 
 const loadProjects = async () => {
@@ -273,6 +278,7 @@ const handleSubmit = async () => {
   <FormShell
     title="Update Project Progress"
     :loading="loading"
+    submit-label="Update"
     @submit="() => handle(handleSubmit, toastSuccessUpdated('projectProgress'))"
     @cancel="() => router.push('/project-progress')"
   >
@@ -367,7 +373,7 @@ const handleSubmit = async () => {
                   :deleting-id="deletingFileId"
                   @update:url="setDocUrl(s.code, $event)"
                   @file-change="onDocFileChange(s.code, $event)"
-                  @delete="removeProjectFile"
+                  @delete="requestDeleteProjectFile"
                 />
               </tr>
             </tbody>
@@ -401,4 +407,22 @@ const handleSubmit = async () => {
       </div>
     </FormSection>
   </FormShell>
+
+  <AppConfirmDialog
+    :visible="showDeleteFileModal"
+    title="Delete document"
+    :loading="!!deletingFileId"
+    confirm-label="Delete"
+    confirm-variant="danger"
+    focus-target="cancel"
+    @cancel="cancelDeleteProjectFile"
+    @confirm="removeProjectFile"
+  >
+    <p class="mb-0">
+      {{ projectFileDeleteMessage() }}
+    </p>
+    <p class="data-meta mt-2 mb-0">
+      {{ deleteTargetFile?.fileName || deleteTargetFile?.fileCategory || "-" }}
+    </p>
+  </AppConfirmDialog>
 </template>

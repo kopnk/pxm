@@ -1,5 +1,4 @@
 import { computed, reactive, watch } from "vue";
-import { DEFAULT_USER_PASSWORD } from "~/lib/authDefaults";
 import { getCreatableUserRoles } from "~/lib/userRoles";
 import { useAuthStore } from "@/stores/auth";
 import { useUserRegionSelect } from "@/composables/useUserRegionSelect";
@@ -98,7 +97,6 @@ export const useUserSignupForm = () => {
     areasLoading,
     loading,
     creatableRoles,
-    defaultPassword: DEFAULT_USER_PASSWORD,
     submit,
   };
 };

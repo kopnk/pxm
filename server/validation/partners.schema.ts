@@ -1,31 +1,57 @@
 import { z } from "zod";
 
+const optionalText = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().optional(),
+);
+
+const optionalEmail = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().email("Invalid contact email format").optional(),
+);
+
+const optionalRating = z.preprocess(
+  (value) => {
+    if (value === undefined) return undefined;
+    if (value === "" || value === null) return null;
+    return Number(value);
+  },
+  z
+    .number()
+    .min(0, "Rating must be at least 0")
+    .max(5, "Rating must be at most 5")
+    .nullable()
+    .optional(),
+);
+
 const addressMetaSchema = z.object({
-  province: z.string().optional(),
-  city: z.string().optional(),
-  district: z.string().optional(),
-  postalCode: z.string().optional(),
+  province: optionalText,
+  city: optionalText,
+  district: optionalText,
+  postalCode: optionalText,
 }).optional();
 
 export const createPartnerSchema = z.object({
-  name: z.string().min(2),
+  name: z.string().min(2, "Name must be at least 2 characters"),
 
-  npwp: z.string().optional(),
-  bankName: z.string().optional(),
-  bankAccount: z.string().optional(),
-  partnerType: z.string().optional(),
+  npwp: optionalText,
+  bankName: optionalText,
+  bankAccount: optionalText,
+  partnerType: optionalText,
 
-  addressText: z.string().optional(),
+  addressText: optionalText,
   addressMeta: addressMetaSchema,
 
-  contactName: z.string().optional(),
-  contactPhone: z.string().optional(),
-  contactEmail: z.string().email().optional(),
+  contactName: optionalText,
+  contactPhone: optionalText,
+  contactEmail: optionalEmail,
 
-  signatoryName: z.string().optional(),
-  signatoryTitle: z.string().optional(),
+  signatoryName: optionalText,
+  signatoryTitle: optionalText,
 
-  rating: z.number().min(0).max(5).nullable().optional(),
+  rating: optionalRating,
   isActive: z.boolean().optional(),
 });
 

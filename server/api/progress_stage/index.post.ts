@@ -1,12 +1,11 @@
-import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { progressStage } from "~/server/db/schema/progress_stage";
+import { createError, defineEventHandler, readBody } from "h3";
+import { logAudit } from "~/server/utils/audit";
+import { requireRole } from "~/server/utils/authorize";
+import { mapLocalTimestamps } from "~/server/utils/datetime";
+import { createProgressStageRecord } from "~/server/utils/progressStageStore";
+import { successResponse } from "~/server/utils/response";
 import { parseBody } from "~/server/utils/zod";
 import { createProgressStageSchema } from "~/server/validation/progress_stage.schema";
-import { successResponse } from "~/server/utils/response";
-import { requireRole } from "~/server/utils/authorize";
-import { logAudit } from "~/server/utils/audit";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
 
@@ -23,34 +22,30 @@ export default defineEventHandler(async (event) => {
     await readBody(event)
   );
 
-  const created = await db.transaction(async (tx) => {
-
-    const rows = await tx
-      .insert(progressStage)
-      .values({
-        code: body.code,
-        name: body.name,
-        stageType: body.stageType,
-        sequence: body.sequence,
-        isRequired: body.isRequired ?? true,
-        isActive: body.isActive ?? true,
-        createdUser: userId,
-      })
-      .returning();
-
-    const row = requireFirstRow(rows, "Progress stage not created");
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "CREATE",
-      targetTable: "progress_stage",
-      targetId: row.id,
-      newData: row,
-    });
-
-    return row;
+  const created = await createProgressStageRecord({
+    code: body.code,
+    name: body.name,
+    stageType: body.stageType,
+    sequence: body.sequence,
+    isRequired: body.isRequired ?? true,
+    isActive: body.isActive ?? true,
+    createdUser: userId,
+    updatedUser: userId,
   });
 
-  return successResponse(event, "Progress stage created", created, 201);
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "CREATE",
+    targetTable: "progress_stage",
+    targetId: created.id,
+    newData: created,
+  });
+
+  return successResponse(
+    event,
+    "Progress stage created",
+    mapLocalTimestamps(created),
+    201,
+  );
 });

@@ -1,5 +1,4 @@
 import { defineEventHandler, getQuery, createError } from "h3";
-import { db } from "~/server/db";
 import { requireRole } from "~/server/utils/authorize";
 import { successResponse } from "~/server/utils/response";
 import { getNextDcnOutNumber } from "~/server/utils/dcnNumber";
@@ -24,6 +23,6 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const number = await getNextDcnOutNumber(db, { typeCode, letterDate });
+  const number = await getNextDcnOutNumber({ typeCode, letterDate });
   return successResponse(event, "Next DCN number generated", { number });
 });

@@ -23,7 +23,6 @@ const submit = async () => {
   loading.value = true;
 
   try {
-    // 1️⃣ LOGIN (buat session + cookie)
     await apiFetch("/api/auth/login", {
       method: "POST",
       body: {
@@ -61,7 +60,6 @@ const submit = async () => {
         </div>
 
         <form @submit.prevent="submit">
-          <!-- Email -->
           <div class="mb-3">
             <label class="form-label">Email</label>
             <input
@@ -73,7 +71,6 @@ const submit = async () => {
             />
           </div>
 
-          <!-- Password -->
           <div class="mb-4 position-relative">
             <label class="form-label">Password</label>
             <input
@@ -89,19 +86,17 @@ const submit = async () => {
               @click="showPassword = !showPassword"
               :title="showPassword ? 'Hide password' : 'Show password'"
             >
-              {{ showPassword ? "🙈" : "😶" }}
+              {{ showPassword ? "Hide" : "Show" }}
             </span>
           </div>
 
-          <!-- Error -->
           <p v-if="error" class="text-danger small mb-2">
             {{ error }}
           </p>
 
-          <!-- Button -->
           <div class="d-grid">
             <button class="btn btn-primary" :disabled="loading">
-              {{ loading ? "Signing in…" : "🗝️ Sign In" }}
+              {{ loading ? "Signing in..." : "Sign In" }}
             </button>
           </div>
         </form>

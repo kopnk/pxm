@@ -1,14 +1,12 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { partners } from "~/server/db/schema/partners";
 import { parseBody } from "~/server/utils/zod";
 import { createPartnerSchema } from "~/server/validation/partners.schema";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { z } from "zod";
-import { dbTime } from "~/server/utils/dbTime";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
+import { createPartnerRecord } from "~/server/utils/partnerStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -24,16 +22,44 @@ export default defineEventHandler(async (event) => {
   /* ================= BODY ================= */
   const rawBody = await readBody(event);
 
-  const schema = z.union([
-    createPartnerSchema,
-    z.array(createPartnerSchema)
-  ]);
-
-  const parsed = parseBody(schema, rawBody);
+  const parsed = Array.isArray(rawBody)
+    ? parseBody(z.array(createPartnerSchema), rawBody)
+    : parseBody(createPartnerSchema, rawBody);
   const payload = Array.isArray(parsed) ? parsed : [parsed];
 
   /* ================= TX ================= */
-  const created = await db.transaction(async (tx) => {
+  const created = await Promise.all(
+    payload.map(async (body) => {
+      const row = await createPartnerRecord({
+        name: body.name,
+        npwp: body.npwp ?? null,
+        bankName: body.bankName ?? null,
+        bankAccount: body.bankAccount ?? null,
+        partnerType: body.partnerType ?? null,
+        addressText: body.addressText ?? null,
+        addressMeta: body.addressMeta ?? null,
+        contactName: body.contactName ?? null,
+        contactPhone: body.contactPhone ?? null,
+        contactEmail: body.contactEmail ?? null,
+        signatoryName: body.signatoryName ?? null,
+        signatoryTitle: body.signatoryTitle ?? null,
+        rating: body.rating ?? null,
+        isActive: body.isActive ?? true,
+        createdUser: userId,
+        updatedUser: userId,
+      });
+
+      await logAudit({
+        event,
+        actorId: userId,
+        action: "CREATE",
+        targetTable: "partners",
+        targetId: row.id,
+        newData: row,
+      });
+
+      return row;
+      /*
 
     const rows = await tx
       .insert(partners)
@@ -74,12 +100,14 @@ export default defineEventHandler(async (event) => {
     }
 
     return rows;
-  });
+    */
+    }),
+  );
 
   /* ================= RESPONSE ================= */
   const responseData = created.map((row) => ({
     ...mapLocalTimestamps(row),
-    rating: row.rating ? Number(row.rating) : null,
+    rating: row.rating ?? null,
   }));
 
   return successResponse(

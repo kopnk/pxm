@@ -1,10 +1,8 @@
-import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { progressStage } from "~/server/db/schema/progress_stage";
-import { eq } from "drizzle-orm";
-import { successResponse } from "~/server/utils/response";
+import { createError, defineEventHandler } from "h3";
 import { requireRole } from "~/server/utils/authorize";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
+import { getProgressStageRecordById } from "~/server/utils/progressStageStore";
+import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
 
@@ -16,13 +14,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  const rows = await db
-    .select()
-    .from(progressStage)
-    .where(eq(progressStage.id, id))
-    .limit(1);
-
-  const data = rows[0];
+  const data = await getProgressStageRecordById(id);
 
   if (!data) {
     throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });

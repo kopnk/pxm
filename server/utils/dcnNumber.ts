@@ -1,10 +1,7 @@
-import { and, eq, gte, lte, ne } from "drizzle-orm";
-import { db } from "~/server/db";
-import { dcn } from "~/server/db/schema/dcn";
+import { listDcnRecords } from "~/server/utils/dcnStore";
 
 const DCN_NUMBER_PREFIX = "K310";
 
-type DcnNumberQueryable = Pick<typeof db, "select">;
 type ParsedDcnOutNumber = { sequence: number; year2: string };
 
 function getYearFromDate(letterDate: string): number {
@@ -16,7 +13,6 @@ function getYearFromDate(letterDate: string): number {
 }
 
 export async function getNextDcnOutNumber(
-  queryable: DcnNumberQueryable,
   params: {
     typeCode: string;
     letterDate: string;
@@ -27,17 +23,9 @@ export async function getNextDcnOutNumber(
   const yy = String(year).slice(-2);
   const typeCode = params.typeCode.trim();
 
-  const where = and(
-    eq(dcn.flow, "out"),
-    gte(dcn.letterDate, `${year}-01-01`),
-    lte(dcn.letterDate, `${year}-12-31`),
-    params.excludeId ? ne(dcn.id, params.excludeId) : undefined,
+  const rows = (await listDcnRecords({ flow: "out", year })).filter(
+    (row) => !params.excludeId || row.id !== params.excludeId,
   );
-
-  const rows = await queryable
-    .select({ number: dcn.number })
-    .from(dcn)
-    .where(where);
 
   const pattern = new RegExp(`^(\\d{4})\\.${DCN_NUMBER_PREFIX}\\.\\d{2}\\.${yy}$`);
 

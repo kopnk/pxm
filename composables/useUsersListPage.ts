@@ -6,6 +6,7 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { passwordResetToDefaultMessage } from "@/lib/entityMessages";
 import { canManageUserInList } from "~/lib/userRoles";
 import {
   createStoreFilter,
@@ -29,7 +30,6 @@ export const useUsersListPage = () => {
   const showResetModal = ref(false);
   const deleteTargetId = ref<string | null>(null);
   const resetTargetId = ref<string | null>(null);
-  const resetDefaultPassword = ref<string | null>(null);
 
   const searchFilter = createStoreFilter(store, "search");
   const roleFilter = createStoreFilter(store, "role");
@@ -80,11 +80,20 @@ export const useUsersListPage = () => {
   const canDeleteUser = (role: string) =>
     canDelete.value && canManageUserInList(role);
 
+  const findManageableUser = (
+    id: string,
+    canManage: (role: string) => boolean,
+  ) => {
+    const target = store.items.find((item) => item.id === id);
+    if (!target || !canManage(target.role)) return null;
+    return target;
+  };
+
   const openDeleteModal = (id: string) => {
     if (!canDelete.value) return;
 
-    const target = store.items.find((item) => item.id === id);
-    if (!target || !canDeleteUser(target.role)) return;
+    const target = findManageableUser(id, canDeleteUser);
+    if (!target) return;
 
     deleteTargetId.value = id;
     showDeleteModal.value = true;
@@ -104,7 +113,6 @@ export const useUsersListPage = () => {
     try {
       await handle(async () => {
         deletingId.value = targetId;
-
         await deleteUser(targetId);
 
         if (expandedRow.value === targetId) {
@@ -124,11 +132,10 @@ export const useUsersListPage = () => {
   const openResetModal = (id: string) => {
     if (!canEdit.value) return;
 
-    const target = store.items.find((item) => item.id === id);
-    if (!target || !canEditUser(target.role)) return;
+    const target = findManageableUser(id, canEditUser);
+    if (!target) return;
 
     resetTargetId.value = id;
-    resetDefaultPassword.value = null;
     showResetModal.value = true;
   };
 
@@ -136,7 +143,6 @@ export const useUsersListPage = () => {
     if (resettingId.value) return;
     showResetModal.value = false;
     resetTargetId.value = null;
-    resetDefaultPassword.value = null;
   };
 
   const performReset = async () => {
@@ -145,13 +151,17 @@ export const useUsersListPage = () => {
     const targetId = resetTargetId.value;
 
     try {
-      resettingId.value = targetId;
-      const result = await resetUserPassword(targetId);
-      resetDefaultPassword.value = result.defaultPassword;
-      notify.success("Password reset to default. User must change it on next login.");
-      await fetchUsers(store.meta.page, false);
-    } catch (err: unknown) {
-      notify.error(getApiErrorMessage(err, "Failed to reset password"));
+      await handle(async () => {
+        resettingId.value = targetId;
+        const response = await resetUserPassword(targetId);
+        await fetchUsers(store.meta.page, false);
+        return response;
+      }, passwordResetToDefaultMessage());
+
+      showResetModal.value = false;
+      resetTargetId.value = null;
+    } catch {
+      // `useFormHandler` already shows the toast.
     } finally {
       resettingId.value = null;
     }
@@ -191,7 +201,6 @@ export const useUsersListPage = () => {
     showResetModal,
     deleteTargetUser,
     resetTargetUser,
-    resetDefaultPassword,
     searchFilter,
     roleFilter,
     isActiveFilter,

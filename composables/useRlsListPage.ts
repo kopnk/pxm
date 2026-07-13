@@ -1,7 +1,6 @@
 import { computed, onMounted, ref } from "vue";
 import {
   RLS_MENU_REGISTRY,
-  isAdminDeleteActionLocked,
   type RlsAction,
   type RlsResource,
 } from "~/lib/rls";
@@ -49,11 +48,6 @@ export const useRlsListPage = () => {
   });
 
   const canEditUserRls = (role?: string | null) => canManageUserInList(role);
-
-  const isPermissionDisabled = (
-    role: string | null | undefined,
-    action: RlsAction,
-  ) => !canEditUserRls(role) || isAdminDeleteActionLocked(role, action);
 
   const filteredUsers = computed(() => {
     const q = store.filters.search.trim().toLowerCase();
@@ -173,7 +167,6 @@ export const useRlsListPage = () => {
     visibleMenus,
     hasActiveFilters,
     canEditUserRls,
-    isPermissionDisabled,
     toggleRow,
     getRowNumber,
     getUserFullName,

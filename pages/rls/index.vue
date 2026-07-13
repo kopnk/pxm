@@ -20,7 +20,6 @@ const {
   visibleMenus,
   hasActiveFilters,
   canEditUserRls,
-  isPermissionDisabled,
   toggleRow,
   getRowNumber,
   getUserFullName,
@@ -163,9 +162,6 @@ const {
                           <div class="data-label">Permissions for</div>
                           <div class="data-value">{{ user.email }}</div>
                         </div>
-                        <span class="data-meta">
-                          Click checkboxes to save immediately
-                        </span>
                       </div>
 
                       <div class="table-scroll-x">
@@ -201,7 +197,6 @@ const {
                                   type="checkbox"
                                   class="form-check-input"
                                   :checked="isChecked(user.id, menu.key, action)"
-                                  :disabled="isPermissionDisabled(user.role, action)"
                                   :aria-label="`${user.email} ${menu.label} ${action}`"
                                   @change="
                                     onToggle(user.id, menu.key, action, $event)

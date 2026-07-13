@@ -9,7 +9,7 @@ import { PASSWORD_MIN_LENGTH } from "~/lib/passwordPolicy";
  * - Prevent malformed payloads and unexpected input types
  *
  * Security notes:
- * - SQL Injection is already mitigated by Drizzle ORM (parameterized queries)
+ * - SQL injection still requires parameterized access patterns and strict input validation
  * - This schema focuses on input integrity and normalization
  */
 export const loginSchema = z.object({

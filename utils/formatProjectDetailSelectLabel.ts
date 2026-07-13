@@ -4,8 +4,9 @@ export function formatProjectDetailSelectLabel(d: {
   siteName?: string | null;
   materialName?: string | null;
 }): string {
-  const siteId = (d.siteId ?? "").trim() || "—";
-  const siteName = (d.siteName ?? "").trim() || "—";
-  const materialName = (d.materialName ?? "").trim() || "—";
-  return `${siteId} — ${siteName} — ${materialName}`;
+  const siteId = (d.siteId ?? "").trim() || "-";
+  const siteName = (d.siteName ?? "").trim() || "-";
+  const materialName = (d.materialName ?? "").trim() || "-";
+
+  return `${siteId} - ${siteName} - ${materialName}`;
 }

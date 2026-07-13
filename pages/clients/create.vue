@@ -53,7 +53,13 @@ const submit = async () => {
     <FormSection>
       <div class="col-md-6">
         <label class="label-field">Name</label>
-        <input v-model="form.name" class="form-control" />
+        <input
+          v-model="form.name"
+          name="name"
+          class="form-control"
+          required
+          minlength="2"
+        />
       </div>
 
       <div class="col-md-6">
@@ -114,7 +120,12 @@ const submit = async () => {
 
       <div class="col-md-4">
         <label class="label-field">Contact Email</label>
-        <input v-model="form.contactEmail" class="form-control" />
+        <input
+          v-model="form.contactEmail"
+          name="contactEmail"
+          type="email"
+          class="form-control"
+        />
       </div>
 
       <div class="col-md-6">

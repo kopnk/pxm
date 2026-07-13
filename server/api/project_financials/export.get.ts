@@ -1,15 +1,5 @@
 import { defineEventHandler, getQuery, createError } from "h3";
-import { alias } from "drizzle-orm/pg-core";
-import { desc, eq } from "drizzle-orm";
-import { db } from "~/server/db";
-import { projectFinancials } from "~/server/db/schema/project_financials";
-import { projects } from "~/server/db/schema/projects";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { clients } from "~/server/db/schema/clients";
-import { partners } from "~/server/db/schema/partners";
-import { regions } from "~/server/db/schema/regions";
 import { requireRole } from "~/server/utils/authorize";
-import { buildProjectFinancialsListWhere } from "~/server/utils/projectFinancialsListWhere";
 import {
   buildProjectFinancialsExportAoa,
   type ProjectFinancialExportRow,
@@ -22,7 +12,8 @@ import { projectFinancialsExportQueryZ } from "~/server/validation/project_finan
 import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { firstQuery } from "~/server/utils/firstQuery";
-import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
+import { buildPagination } from "~/lib/pagination";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 const MAX_EXPORT_MERGED_ROWS = 8000;
 
@@ -48,95 +39,74 @@ export default defineEventHandler(async (event) => {
   }
 
   const q = parsed.data;
-  const where = buildProjectFinancialsListWhere({
+  const records = await listProjectFinancialRecords({
     projectId: q.projectId,
     projectDetailId: q.projectDetailId,
     search: q.search,
     status: q.status,
   });
-
-  const city = alias(regions, "pf_export_city");
-  const sub = alias(regions, "pf_export_sub");
-  const region = alias(regions, "pf_export_region");
-
-  const rows = await db
-    .select({
-      projectDetailId: projectFinancials.projectDetailId,
-      createdAt: projectFinancials.createdAt,
-      flowDirection: projectFinancials.flowDirection,
-      status: projectFinancials.status,
-      note: projectFinancials.note,
-      taxIn: projectFinancials.taxIn,
-      taxOut: projectFinancials.taxOut,
-      pph: projectFinancials.pph,
-      qtyPartner: projectFinancials.qtyPartner,
-      unitPricePartner: projectFinancials.unitPricePartner,
-      qtyClient: projectFinancials.qtyClient,
-      unitPriceClient: projectFinancials.unitPriceClient,
-      poNumberPartner: projectFinancials.poNumberPartner,
-      poDatePartner: projectFinancials.poDatePartner,
-      invoiceNumberPartner: projectFinancials.invoiceNumberPartner,
-      invoiceDatePartner: projectFinancials.invoiceDatePartner,
-      poNumberClient: projectFinancials.poNumberClient,
-      poDateClient: projectFinancials.poDateClient,
-      invoiceNumberClient: projectFinancials.invoiceNumberClient,
-      invoiceDateClient: projectFinancials.invoiceDateClient,
-      fpNumberClient: projectFinancials.fpNumberClient,
-      fpDateClient: projectFinancials.fpDateClient,
-      balapNumber: projectFinancials.balapNumber,
-      balapDate: projectFinancials.balapDate,
-      bastNumber: projectFinancials.bastNumber,
-      bastDate: projectFinancials.bastDate,
-      vbNumber: projectFinancials.vbNumber,
-      vbDate: projectFinancials.vbDate,
-      mcmNumber: projectFinancials.mcmNumber,
-      mcmDate: projectFinancials.mcmDate,
-      paidNumber: projectFinancials.paidNumber,
-      paidDate: projectFinancials.paidDate,
-      contractNumber: projects.contractNumber,
-      projectPoNumber: projects.poNumber,
-      poDate: projects.poDate,
-      deliveryDate: projects.deliveryDate,
-      komDate: projects.komDate,
-      projectName: projects.projectName,
-      pm: projects.pm,
-      materialId: projectDetails.materialId,
-      materialName: projectDetails.materialName,
-      lineNumber: projectDetails.lineNumber,
-      neId: projectDetails.neId,
-      systemkey: projectDetails.systemkey,
-      siteId: projectDetails.siteId,
-      siteName: projectDetails.siteName,
-      quantity: projectDetails.quantity,
-      uom: projectDetails.uom,
-      unitPrice: projectDetails.unitPrice,
-      totalPrice: projectDetails.totalPrice,
-      detailStatus: projectDetails.status,
-      picArea: projectDetails.picArea,
-      remarksProjectsDetails: projectDetails.remarksProjectsDetails,
-      remarksDelay: projectDetails.remarksDelay,
-      remarksCancel: projectDetails.remarksCancel,
-      clientName: clients.name,
-      regionName: region.name,
-      subRegionName: sub.name,
-      cityKabName: city.name,
-    })
-    .from(projectFinancials)
-    .leftJoin(projects, eq(projectFinancials.projectId, projects.id))
-    .leftJoin(
-      projectDetails,
-      eq(projectFinancials.projectDetailId, projectDetails.id),
-    )
-    .leftJoin(city, eq(projectDetails.cityKabId, city.id))
-    .leftJoin(sub, eq(city.parentId, sub.id))
-    .leftJoin(region, eq(sub.parentId, region.id))
-    .leftJoin(clients, eq(projectFinancials.clientId, clients.id))
-    .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
-    .where(where)
-    .orderBy(desc(projectFinancials.createdAt), desc(projectFinancials.id));
-
   const mergedAll = mergeProjectFinancialsExportByDetail(
-    rows as unknown as ProjectFinancialExportRow[],
+    records.map((row) => ({
+      projectDetailId: row.projectDetailId,
+      createdAt: row.createdAt,
+      flowDirection: row.flowDirection,
+      status: row.status,
+      note: row.note,
+      taxIn: row.taxIn,
+      taxOut: row.taxOut,
+      pph: row.pph,
+      qtyPartner: row.qtyPartner,
+      unitPricePartner: row.unitPricePartner,
+      qtyClient: row.qtyClient,
+      unitPriceClient: row.unitPriceClient,
+      poNumberPartner: row.poNumberPartner,
+      poDatePartner: row.poDatePartner,
+      invoiceNumberPartner: row.invoiceNumberPartner,
+      invoiceDatePartner: row.invoiceDatePartner,
+      poNumberClient: row.poNumberClient,
+      poDateClient: row.poDateClient,
+      invoiceNumberClient: row.invoiceNumberClient,
+      invoiceDateClient: row.invoiceDateClient,
+      fpNumberClient: row.fpNumberClient,
+      fpDateClient: row.fpDateClient,
+      balapNumber: row.balapNumber,
+      balapDate: row.balapDate,
+      bastNumber: row.bastNumber,
+      bastDate: row.bastDate,
+      vbNumber: row.vbNumber,
+      vbDate: row.vbDate,
+      mcmNumber: row.mcmNumber,
+      mcmDate: row.mcmDate,
+      paidNumber: row.paidNumber,
+      paidDate: row.paidDate,
+      contractNumber: row.contractNumber,
+      projectPoNumber: row.projectPoNumber,
+      poDate: row.poDate,
+      deliveryDate: row.deliveryDate,
+      komDate: row.komDate,
+      projectName: row.projectName,
+      pm: row.pm,
+      materialId: row.detailMaterialId,
+      materialName: row.detailMaterialName,
+      lineNumber: row.detailLineNumber,
+      neId: row.detailNeId,
+      systemkey: row.detailSystemkey,
+      siteId: row.detailSiteId,
+      siteName: row.detailSiteName,
+      quantity: row.detailQuantity,
+      uom: row.detailUom,
+      unitPrice: row.detailUnitPrice,
+      totalPrice: row.detailTotalPrice,
+      detailStatus: row.detailStatus,
+      picArea: row.detailPicArea,
+      remarksProjectsDetails: row.remarksProjectsDetails,
+      remarksDelay: row.remarksDelay,
+      remarksCancel: row.remarksCancel,
+      clientName: row.clientName,
+      regionName: row.regionName,
+      subRegionName: row.subRegionName,
+      cityKabName: row.cityKabName,
+    })) as ProjectFinancialExportRow[],
   );
 
   if (mergedAll.length > MAX_EXPORT_MERGED_ROWS) {
@@ -146,8 +116,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const page = q.page ?? 1;
-  const limit = q.limit ?? DEFAULT_PAGE_LIMIT;
+  const { page, limit } = buildPagination(q);
   const mergedPage = paginateMergedExportRows(mergedAll, page, limit);
 
   const matrix = buildProjectFinancialsExportAoa(mergedPage);

@@ -1,6 +1,6 @@
 # Penjelasan Dashboard PXM untuk Manajemen
 
-Dokumen ini menjelaskan dashboard di halaman `pages/index.vue` dengan bahasa non-teknis tapi tetap akurat ke implementasi script saat ini.
+Dokumen ini menjelaskan dashboard di halaman `pages/index.vue` dengan bahasa non-teknis tetapi tetap akurat terhadap implementasi saat ini.
 
 Tujuan utamanya: **membantu manajemen membaca kesehatan proyek secara cepat** dari sisi biaya, jadwal, dan momentum eksekusi.
 
@@ -27,6 +27,12 @@ Saat tombol `Refresh` ditekan, dashboard mengambil data dari 4 endpoint:
 - `/api/project_financials`
 
 Data ditarik per halaman sampai habis (paginated fetch all), lalu diproses di client untuk membentuk KPI dan grafik mingguan.
+
+Penting:
+
+- Dashboard saat ini memakai **refresh manual**, bukan websocket.
+- Data akan berubah saat tombol `Refresh` ditekan atau saat filter diganti.
+- Pendekatan ini dipilih agar operasional AWS `dev` tetap ringan dan hemat.
 
 ---
 
@@ -130,7 +136,7 @@ Interpretasi:
 
 Dashboard membentuk seri mingguan 8 periode terakhir, lalu menghitung kumulatif:
 
-1. Kumpulkan titik plan dan actual dari data stage progress.
+1. Kumpulkan titik plan dan actual dari data progress per stage.
 2. Kumpulkan biaya aktual dari data finansial.
 3. Hitung rasio plan% dan actual% kumulatif.
 4. Turunkan `PV`, `EV`, `AC`.
@@ -174,4 +180,5 @@ Untuk menghindari salah tafsir, berikut batasannya:
 - Dashboard melakukan fetch paralel ke 4 modul data.
 - Perhitungan dilakukan di fungsi kalkulasi seri mingguan.
 - Semua metrik summary dan chart bersifat dinamis mengikuti filter aktif.
+- Sinkronisasi data memakai refresh manual, bukan websocket.
 - Grafik dapat diperbesar (panel fullscreen) untuk review detail saat meeting.

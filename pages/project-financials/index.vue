@@ -138,7 +138,7 @@ const rowPartyName = (item: ProjectFinancialItem) =>
   isRowIn(item) ? item.partnerName : item.clientName;
 
 const docPrimary = (value: string | null | undefined) =>
-  value?.trim() ? value.trim() : "—";
+  value?.trim() ? value.trim() : "-";
 
 const paidDocBlock = (
   label: string,
@@ -175,7 +175,7 @@ const onExportExcel = () => {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Project Financials</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Project Financials</h4>
       <NuxtLink
         v-if="canCreate"
         to="/project-financials/create"
@@ -193,7 +193,7 @@ const onExportExcel = () => {
           v-model="search"
           type="search"
           class="form-control form-control-sm flex-grow-1 flex-shrink-1 pf-filter-search"
-          placeholder="PO, project, site, partner, client, invoice, PO partner/client…"
+          placeholder="PO, project, site, partner, client, invoice, PO partner/client..."
         />
         <select
           v-model="status"
@@ -251,7 +251,7 @@ const onExportExcel = () => {
           aria-label="Download Excel for current search, status, and page"
           @click="onExportExcel"
         >
-          {{ exporting ? "…" : "Excel" }}
+          {{ exporting ? "..." : "Excel" }}
         </button>
       </div>
     </div>
@@ -281,7 +281,7 @@ const onExportExcel = () => {
             <tbody>
               <tr v-if="store.loading">
                 <td :colspan="TABLE_COL_COUNT" class="text-center py-3">
-                  Loading…
+                  Loading...
                 </td>
               </tr>
 
@@ -292,11 +292,11 @@ const onExportExcel = () => {
                   </td>
                   <td class="fin-desc">
                     <div class="fw-semibold" style="font-size: 0.95rem">
-                      {{ item.projectPoNumber || "—" }}
+                      {{ item.projectPoNumber || "-" }}
                     </div>
-                    <div>{{ item.projectName || "—" }}</div>
+                    <div>{{ item.projectName || "-" }}</div>
                     <div class="data-meta">
-                      {{ item.detailMaterialName || "—" }}
+                      {{ item.detailMaterialName || "-" }}
                     </div>
                   </td>
                   <td class="fin-site">
@@ -306,25 +306,25 @@ const onExportExcel = () => {
                         :to="`/project-financials/update?id=${item.id}`"
                         class="text-primary fw-semibold text-decoration-none"
                       >
-                        {{ item.detailSiteName || "—" }}
+                        {{ item.detailSiteName || "-" }}
                       </NuxtLink>
-                      <span v-else>{{ item.detailSiteName || "—" }}</span>
+                      <span v-else>{{ item.detailSiteName || "-" }}</span>
                     </div>
                     <div class="data-meta mt-1">
                       <span class="label-prefix">ID</span
-                      >{{ item.detailSiteId || "—" }}
+                      >{{ item.detailSiteId || "-" }}
                     </div>
                     <div class="data-meta">
                       <span class="label-prefix">SK</span
-                      >{{ item.detailSystemkey || "—" }}
+                      >{{ item.detailSystemkey || "-" }}
                     </div>
                     <div class="data-meta">
-                      <span class="label-prefix">NI</span>—
+                      <span class="label-prefix">NI</span>-
                     </div>
                   </td>
                   <td class="fin-col-qty text-end">
                     <div>{{ formatQty(rowQty(item)) }}</div>
-                    <div class="data-meta">{{ item.detailUom || "—" }}</div>
+                    <div class="data-meta">{{ item.detailUom || "-" }}</div>
                   </td>
                   <td class="fin-col-amount text-end fin-amount-stack">
                     <div>
@@ -407,7 +407,7 @@ const onExportExcel = () => {
                     </div>
                   </td>
                   <td class="fin-col-party">
-                    <div class="fw-semibold">{{ rowPartyName(item) || "—" }}</div>
+                    <div class="fw-semibold">{{ rowPartyName(item) || "-" }}</div>
                     <div
                       v-if="flowDirection === ''"
                       class="data-meta text-capitalize"
@@ -461,7 +461,7 @@ const onExportExcel = () => {
       <div class="data-meta">
         Showing
         {{ showingStart }}
-        –
+        -
         {{ showingEnd }}
         of {{ store.total }} entries
       </div>
@@ -473,55 +473,22 @@ const onExportExcel = () => {
       />
     </div>
 
-    <div
-      v-if="showDeleteModal"
-      class="modal d-block"
-      tabindex="-1"
-      style="background: rgba(0, 0, 0, 0.45)"
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
     >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirm delete</h5>
-            <button
-              type="button"
-              class="btn-close"
-              aria-label="Close"
-              :disabled="!!deletingId"
-              @click="cancelDelete"
-            ></button>
-          </div>
-
-          <div class="modal-body">
-            <p class="mb-0">
-              Delete
-              <span class="fw-bold">{{ deleteModalLabel(deleteTarget) }}</span
-              >?
-            </p>
-          </div>
-
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="!!deletingId"
-              @click="cancelDelete"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-danger"
-              :disabled="!!deletingId"
-              @click="performDelete"
-            >
-              {{ deletingId ? "Deleting..." : "Delete" }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{ deleteModalLabel(deleteTarget) }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>
 

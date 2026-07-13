@@ -26,7 +26,7 @@ const displayName = computed(() =>
 
 const avatarUrl = computed(() =>
   !user.value?.avatarUrl || user.value.avatarUrl === "http://profile/update"
-    ? "https://wbzgjchzffmgybtblxbj.supabase.co/storage/v1/object/public/avatars/default/default.jpg"
+    ? "/default-avatar.svg"
     : user.value.avatarUrl,
 );
 
@@ -193,6 +193,16 @@ const taxesMenuActive = computed(() =>
             <li v-if="canRead('regions')">
               <NuxtLink class="dropdown-item" to="/regions" active-class="active">
                 Regions
+              </NuxtLink>
+            </li>
+
+            <li v-if="canRead('progress_stage')">
+              <NuxtLink
+                class="dropdown-item"
+                to="/progress-stage"
+                active-class="active"
+              >
+                Stages
               </NuxtLink>
             </li>
 

@@ -27,6 +27,8 @@ const FINANCIAL_STATUS_LABELS: Record<string, string> = {
 export const useProjectFinancialsListPage = (options?: {
   /** Override flow filter saat halaman section (tax-in / tax-out / pph). */
   flowDirection?: "in" | "out";
+  /** Backend tax section filter for auto tax pages. */
+  taxSection?: "taxIn" | "taxOut" | "pph";
   /** RLS resource for button permissions on section pages. */
   rlsResource?: RlsResource;
 }) => {
@@ -93,6 +95,7 @@ export const useProjectFinancialsListPage = (options?: {
       await getProjectFinancials({
         page,
         limit: store.limit,
+        taxSection: options?.taxSection,
       });
     } catch (err: unknown) {
       fetchError.value = getApiErrorMessage(err, "Failed to load project financials");

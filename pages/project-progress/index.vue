@@ -6,9 +6,9 @@ import {
 import { useProjectProgressListPage } from "@/composables/useProjectProgressListPage";
 
 const formatDateDMY = (val?: string | null) => {
-  if (!val) return "—";
+  if (!val) return "-";
   const d = new Date(val);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   const day = String(d.getDate()).padStart(2, "0");
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
@@ -17,10 +17,9 @@ const formatDateDMY = (val?: string | null) => {
 
 const {
   store,
-  canCreate,
   canEdit,
   canDelete,
-  canCreateProjectProgress,
+  canReadProgressStage,
   exporting,
   searchFilter,
   stageFilter,
@@ -49,14 +48,14 @@ const {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Project progress</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Project progress</h4>
 
       <NuxtLink
-        v-if="canCreateProjectProgress"
-        to="/project-progress/create"
-        class="btn btn-primary"
+        v-if="canReadProgressStage"
+        to="/progress-stage"
+        class="btn btn-outline-primary"
       >
-        + New Project Progress
+        Progress Stages
       </NuxtLink>
     </div>
 
@@ -68,7 +67,7 @@ const {
           v-model="searchFilter"
           type="search"
           class="form-control form-control-sm pp-filter-search"
-          placeholder="Project, PO, site…"
+          placeholder="Project, PO, site..."
         />
         <select
           v-model="stageFilter"
@@ -117,7 +116,7 @@ const {
           aria-label="Download Excel for current search and filters"
           @click="onExportExcel"
         >
-          {{ exporting ? "…" : "Excel" }}
+          {{ exporting ? "..." : "Excel" }}
         </button>
       </div>
     </div>
@@ -151,7 +150,7 @@ const {
           <tbody>
             <tr v-if="store.loading">
               <td :colspan="tableColspan" class="text-center py-5 text-muted">
-                Loading…
+                Loading...
               </td>
             </tr>
 
@@ -162,15 +161,10 @@ const {
 
               <td class="small progress-main-col">
                 <div class="fw-semibold" style="font-size: 0.95rem">
-                  {{ item.projectName || "—" }}
+                  {{ item.poNumber?.trim() || "-" }}
                 </div>
                 <div class="data-meta mt-1">
-                  <span class="label-prefix">PO</span
-                  >{{ item.poNumber?.trim() || "—" }}
-                </div>
-                <div class="data-meta">
-                  <span class="label-prefix">Material</span
-                  >{{ item.materialName || "—" }}
+                  {{ item.projectName || "-" }}
                 </div>
               </td>
 
@@ -181,28 +175,26 @@ const {
                     :to="`/project-progress/update?id=${item.id}`"
                     class="text-primary text-decoration-none"
                   >
-                    {{ item.siteName || "—" }}
+                    {{ item.systemKey?.trim() || "-" }}
+                    -
+                    {{ item.siteId?.trim() || "-" }}
+                    -
+                    {{ item.siteName || "-" }}
                   </NuxtLink>
-                  <span v-else>{{ item.siteName || "—" }}</span>
-                </div>
-                <div class="data-meta mt-1">
-                  <span class="label-prefix">ID</span
-                  >{{ item.siteId?.trim() || "—" }}
-                </div>
-                <div class="data-meta">
-                  <span class="label-prefix">SK</span
-                  >{{ item.systemKey?.trim() || "—" }}
-                </div>
-                <div class="data-meta">
-                  <span class="label-prefix">NI</span
-                  >{{ item.neId?.trim() || "—" }}
+                  <span v-else>
+                    {{ item.systemKey?.trim() || "-" }}
+                    -
+                    {{ item.siteId?.trim() || "-" }}
+                    -
+                    {{ item.siteName || "-" }}
+                  </span>
                 </div>
                 <NuxtLink
                   v-if="item.projectDetailId"
                   :to="`/project-details/update?id=${item.projectDetailId}`"
                   class="d-inline-block mt-2 small text-decoration-none"
                 >
-                  → Edit detail
+                  -> Edit detail
                 </NuxtLink>
               </td>
 
@@ -271,7 +263,7 @@ const {
       <div class="data-meta">
         Showing
         {{ showingStart }}
-        –
+        -
         {{ showingEnd }}
         of {{ store.total }} entries
       </div>
@@ -284,46 +276,21 @@ const {
       />
     </div>
 
-    <!-- Delete confirmation modal (simple, controlled) -->
-    <div
-      v-if="showDeleteModal"
-      class="modal d-block"
-      tabindex="-1"
-      style="background: rgba(0, 0, 0, 0.45)"
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
     >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirm delete</h5>
-            <button
-              type="button"
-              class="btn-close"
-              aria-label="Close"
-              @click="cancelDelete"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <p>
-              Delete project progress for site
-              <strong>{{ deleteTargetLabel }}</strong
-              >?
-            </p>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              @click="cancelDelete"
-            >
-              Cancel
-            </button>
-            <button type="button" class="btn btn-danger" @click="performDelete">
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <p class="mb-0">
+        Delete project progress for site
+        <span class="fw-bold">{{ deleteTargetLabel }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>
 
@@ -378,7 +345,7 @@ const {
   vertical-align: middle;
 }
 
-/* Pembatas antar kolom tahap (mudah bedakan plan–actual tiap stage) */
+/* Pembatas antar kolom tahap (mudah bedakan plan-actual tiap stage) */
 .progress-stage-col {
   border-left: 2px solid var(--bs-border-color);
   padding-left: 0.5rem;

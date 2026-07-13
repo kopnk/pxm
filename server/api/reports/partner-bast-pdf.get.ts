@@ -1,13 +1,8 @@
 import { defineEventHandler, getQuery, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFinancials } from "~/server/db/schema/project_financials";
-import { projects } from "~/server/db/schema/projects";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { partners } from "~/server/db/schema/partners";
 import { requireRole } from "~/server/utils/authorize";
-import { and, asc, eq, ne } from "drizzle-orm";
 import { buildPartnerBastPdfBuffer } from "~/server/utils/buildPartnerBastPdf";
 import { formatDateToIdText, formatDateToIdWeekday } from "~/utils/formatDateToIdText";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 function safeFilename(value: string) {
   return value.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "BAST";
@@ -23,32 +18,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Query bast is required" });
   }
 
-  const rows = await db
-    .select({
-      siteId: projectDetails.siteId,
-      siteName: projectDetails.siteName,
-      workType: projectDetails.materialName,
-      projectName: projects.projectName,
-      poNumberPartner: projectFinancials.poNumberPartner,
-      poDatePartner: projectFinancials.poDatePartner,
-      bastDate: projectFinancials.bastDate,
-      partnerName: partners.name,
-      partnerAddressText: partners.addressText,
-      signatoryName: partners.signatoryName,
-      signatoryTitle: partners.signatoryTitle,
-    })
-    .from(projectFinancials)
-    .innerJoin(projects, eq(projectFinancials.projectId, projects.id))
-    .innerJoin(projectDetails, eq(projectFinancials.projectDetailId, projectDetails.id))
-    .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
-    .where(
-      and(
-        eq(projectFinancials.flowDirection, "in"),
-        eq(projectFinancials.bastNumber, bast),
-        ne(projectFinancials.status, "cancelled"),
-      ),
-    )
-    .orderBy(asc(projectDetails.siteName), asc(projectDetails.siteId));
+  const rows = (await listProjectFinancialRecords({
+    flowDirection: "in",
+  }))
+    .filter((row) => row.bastNumber === bast && row.status !== "cancelled")
+    .sort((a, b) => {
+      const siteNameCompare = String(a.detailSiteName ?? "").localeCompare(
+        String(b.detailSiteName ?? ""),
+      );
+      if (siteNameCompare !== 0) return siteNameCompare;
+      return String(a.detailSiteId ?? "").localeCompare(String(b.detailSiteId ?? ""));
+    });
 
   if (!rows.length) {
     throw createError({
@@ -74,9 +54,9 @@ export default defineEventHandler(async (event) => {
 
   const pdfBuffer = await buildPartnerBastPdfBuffer(
     rows.map((r) => ({
-      siteId: r.siteId,
-      siteName: r.siteName,
-      workType: r.workType,
+      siteId: r.detailSiteId,
+      siteName: r.detailSiteName,
+      workType: r.detailMaterialName,
     })),
     {
       bastNumber: bast,
@@ -87,8 +67,8 @@ export default defineEventHandler(async (event) => {
       projectName: first.projectName,
       partnerName: first.partnerName,
       partnerAddressText: first.partnerAddressText,
-      signatoryName: first.signatoryName,
-      signatoryTitle: first.signatoryTitle,
+      signatoryName: first.partnerSignatoryName,
+      signatoryTitle: first.partnerSignatoryTitle,
     },
   );
 

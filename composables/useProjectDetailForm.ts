@@ -64,6 +64,16 @@ const nullableText = (value: string | null) => {
   return trimmed ? trimmed : null;
 };
 
+const formatNumber = (value: string | number | null | undefined) => {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num)) return "0";
+
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
 export const useProjectDetailForm = () => {
   const form = reactive<ProjectDetailFormState>(defaultForm());
 
@@ -74,8 +84,6 @@ export const useProjectDetailForm = () => {
 
   const selectedRegion = ref<string | null>(null);
   const selectedSubRegion = ref<string | null>(null);
-  const projectSearch = ref("");
-  const showProjectDropdown = ref(false);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const isPreloading = ref(false);
@@ -87,15 +95,23 @@ export const useProjectDetailForm = () => {
     { value: "cancelled", label: "Cancelled" },
   ];
 
-  const isValid = computed(
-    () =>
-      !!form.projectId &&
-      !!form.cityKabId &&
-      !!nullableText(form.siteName) &&
-      form.quantity != null &&
-      form.unitPrice != null &&
-      form.systemkey.trim().length > 0,
+  const missingRequiredFields = computed(() => {
+    const fields: string[] = [];
+    if (!form.projectId) fields.push("Project");
+    if (!form.cityKabId) fields.push("City/Kab");
+    if (!nullableText(form.siteName)) fields.push("Site Name");
+    if (form.quantity == null) fields.push("Quantity");
+    if (form.unitPrice == null) fields.push("Unit Price");
+    if (!form.systemkey.trim()) fields.push("System Key");
+    return fields;
+  });
+  const isValid = computed(() => missingRequiredFields.value.length === 0);
+  const requiredFieldMessage = computed(() =>
+    missingRequiredFields.value.length
+      ? `Wajib isi: ${missingRequiredFields.value.join(", ")}`
+      : "",
   );
+  const totalPriceDisplay = computed(() => formatNumber(form.totalPrice));
 
   const getErrorMessage = (err: any, fallback: string) =>
     err?.data?.message || err?.message || fallback;
@@ -113,12 +129,12 @@ export const useProjectDetailForm = () => {
     }
   };
 
-  const loadProjects = async (search = projectSearch.value) => {
+  const loadProjects = async (search = "") => {
     return runWithLoading(async () => {
       const res: any = await apiFetch("/api/projects", {
         query: {
           page: 1,
-          limit: 20,
+          limit: search.trim() ? 20 : 1000,
           search: search.trim() || undefined,
         },
       });
@@ -174,21 +190,6 @@ export const useProjectDetailForm = () => {
     }, "Failed to load cities");
   };
 
-  const openProjectDropdown = async () => {
-    showProjectDropdown.value = true;
-    await loadProjects();
-  };
-
-  const selectProject = (project: ProjectOption) => {
-    form.projectId = project.id;
-    projectSearch.value = `${project.projectName} - ${project.poNumber}`;
-    showProjectDropdown.value = false;
-  };
-
-  const resetProjectSelection = () => {
-    form.projectId = null;
-  };
-
   const fillFromDetail = async (detail: ProjectDetailItem) => {
     isPreloading.value = true;
 
@@ -213,10 +214,6 @@ export const useProjectDetailForm = () => {
       remarksCancel: detail.remarksCancel ?? null,
       taxOut: detail.taxOut ?? null,
     });
-
-    if (detail.projectName && detail.poNumber) {
-      projectSearch.value = `${detail.projectName} - ${detail.poNumber}`;
-    }
 
     selectedRegion.value = detail.regionId ?? null;
     if (detail.regionId) {
@@ -257,8 +254,6 @@ export const useProjectDetailForm = () => {
     Object.assign(form, defaultForm());
     selectedRegion.value = null;
     selectedSubRegion.value = null;
-    projectSearch.value = "";
-    showProjectDropdown.value = false;
     subRegions.value = [];
     cities.value = [];
   };
@@ -298,12 +293,6 @@ export const useProjectDetailForm = () => {
     }
   });
 
-  watch(projectSearch, async (value) => {
-    if (!showProjectDropdown.value) return;
-    resetProjectSelection();
-    await loadProjects(value);
-  });
-
   return {
     form,
     projects,
@@ -312,18 +301,18 @@ export const useProjectDetailForm = () => {
     cities,
     selectedRegion,
     selectedSubRegion,
-    projectSearch,
-    showProjectDropdown,
     loading,
     error,
     statusOptions,
     isValid,
+    missingRequiredFields,
+    requiredFieldMessage,
+    formatNumber,
+    totalPriceDisplay,
     loadProjects,
     loadRegions,
     loadSubRegions,
     loadCities,
-    openProjectDropdown,
-    selectProject,
     fillFromDetail,
     buildPayload,
     resetForm,

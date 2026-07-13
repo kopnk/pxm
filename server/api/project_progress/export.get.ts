@@ -1,45 +1,16 @@
-import { defineEventHandler, getQuery, createError } from "h3";
-import { alias } from "drizzle-orm/pg-core";
-import { count, desc, eq, sql } from "drizzle-orm";
-import { db } from "~/server/db";
-import { projectProgress } from "~/server/db/schema/project_progress";
-import { projects } from "~/server/db/schema/projects";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { regions } from "~/server/db/schema/regions";
-import { requireRole } from "~/server/utils/authorize";
-import { buildProjectProgressListWhere } from "~/server/utils/projectProgressListWhere";
+import { createError, defineEventHandler, getQuery } from "h3";
 import {
   buildProjectProgressExportAoa,
   type ProjectProgressExportRow,
 } from "~/server/utils/buildProjectProgressExportAoa";
+import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { projectProgressExportQueryZ } from "~/server/validation/project_progress.schema";
+import { requireRole } from "~/server/utils/authorize";
 import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
-import { successResponse } from "~/server/utils/response";
-import { buildTotalPages } from "~/server/utils/pagination";
-import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 import { firstQuery } from "~/server/utils/firstQuery";
-
-function formatStageDataForExport(raw: unknown): ProjectProgressExportRow["stageData"] {
-  return Object.fromEntries(
-    Object.entries((raw ?? {}) as Record<string, unknown>).map(
-      ([code, st]) => {
-        const s = st as {
-          plan_submit_date?: string | null;
-          actual_approve_date?: string | null;
-          status?: string | null;
-        };
-        return [
-          code,
-          {
-            ...s,
-            plan_submit_date: toLocalDate(s.plan_submit_date ?? null),
-            actual_approve_date: toLocalDate(s.actual_approve_date ?? null),
-          },
-        ];
-      },
-    ),
-  ) as ProjectProgressExportRow["stageData"];
-}
+import { formatProjectProgressStageData } from "~/server/utils/projectProgressResponse";
+import { listProjectProgressRecords } from "~/server/utils/projectProgressStore";
+import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -66,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   const q = parsed.data;
   const globalSearch = q.search;
-  const where = buildProjectProgressListWhere({
+  const records = await listProjectProgressRecords({
     search: globalSearch || undefined,
     project: globalSearch ? undefined : q.project,
     detail: globalSearch ? undefined : q.detail,
@@ -74,71 +45,9 @@ export default defineEventHandler(async (event) => {
     stageDateType: q.stageDateType,
     status: q.status,
   });
-
-  const city = alias(regions, "pp_export_city");
-  const sub = alias(regions, "pp_export_sub");
-  const region = alias(regions, "pp_export_region");
-
-  const countRow = await db
-    .select({ value: count() })
-    .from(projectProgress)
-    .leftJoin(projects, eq(projects.id, projectProgress.projectId))
-    .leftJoin(
-      projectDetails,
-      eq(projectDetails.id, projectProgress.projectDetailId),
-    )
-    .where(where);
-
-  const total = Number(countRow[0]?.value ?? 0);
-  const page = q.page ?? 1;
-  const limit = q.limit ?? DEFAULT_PAGE_LIMIT;
-  const offset = (page - 1) * limit;
-
-  const rows = await db
-    .select({
-      contractNumber: projects.contractNumber,
-      poNumber: projects.poNumber,
-      poDate: projects.poDate,
-      deliveryDate: projects.deliveryDate,
-      komDate: projects.komDate,
-      projectName: projects.projectName,
-      regionName: region.name,
-      subRegionName: sub.name,
-      cityKabName: city.name,
-      materialId: projectDetails.materialId,
-      materialName: projectDetails.materialName,
-      lineNumber: projectDetails.lineNumber,
-      neId: projectDetails.neId,
-      systemkey: projectDetails.systemkey,
-      siteId: projectDetails.siteId,
-      siteName: projectDetails.siteName,
-      picArea: projectDetails.picArea,
-      remarksProjectsDetails: projectDetails.remarksProjectsDetails,
-      remarksDelay: projectDetails.remarksDelay,
-      detailStatus: projectDetails.status,
-      stageData: projectProgress.stageData,
-      partnerName: sql<string | null>`(
-        select pr.name from project_financials pf
-        inner join partners pr on pr.id = pf.partner_id
-        where pf.project_detail_id = ${projectDetails.id}
-          and pf.flow_direction = 'in'
-        order by pf.updated_at desc nulls last
-        limit 1
-      )`.as("partner_name"),
-    })
-    .from(projectProgress)
-    .leftJoin(projects, eq(projects.id, projectProgress.projectId))
-    .leftJoin(
-      projectDetails,
-      eq(projectDetails.id, projectProgress.projectDetailId),
-    )
-    .leftJoin(city, eq(projectDetails.cityKabId, city.id))
-    .leftJoin(sub, eq(city.parentId, sub.id))
-    .leftJoin(region, eq(sub.parentId, region.id))
-    .where(where)
-    .orderBy(desc(projectProgress.createdAt), desc(projectProgress.id))
-    .limit(limit)
-    .offset(offset);
+  const total = records.length;
+  const { page, limit, offset } = buildPagination(q);
+  const rows = records.slice(offset, offset + limit);
 
   const exportRows: ProjectProgressExportRow[] = rows.map((row) => ({
     contractNumber: row.contractNumber,
@@ -154,15 +63,15 @@ export default defineEventHandler(async (event) => {
     materialName: row.materialName,
     lineNumber: row.lineNumber,
     neId: row.neId,
-    systemkey: row.systemkey,
+    systemkey: row.systemKey,
     siteId: row.siteId,
     siteName: row.siteName,
     picArea: row.picArea,
     remarksProjectsDetails: row.remarksProjectsDetails,
     remarksDelay: row.remarksDelay,
-    partnerName: row.partnerName,
+    partnerName: null,
     detailStatus: row.detailStatus,
-    stageData: formatStageDataForExport(row.stageData),
+    stageData: formatProjectProgressStageData(row.stageData),
   }));
 
   const matrix = buildProjectProgressExportAoa(exportRows);

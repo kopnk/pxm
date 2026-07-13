@@ -1,10 +1,8 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { dcn } from "~/server/db/schema/dcn";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { logAudit } from "~/server/utils/audit";
+import { deleteDcnRecord } from "~/server/utils/dcnStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireDeleteSuperadmin(event);
@@ -20,29 +18,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  await db.transaction(async (tx) => {
-    const rows = await tx
-      .select()
-      .from(dcn)
-      .where(eq(dcn.id, id))
-      .limit(1);
+  const oldData = await deleteDcnRecord(id);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "DCN record not found" });
+  }
 
-    const oldData = rows[0];
-
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "DCN record not found" });
-    }
-
-    await tx.delete(dcn).where(eq(dcn.id, id));
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "dcn",
-      targetId: id,
-      oldData,
-    });
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "dcn",
+    targetId: id,
+    oldData,
   });
 
   return successResponse(event, "DCN record deleted");

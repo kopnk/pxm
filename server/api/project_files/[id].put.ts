@@ -1,13 +1,14 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFiles } from "~/server/db/schema/project_files";
 import { parseBody } from "~/server/utils/zod";
 import { updateProjectFileSchema } from "~/server/validation/project_files.schema";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
-import { eq, and, isNull } from "drizzle-orm";
 import { logAudit } from "~/server/utils/audit";
 import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
+import {
+  getProjectFileRecordById,
+  updateProjectFileRecord,
+} from "~/server/utils/projectFileStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -25,48 +26,32 @@ export default defineEventHandler(async (event) => {
 
   const body = parseBody(updateProjectFileSchema, await readBody(event));
 
-  const updated = await db.transaction(async (tx) => {
-    const oldRows = await tx
-      .select()
-      .from(projectFiles)
-      .where(and(eq(projectFiles.id, id), isNull(projectFiles.deletedAt)))
-      .limit(1);
+  const oldData = await getProjectFileRecordById(id);
+  if (!oldData || oldData.deletedAt) {
+    throw createError({ statusCode: 404, statusMessage: "File not found" });
+  }
 
-    const oldData = oldRows[0];
+  const updated = await updateProjectFileRecord(id, {
+    fileCategory: body.fileCategory ?? oldData.fileCategory,
+    fileName: body.fileName ?? oldData.fileName,
+    version: body.version ?? oldData.version,
+    isArchived: body.isArchived ?? oldData.isArchived,
+  });
 
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "File not found" });
-    }
+  if (!updated) {
+    throw createError({ statusCode: 500, statusMessage: "Update failed" });
+  }
 
-    const rows = await tx
-      .update(projectFiles)
-      .set({
-        fileCategory: body.fileCategory ?? oldData.fileCategory,
-        fileName: body.fileName ?? oldData.fileName,
-        version: body.version ?? oldData.version,
-        isArchived: body.isArchived ?? oldData.isArchived,
-      })
-      .where(eq(projectFiles.id, id))
-      .returning();
-
-    const row = rows[0];
-    if (!row) {
-      throw createError({ statusCode: 500, statusMessage: "Update failed" });
-    }
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "project_files",
-      targetId: id,
-      oldData,
-      newData: row,
-    });
-
-    return row;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "project_files",
+    targetId: id,
+    oldData,
+    newData: updated,
   });
 
   const [signedFile] = await withProjectFileSignedUrls([updated]);
-  return successResponse(event, "File updated", signedFile);
+  return successResponse(event, "Document updated", signedFile);
 });

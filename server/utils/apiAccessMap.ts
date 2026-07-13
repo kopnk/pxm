@@ -37,6 +37,7 @@ export const API_ACCESS_RULES: ApiAccessRule[] = [
   ...rulesFor("/api/projects", "projects"),
   ...rulesFor("/api/project_details", "project_details"),
   ...rulesFor("/api/project_progress", "project_progress"),
+  ...rulesFor("/api/progress_stage", "progress_stage"),
   ...rulesFor("/api/project_financials", "project_financials", [
     { pattern: /^\/api\/project_financials\/export-tax-in(?:\/|$)/, method: M.GET, resource: "tax_in", action: "read" },
     { pattern: /^\/api\/project_financials\/export-tax-out(?:\/|$)/, method: M.GET, resource: "tax_out", action: "read" },
@@ -66,11 +67,6 @@ export const API_ACCESS_RULES: ApiAccessRule[] = [
     action: "read",
   },
   ...rulesFor("/api/regions", "regions"),
-  { pattern: /^\/api\/progress_stage\/?$/, method: M.GET, resource: "project_progress", action: "read" },
-  { pattern: /^\/api\/progress_stage\/?$/, method: M.POST, resource: "project_progress", action: "create" },
-  { pattern: /^\/api\/progress_stage\/[^/]+\/?$/, method: M.GET, resource: "project_progress", action: "read" },
-  { pattern: /^\/api\/progress_stage\/[^/]+\/?$/, method: M.PUT, resource: "project_progress", action: "update" },
-  { pattern: /^\/api\/progress_stage\/[^/]+\/?$/, method: M.DELETE, resource: "project_progress", action: "delete" },
   { pattern: /^\/api\/reports\//, method: M.GET, resource: "project_financials", action: "read" },
   { pattern: /^\/api\/dashboard\//, method: M.POST, resource: "dashboard", action: "read" },
 ];

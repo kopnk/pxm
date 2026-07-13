@@ -1,70 +1,95 @@
 # PXM
 
-Nuxt 4 fullstack app for project, progress, financial, document, user, RLS, and audit management.
+PXM adalah aplikasi fullstack Nuxt 4 untuk manajemen project, progress, financial, dokumen, user, RLS, dan audit di atas layanan backend AWS.
 
-## Setup
+## Dev Lokal
+
+Jalankan mode lokal biasa:
 
 ```bash
 npm install
 cp .env.example .env
-npm run db:migrate
 npm run dev
 ```
 
-Fill `.env` with production secrets. Never commit `.env`.
+Jalankan mode lokal yang mengikuti pola stage `dev`:
 
-## Production Deploy
+```bash
+npm run dev:stage:dev
+```
+
+Mode ini menjalankan:
+
+- UI di `http://localhost:3000`
+- API proxy di `http://localhost:3001`
+
+Isi `.env` dengan nilai yang sesuai. Jangan pernah commit `.env`.
+
+## Operasional Dev
+
+Perintah CDK yang paling sering dipakai:
+
+```bash
+npm run cdk:synth:dev
+npm run cdk:deploy:dev
+npm run cdk:api:dev
+```
+
+Setelah deploy, output stack disimpan di `.cdk-outputs/dev.json`.
+
+## Produksi
 
 ```bash
 git pull origin main
 npm install
-npm run db:migrate
 npm run build
 pm2 delete pxm || true
 pm2 start ecosystem.config.cjs
 pm2 save
 ```
 
-Health checks:
+Pemeriksaan health:
 
 ```bash
 curl -fsS http://127.0.0.1:3000/api/health
 curl -fsS http://127.0.0.1:3000/api/ready
 ```
 
-## Migration Safety
+## Catatan Runtime
 
-- `npm run db:migrate` is the normal migration command.
-- `npm run db:baseline:local` and `npm run db:repair:local` are local recovery helpers only. Do not run them on production without checking `drizzle.__drizzle_migrations` against `server/db/migrations/meta/_journal.json`.
-- Before deploying to an existing database, verify applied migrations:
+- Gunakan HTTPS di production dan set `SESSION_COOKIE_SECURE=true`.
+- Arahkan app hanya ke resource AWS yang sesuai stage (`PXM_STAGE`, DynamoDB table, Cognito client, S3 bucket, dan CloudFront domain).
+- Set `AWS_AUTH_COOKIE_SECRET` untuk cookie `pxm_session` berbasis Cognito sebelum mengaktifkan route auth AWS.
+- Set `AWS_DEFAULT_USER_PASSWORD` di environment server untuk alur bootstrap user, signup, dan reset password.
+- Gunakan `/api/ready` untuk readiness check sebelum traffic dipindahkan.
 
-```sql
-SELECT hash, created_at
-FROM drizzle.__drizzle_migrations
-ORDER BY created_at;
-```
+## AWS CDK Infrastructure
 
-## Backup And Restore
+Stack AWS ada di [infra/README.md](D:/NUXT/pxm/infra/README.md) dan membuat resource `dev` dan `prod` yang terpisah untuk:
 
-Minimum pre-deploy backup:
+- DynamoDB single-table
+- Cognito user pool and client
+- SES identity
+- Lambda + API Gateway
+- S3 buckets
+- CloudFront distributions
+
+Perintah:
 
 ```bash
-pg_dump "$DATABASE_URL" > "backup-$(date +%Y%m%d-%H%M%S).sql"
+npm run cdk:synth:dev
+npm run cdk:synth:prod
+npm run cdk:deploy:dev
+npm run cdk:deploy:prod
+npm run cdk:api:dev
+npm run cdk:api:prod
 ```
 
-Restore drill on staging:
+Setelah setiap deploy, CDK menyimpan output ke `.cdk-outputs/<stage>.json`. Gunakan `npm run cdk:api:dev` atau `npm run cdk:api:prod` untuk mencetak API base URL langsung untuk stage tersebut.
+Pembaca output sekarang hanya memakai konvensi nama stack aktif: `PxmStack-dev` dan `PxmStack-prod`.
 
-```bash
-psql "$DATABASE_URL" < backup-file.sql
-npm run db:migrate
-npm run build
-```
+## Dokumen
 
-Also back up Supabase Storage buckets that hold uploaded project documents before schema or storage-policy changes.
-
-## Operational Notes
-
-- Use HTTPS in production and set `SESSION_COOKIE_SECURE=true`.
-- Keep `SUPABASE_SERVICE_ROLE_KEY` server-only.
-- Use `/api/ready` for readiness because it checks database connectivity.
-- Use `scripts/set-superadmin.mjs` only for supervised admin recovery.
+- [infra/README.md](D:/NUXT/pxm/infra/README.md): AWS CDK dan resource per stage
+- [docs/memahami-kodebase-pxm.md](D:/NUXT/pxm/docs/memahami-kodebase-pxm.md): peta teknis codebase
+- [docs/penjelasan-dashboard-manajemen.md](D:/NUXT/pxm/docs/penjelasan-dashboard-manajemen.md): penjelasan dashboard untuk manajemen

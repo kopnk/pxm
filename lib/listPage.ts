@@ -36,7 +36,18 @@ export function watchStoreFilters(
   filterGetter: () => readonly unknown[],
   onChange: () => void,
 ) {
-  watch(filterGetter, onChange);
+  let previous = filterGetter();
+
+  watch(filterGetter, (next) => {
+    const isSame =
+      next.length === previous.length &&
+      next.every((value, index) => Object.is(value, previous[index]));
+
+    if (isSame) return;
+
+    previous = [...next];
+    onChange();
+  });
 }
 
 /** Standard flat-store page change guard. */

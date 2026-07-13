@@ -11,6 +11,7 @@ const {
   targetTableFilter,
   selectedIds,
   deleting,
+  showDeleteModal,
   AUDIT_ACTION_OPTIONS,
   changePage,
   isSelected,
@@ -21,6 +22,8 @@ const {
   metadataTitle,
   displayUser,
   actionBadgeClass,
+  openDeleteModal,
+  cancelDelete,
   deleteSelected,
 } = useAuditListPage();
 </script>
@@ -30,13 +33,13 @@ const {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Audit Log</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Audit Log</h4>
 
       <button
         type="button"
         class="btn btn-danger btn-sm"
         :disabled="!selectedIds.length || deleting"
-        @click="deleteSelected"
+        @click="openDeleteModal"
       >
         {{ deleting ? "Deleting..." : `Delete selected (${selectedIds.length})` }}
       </button>
@@ -198,5 +201,22 @@ const {
         @next="changePage(store.page + 1)"
       />
     </div>
+
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Delete audit logs"
+      :loading="deleting"
+      confirm-label="Delete selected"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="deleteSelected"
+    >
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{ selectedIds.length }}</span>
+        selected audit log{{ selectedIds.length > 1 ? "s" : "" }}?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>

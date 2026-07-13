@@ -1,112 +1,66 @@
-import { defineEventHandler, readBody, setCookie, createError } from "h3";
-import { lucia } from "~/server/auth/lucia";
-import { db } from "~/server/db";
-import { users, sessions } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
-import argon2 from "argon2";
+import { defineEventHandler, readBody, createError } from "h3";
 import { successResponse } from "~/server/utils/response";
+import { passwordChangeRequiredMessage } from "~/lib/entityMessages";
 import { toLocalTime } from "~/server/utils/datetime";
 import { logAudit } from "~/server/utils/audit";
 import { loginSchema } from "~/server/validation/auth.schema";
 import { parseBody } from "~/server/utils/zod";
-import { dbTime } from "~/server/utils/dbTime";
+import {
+  isCognitoAuthEnabled,
+  loginWithPassword,
+  writeAuthState,
+} from "~/server/utils/cognitoAuth";
+import {
+  getAppUserRecordByEmail,
+  markLegacyUserLastLogin,
+} from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
-  /**
-   * 1. Validate body
-   */
   const body = await readBody(event);
   const { email, password } = parseBody(loginSchema, body);
 
-  /**
-   * 2. Get user
-   */
-  const user = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      passwordHash: users.passwordHash,
-      role: users.role,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      isActive: users.isActive,
-      mustChangePassword: users.mustChangePassword,
-    })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1)
-    .then((r) => r[0]);
+  if (!isCognitoAuthEnabled()) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Cognito auth configuration is required",
+    });
+  }
 
-  if (!user || !user.isActive) {
+  const appUser = await getAppUserRecordByEmail(email);
+  if (!appUser || !appUser.user.isActive) {
     throw createError({ statusCode: 401, statusMessage: "Invalid credentials" });
   }
 
-  /**
-   * 3. Verify password
-   */
-  const valid = await argon2.verify(user.passwordHash, password);
-  if (!valid) {
-    throw createError({ statusCode: 401, statusMessage: "Invalid credentials" });
+  const loginResult = await loginWithPassword(email, password);
+  writeAuthState(event, loginResult.state);
+
+  if (loginResult.state.type === "challenge") {
+    return successResponse(event, passwordChangeRequiredMessage(), {
+      requiresPasswordChange: true,
+    });
   }
 
-  /**
-   * 4. Update last login
-   */
-  await db
-    .update(users)
-    .set({ lastLoginAt: dbTime() })
-    .where(eq(users.id, user.id));
+  const refreshedAppUser = await markLegacyUserLastLogin(appUser.user.id);
 
-  /**
-   * 5. Create session (Lucia)
-   */
-  const session = await lucia.createSession(user.id, {});
-  const cookie = lucia.createSessionCookie(session.id);
-
-  setCookie(event, cookie.name, cookie.value, {
-    ...cookie.attributes,
-    path: "/",
-  });
-
-  /**
-   * 6. Ambil created_at langsung dari DB
-   */
-  const dbSession = await db
-    .select({
-      createdAt: sessions.createdAt,
-    })
-    .from(sessions)
-    .where(eq(sessions.id, session.id))
-    .limit(1)
-    .then((r) => r[0]);
-
-  /**
-   * 7. Audit
-   */
   await logAudit({
     event,
-    actorId: user.id,
+    actorId: appUser.user.id,
     action: "LOGIN",
     targetTable: "users",
-    targetId: user.id,
+    targetId: appUser.user.id,
   });
 
-  /**
-   * 8. Response
-   */
   return successResponse(event, "Login successful", {
     user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      mustChangePassword: user.mustChangePassword ?? false,
+      ...(refreshedAppUser?.user ?? appUser.user),
+      permissions: refreshedAppUser?.permissions ?? appUser.permissions,
     },
     session: {
-      id: session.id,
-      createdAt: toLocalTime(dbSession?.createdAt),
-      expiresAt: toLocalTime(session.expiresAt),
+      id: "cognito",
+      createdAt: null,
+      expiresAt: toLocalTime(
+        new Date(loginResult.state.expiresAt * 1000).toISOString(),
+      ),
     },
   });
 });

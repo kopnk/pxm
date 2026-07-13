@@ -1,12 +1,7 @@
 import { createError, defineEventHandler, getQuery } from "h3";
-import { and, asc, eq, ne } from "drizzle-orm";
-import { db } from "~/server/db";
-import { clients } from "~/server/db/schema/clients";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { projectFinancials } from "~/server/db/schema/project_financials";
-import { projects } from "~/server/db/schema/projects";
 import { requireRole } from "~/server/utils/authorize";
 import { buildClientInvoicePdfBuffer } from "~/server/utils/buildClientInvoicePdf";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 function safeFilename(value: string) {
   return value.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "KWITANSI";
@@ -25,43 +20,22 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Query invoice is required",
     });
   }
-  const whereClause = clientId
-    ? and(
-        eq(projectFinancials.flowDirection, "out"),
-        eq(projectFinancials.invoiceNumberClient, invoice),
-        eq(projectFinancials.clientId, clientId),
-        ne(projectFinancials.status, "cancelled"),
-      )
-    : and(
-        eq(projectFinancials.flowDirection, "out"),
-        eq(projectFinancials.invoiceNumberClient, invoice),
-        ne(projectFinancials.status, "cancelled"),
-      );
-
-  const rows = await db
-    .select({
-      detailSiteId: projectDetails.siteId,
-      detailSiteName: projectDetails.siteName,
-      detailMaterialName: projectDetails.materialName,
-      qtyClient: projectFinancials.qtyClient,
-      unitPriceClient: projectFinancials.unitPriceClient,
-      projectName: projects.projectName,
-      projectPoNumber: projects.poNumber,
-      projectPoDate: projects.poDate,
-      invoiceDateClient: projectFinancials.invoiceDateClient,
-      clientName: clients.name,
-      clientBankName: clients.bankName,
-      clientBankAccount: clients.bankAccount,
-      clientAddressMeta: clients.addressMeta,
-      signatoryName: clients.signatoryName,
-      signatoryTitle: clients.signatoryTitle,
+  const rows = (await listProjectFinancialRecords({
+    flowDirection: "out",
+  }))
+    .filter((row) => {
+      if (row.status === "cancelled") return false;
+      if (row.invoiceNumberClient !== invoice) return false;
+      if (clientId && row.clientId !== clientId) return false;
+      return true;
     })
-    .from(projectFinancials)
-    .innerJoin(projects, eq(projectFinancials.projectId, projects.id))
-    .innerJoin(projectDetails, eq(projectFinancials.projectDetailId, projectDetails.id))
-    .leftJoin(clients, eq(projectFinancials.clientId, clients.id))
-    .where(whereClause)
-    .orderBy(asc(projectDetails.siteName), asc(projectDetails.siteId));
+    .sort((a, b) => {
+      const siteNameCompare = String(a.detailSiteName ?? "").localeCompare(
+        String(b.detailSiteName ?? ""),
+      );
+      if (siteNameCompare !== 0) return siteNameCompare;
+      return String(a.detailSiteId ?? "").localeCompare(String(b.detailSiteId ?? ""));
+    });
 
   if (!rows.length) {
     throw createError({
@@ -90,7 +64,7 @@ export default defineEventHandler(async (event) => {
       invoiceNumber: invoice,
       invoiceDate: first.invoiceDateClient,
       poNumberClient: first.projectPoNumber,
-      poDateClient: first.projectPoDate,
+      poDateClient: first.poDate,
       projectName: first.projectName,
       clientName: first.clientName,
       clientBankName: first.clientBankName,
@@ -99,8 +73,8 @@ export default defineEventHandler(async (event) => {
         ((first.clientAddressMeta as { city?: unknown } | null)?.city as
           | string
           | undefined) ?? null,
-      signatoryName: first.signatoryName,
-      signatoryTitle: first.signatoryTitle,
+      signatoryName: first.clientSignatoryName,
+      signatoryTitle: first.clientSignatoryTitle,
     },
   );
 

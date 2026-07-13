@@ -1,23 +1,19 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { dcn } from "~/server/db/schema/dcn";
-import { eq } from "drizzle-orm";
 import { parseBody } from "~/server/utils/zod";
 import { dcnUpdateSchema } from "~/server/validation/dcn.schema";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import {
   formatDcnOutNumber,
   getNextDcnOutNumber,
   parseDcnOutNumber,
 } from "~/server/utils/dcnNumber";
+import { getDcnRecordById, updateDcnRecord } from "~/server/utils/dcnStore";
 
 export default defineEventHandler(async (event) => {
-  const forbidden = requireRole(event, ["superadmin", "admin"]);
+  const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
   if (forbidden) return forbidden;
 
   const userId = event.context.user?.id;
@@ -32,87 +28,73 @@ export default defineEventHandler(async (event) => {
 
   const body = parseBody(dcnUpdateSchema, await readBody(event));
 
-  const updated = await db.transaction(async (tx) => {
-    const oldRows = await tx
-      .select()
-      .from(dcn)
-      .where(eq(dcn.id, id))
-      .limit(1);
+  const oldData = await getDcnRecordById(id);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "DCN record not found" });
+  }
 
-    const oldData = oldRows[0];
+  const nextLetterDate = body.letterDate ?? oldData.letterDate;
+  const nextFlow = body.flow ?? oldData.flow;
+  const nextType = body.type !== undefined ? body.type : oldData.type;
+  const incomingNumber = body.number?.trim();
 
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "DCN record not found" });
-    }
+  const oldYear = Number(String(oldData.letterDate).slice(0, 4));
+  const nextYear = Number(String(nextLetterDate).slice(0, 4));
+  const typeChanged = (oldData.type ?? "") !== (nextType ?? "");
+  const flowChangedToOut = oldData.flow !== "out" && nextFlow === "out";
+  const yearChanged =
+    Number.isFinite(oldYear) && Number.isFinite(nextYear) ? oldYear !== nextYear : false;
+  const numberMissing = !incomingNumber && !oldData.number?.trim();
 
-    const nextLetterDate = body.letterDate ?? oldData.letterDate;
-    const nextFlow = body.flow ?? oldData.flow;
-    const nextType = body.type !== undefined ? body.type : oldData.type;
-    const incomingNumber = body.number?.trim();
+  const shouldAutoRegenerate =
+    nextFlow === "out" &&
+    !!nextType &&
+    (typeChanged || flowChangedToOut || yearChanged || numberMissing);
 
-    const oldYear = Number(String(oldData.letterDate).slice(0, 4));
-    const nextYear = Number(String(nextLetterDate).slice(0, 4));
-    const typeChanged = (oldData.type ?? "") !== (nextType ?? "");
-    const flowChangedToOut = oldData.flow !== "out" && nextFlow === "out";
-    const yearChanged =
-      Number.isFinite(oldYear) && Number.isFinite(nextYear) ? oldYear !== nextYear : false;
-    const numberMissing = !incomingNumber && !oldData.number?.trim();
+  let nextNumber = incomingNumber ?? oldData.number;
+  if (shouldAutoRegenerate) {
+    const parsedExisting =
+      oldData.flow === "out" ? parseDcnOutNumber(oldData.number ?? "") : null;
 
-    const shouldAutoRegenerate =
-      nextFlow === "out" &&
-      !!nextType &&
-      (typeChanged || flowChangedToOut || yearChanged || numberMissing);
-
-    let nextNumber = incomingNumber ?? oldData.number;
-    if (shouldAutoRegenerate) {
-      const parsedExisting =
-        oldData.flow === "out" ? parseDcnOutNumber(oldData.number ?? "") : null;
-
-      if (parsedExisting && !flowChangedToOut) {
-        nextNumber = formatDcnOutNumber(
-          parsedExisting.sequence,
-          nextType,
-          nextLetterDate,
-        );
-      } else {
-        nextNumber = await getNextDcnOutNumber(tx, {
-          typeCode: nextType,
-          letterDate: nextLetterDate,
-          excludeId: id,
-        });
-      }
-    }
-
-    const rows = await tx
-      .update(dcn)
-      .set({
+    if (parsedExisting && !flowChangedToOut) {
+      nextNumber = formatDcnOutNumber(
+        parsedExisting.sequence,
+        nextType,
+        nextLetterDate,
+      );
+    } else {
+      nextNumber = await getNextDcnOutNumber({
+        typeCode: nextType,
         letterDate: nextLetterDate,
-        number: nextNumber,
-        type: nextType,
-        toAddress: body.toAddress !== undefined ? body.toAddress : oldData.toAddress,
-        fromAddress:
-          body.fromAddress !== undefined ? body.fromAddress : oldData.fromAddress,
-        subject: body.subject !== undefined ? body.subject : oldData.subject,
-        flow: nextFlow,
-        updatedUser: userId,
-        updatedAt: dbTime(),
-      })
-      .where(eq(dcn.id, id))
-      .returning();
+        excludeId: id,
+      });
+    }
+  }
 
-    const row = requireFirstRow(rows, "DCN record not found");
+  const updated = await updateDcnRecord(id, {
+    letterDate: nextLetterDate,
+    number: nextNumber,
+    type: nextType,
+    toAddress: body.toAddress !== undefined ? body.toAddress : oldData.toAddress,
+    fromAddress:
+      body.fromAddress !== undefined ? body.fromAddress : oldData.fromAddress,
+    subject: body.subject !== undefined ? body.subject : oldData.subject,
+    flow: nextFlow,
+    updatedUser: userId,
+  });
 
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "dcn",
-      targetId: id,
-      oldData,
-      newData: row,
-    });
+  if (!updated) {
+    throw createError({ statusCode: 404, statusMessage: "DCN record not found" });
+  }
 
-    return row;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "dcn",
+    targetId: id,
+    oldData,
+    newData: updated,
   });
 
   return successResponse(event, "DCN record updated", {

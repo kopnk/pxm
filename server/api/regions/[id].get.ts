@@ -1,11 +1,9 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { regions } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { regionIdSchema } from "~/server/validation/regions.schema";
 import { toLocalTime } from "~/server/utils/datetime";
+import { getRegionRecordById } from "~/server/utils/regionStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -17,13 +15,7 @@ export default defineEventHandler(async (event) => {
   const { id } = regionIdSchema.parse(event.context.params);
 
   /* ================= QUERY ================= */
-  const rows = await db
-    .select()
-    .from(regions)
-    .where(eq(regions.id, id))
-    .limit(1);
-
-  const row = rows[0];
+  const row = await getRegionRecordById(id);
 
   if (!row) {
     throw createError({ statusCode: 404, statusMessage: "Region not found" });

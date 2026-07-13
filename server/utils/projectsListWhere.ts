@@ -1,54 +1,64 @@
-import type { SQL } from "drizzle-orm";
-import { and, eq } from "drizzle-orm";
-import { projects } from "~/server/db/schema/projects";
-import { clients } from "~/server/db/schema/clients";
-import { buildSearchOr } from "~/server/utils/searchAmountSql";
+export type ProjectListFilterRecord = {
+  projectName: string;
+  poNumber: string;
+  prScNumber: string;
+  contractNumber: string | null;
+  pm: string | null;
+  status: string;
+  clientName?: string | null;
+  poDate?: string | null;
+  deliveryDate?: string | null;
+  komDate?: string | null;
+  subTotal?: number | null;
+  discount?: number | null;
+  netPrice?: number | null;
+  vatRate?: number | null;
+  vatAmount?: number | null;
+  grandTotal?: number | null;
+};
 
 export type ProjectsListFilterInput = {
   search?: string;
   status?: string;
 };
 
-/**
- * WHERE untuk `GET /api/projects` (list) dan export Excel.
- */
-export function buildProjectsListWhere(
+function buildProjectSearchHaystack(project: ProjectListFilterRecord) {
+  return [
+    project.projectName,
+    project.poNumber,
+    project.prScNumber,
+    project.contractNumber ?? "",
+    project.pm ?? "",
+    project.status,
+    project.clientName ?? "",
+    project.poDate ?? "",
+    project.deliveryDate ?? "",
+    project.komDate ?? "",
+    project.subTotal ?? "",
+    project.discount ?? "",
+    project.netPrice ?? "",
+    project.vatRate ?? "",
+    project.vatAmount ?? "",
+    project.grandTotal ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+export function matchesProjectsListFilters(
+  project: ProjectListFilterRecord,
   input: ProjectsListFilterInput,
-): SQL | undefined {
-  const conditions: SQL[] = [];
+) {
+  const search = input.search?.trim().toLowerCase();
+  const status = input.status?.trim().toLowerCase();
 
-  const search = input.search?.trim();
-  const status = input.status?.trim();
-
-  if (search) {
-    const sOr = buildSearchOr(search, {
-      ilike: [
-        projects.projectName,
-        projects.poNumber,
-        projects.prScNumber,
-        projects.contractNumber,
-        projects.pm,
-        projects.status,
-        clients.name,
-      ],
-      asText: [
-        projects.poDate,
-        projects.deliveryDate,
-        projects.komDate,
-        projects.subTotal,
-        projects.discount,
-        projects.netPrice,
-        projects.vatRate,
-        projects.vatAmount,
-        projects.grandTotal,
-      ],
-    });
-    if (sOr) conditions.push(sOr);
+  if (status && String(project.status).trim().toLowerCase() !== status) {
+    return false;
   }
 
-  if (status) {
-    conditions.push(eq(projects.status, status));
+  if (search && !buildProjectSearchHaystack(project).includes(search)) {
+    return false;
   }
 
-  return conditions.length ? and(...conditions) : undefined;
+  return true;
 }

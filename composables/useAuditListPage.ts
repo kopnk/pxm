@@ -22,6 +22,7 @@ export const useAuditListPage = () => {
 
   const selectedIds = ref<string[]>([]);
   const deleting = ref(false);
+  const showDeleteModal = ref(false);
 
   const fetchAuditLogs = async (page = store.page) => {
     await getAuditLogs({ page, limit: store.limit });
@@ -49,7 +50,6 @@ export const useAuditListPage = () => {
   const { showingStart, showingEnd } = useFlatPaginationRange(store);
 
   const visibleIds = computed(() => store.items.map((item) => item.id));
-
   const isSelected = (id: string) => selectedIds.value.includes(id);
 
   const allVisibleSelected = computed(
@@ -63,6 +63,7 @@ export const useAuditListPage = () => {
       selectedIds.value = selectedIds.value.filter((itemId) => itemId !== id);
       return;
     }
+
     selectedIds.value = [...selectedIds.value, id];
   };
 
@@ -73,21 +74,24 @@ export const useAuditListPage = () => {
       );
       return;
     }
+
     selectedIds.value = [...new Set([...selectedIds.value, ...visibleIds.value])];
   };
 
   const formatMetadata = (metadata: Record<string, unknown>) => {
-    if (!metadata || Object.keys(metadata).length === 0) return "—";
+    if (!metadata || Object.keys(metadata).length === 0) return "-";
+
     try {
       const text = JSON.stringify(metadata, null, 0);
-      return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+      return text.length > 120 ? `${text.slice(0, 120)}...` : text;
     } catch {
-      return "—";
+      return "-";
     }
   };
 
   const metadataTitle = (metadata: Record<string, unknown>) => {
     if (!metadata || Object.keys(metadata).length === 0) return "";
+
     try {
       return JSON.stringify(metadata, null, 2);
     } catch {
@@ -96,7 +100,7 @@ export const useAuditListPage = () => {
   };
 
   const displayUser = (item: (typeof store.items)[number]) => {
-    if (!item.user) return "—";
+    if (!item.user) return "-";
     if (item.user.name) return item.user.name;
     return item.user.email;
   };
@@ -120,13 +124,18 @@ export const useAuditListPage = () => {
     }
   };
 
+  const openDeleteModal = () => {
+    if (!selectedIds.value.length || deleting.value) return;
+    showDeleteModal.value = true;
+  };
+
+  const cancelDelete = () => {
+    if (deleting.value) return;
+    showDeleteModal.value = false;
+  };
+
   const deleteSelected = async () => {
     if (!selectedIds.value.length) return;
-
-    const confirmed = window.confirm(
-      `Delete ${selectedIds.value.length} selected audit log(s)?`,
-    );
-    if (!confirmed) return;
 
     try {
       await handle(async () => {
@@ -136,6 +145,7 @@ export const useAuditListPage = () => {
         selectedIds.value = selectedIds.value.filter((id) => !ids.includes(id));
         await fetchAuditLogs(store.page);
       }, toastSuccessDeleted("auditLog"));
+      showDeleteModal.value = false;
     } finally {
       deleting.value = false;
     }
@@ -148,6 +158,7 @@ export const useAuditListPage = () => {
     targetTableFilter,
     selectedIds,
     deleting,
+    showDeleteModal,
     AUDIT_ACTION_OPTIONS,
     changePage,
     showingStart,
@@ -160,6 +171,8 @@ export const useAuditListPage = () => {
     metadataTitle,
     displayUser,
     actionBadgeClass,
+    openDeleteModal,
+    cancelDelete,
     deleteSelected,
   };
 };

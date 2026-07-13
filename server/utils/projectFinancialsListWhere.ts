@@ -1,12 +1,3 @@
-import type { SQL } from "drizzle-orm";
-import { and, eq } from "drizzle-orm";
-import { projectFinancials } from "~/server/db/schema/project_financials";
-import { projects } from "~/server/db/schema/projects";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { clients } from "~/server/db/schema/clients";
-import { partners } from "~/server/db/schema/partners";
-import { buildSearchOr } from "~/server/utils/searchAmountSql";
-
 const FINANCIAL_STATUSES = [
   "draft",
   "issued",
@@ -23,104 +14,167 @@ export type ProjectFinancialsListFilterInput = {
   search?: string;
   status?: string;
   flowDirection?: string;
+  taxSection?: "taxIn" | "taxOut" | "pph";
 };
 
-/**
- * WHERE clause shared by `GET /api/project_financials` (list) and export.
- */
-export function buildProjectFinancialsListWhere(
+export type ProjectFinancialsFilterRecord = {
+  projectId?: string | null;
+  projectDetailId?: string | null;
+  flowDirection?: string | null;
+  status?: string | null;
+  projectName?: string | null;
+  projectPoNumber?: string | null;
+  detailMaterialName?: string | null;
+  detailSystemkey?: string | null;
+  detailSiteId?: string | null;
+  detailSiteName?: string | null;
+  clientName?: string | null;
+  partnerName?: string | null;
+  bastNumber?: string | null;
+  balapNumber?: string | null;
+  invoiceNumberPartner?: string | null;
+  invoiceNumberClient?: string | null;
+  poNumberPartner?: string | null;
+  poNumberClient?: string | null;
+  fpNumberPartner?: string | null;
+  fpNumberClient?: string | null;
+  vbNumber?: string | null;
+  mcmNumber?: string | null;
+  paidNumber?: string | null;
+  docNumber?: string | null;
+  qtyPartner?: unknown;
+  unitPricePartner?: unknown;
+  qtyClient?: unknown;
+  unitPriceClient?: unknown;
+  taxIn?: unknown;
+  taxOut?: unknown;
+  pph?: unknown;
+  stage?: unknown;
+  quantity?: unknown;
+  unitPrice?: unknown;
+  totalPrice?: unknown;
+  balapDate?: string | null;
+  bastDate?: string | null;
+  docDate?: string | null;
+  vbDate?: string | null;
+  mcmDate?: string | null;
+  paidDate?: string | null;
+  poDatePartner?: string | null;
+  poDateClient?: string | null;
+  invoiceDatePartner?: string | null;
+  invoiceDateClient?: string | null;
+  fpDatePartner?: string | null;
+  fpDateClient?: string | null;
+};
+
+function buildFinancialSearchHaystack(record: ProjectFinancialsFilterRecord) {
+  return [
+    record.bastNumber,
+    record.balapNumber,
+    record.invoiceNumberPartner,
+    record.invoiceNumberClient,
+    record.poNumberPartner,
+    record.poNumberClient,
+    record.fpNumberPartner,
+    record.fpNumberClient,
+    record.vbNumber,
+    record.mcmNumber,
+    record.paidNumber,
+    record.docNumber,
+    record.projectPoNumber,
+    record.projectName,
+    record.detailMaterialName,
+    record.detailSiteName,
+    record.detailSystemkey,
+    record.detailSiteId,
+    record.partnerName,
+    record.clientName,
+    record.qtyPartner,
+    record.unitPricePartner,
+    record.qtyClient,
+    record.unitPriceClient,
+    record.taxIn,
+    record.taxOut,
+    record.pph,
+    record.stage,
+    record.quantity,
+    record.unitPrice,
+    record.totalPrice,
+    record.balapDate,
+    record.bastDate,
+    record.docDate,
+    record.vbDate,
+    record.mcmDate,
+    record.paidDate,
+    record.poDatePartner,
+    record.poDateClient,
+    record.invoiceDatePartner,
+    record.invoiceDateClient,
+    record.fpDatePartner,
+    record.fpDateClient,
+  ]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export function matchesProjectFinancialsListFilters(
+  record: ProjectFinancialsFilterRecord,
   input: ProjectFinancialsListFilterInput,
-): SQL | undefined {
-  const conditions: SQL[] = [];
-
-  if (input.projectId) {
-    conditions.push(eq(projectFinancials.projectId, input.projectId));
+) {
+  if (input.projectId && record.projectId !== input.projectId) {
+    return false;
   }
 
-  if (input.projectDetailId) {
-    conditions.push(
-      eq(projectFinancials.projectDetailId, input.projectDetailId),
-    );
-  }
-
-  if (input.search) {
-    const searchOr = buildSearchOr(input.search.trim(), {
-      ilike: [
-        projectFinancials.bastNumber,
-        projectFinancials.balapNumber,
-        projectFinancials.invoiceNumberPartner,
-        projectFinancials.invoiceNumberClient,
-        projectFinancials.poNumberPartner,
-        projectFinancials.poNumberClient,
-        projectFinancials.fpNumberPartner,
-        projectFinancials.fpNumberClient,
-        projectFinancials.vbNumber,
-        projectFinancials.mcmNumber,
-        projectFinancials.paidNumber,
-        projectFinancials.docNumber,
-        projects.poNumber,
-        projects.projectName,
-        projectDetails.materialName,
-        projectDetails.siteName,
-        projectDetails.systemkey,
-        projectDetails.siteId,
-        partners.name,
-        clients.name,
-      ],
-      asText: [
-        projectFinancials.qtyPartner,
-        projectFinancials.unitPricePartner,
-        projectFinancials.qtyClient,
-        projectFinancials.unitPriceClient,
-        projectFinancials.taxIn,
-        projectFinancials.taxOut,
-        projectFinancials.pph,
-        projectFinancials.stage,
-        projectDetails.quantity,
-        projectDetails.unitPrice,
-        projectDetails.totalPrice,
-        projectFinancials.balapDate,
-        projectFinancials.bastDate,
-        projectFinancials.docDate,
-        projectFinancials.vbDate,
-        projectFinancials.mcmDate,
-        projectFinancials.paidDate,
-        projectFinancials.poDatePartner,
-        projectFinancials.poDateClient,
-        projectFinancials.invoiceDatePartner,
-        projectFinancials.invoiceDateClient,
-        projectFinancials.fpDatePartner,
-        projectFinancials.fpDateClient,
-      ],
-    });
-    if (searchOr) {
-      conditions.push(searchOr);
-    }
+  if (input.projectDetailId && record.projectDetailId !== input.projectDetailId) {
+    return false;
   }
 
   if (input.status) {
-    const st = input.status;
-    if ((FINANCIAL_STATUSES as readonly string[]).includes(st)) {
-      conditions.push(
-        eq(
-          projectFinancials.status,
-          st as (typeof FINANCIAL_STATUSES)[number],
-        ),
-      );
+    const status = input.status.trim();
+    if (
+      (FINANCIAL_STATUSES as readonly string[]).includes(status) &&
+      record.status !== status
+    ) {
+      return false;
     }
   }
 
   if (input.flowDirection) {
-    const flow = input.flowDirection;
-    if ((FLOW_DIRECTIONS as readonly string[]).includes(flow)) {
-      conditions.push(
-        eq(
-          projectFinancials.flowDirection,
-          flow as (typeof FLOW_DIRECTIONS)[number],
-        ),
-      );
+    const flowDirection = input.flowDirection.trim();
+    if (
+      (FLOW_DIRECTIONS as readonly string[]).includes(flowDirection) &&
+      record.flowDirection !== flowDirection
+    ) {
+      return false;
     }
   }
 
-  return conditions.length ? and(...conditions) : undefined;
+  if (input.taxSection === "taxIn") {
+    if (record.flowDirection !== "in" || Number(record.taxIn ?? 0) <= 0) {
+      return false;
+    }
+  }
+
+  if (input.taxSection === "taxOut") {
+    if (record.flowDirection !== "out" || Number(record.taxOut ?? 0) <= 0) {
+      return false;
+    }
+  }
+
+  if (input.taxSection === "pph") {
+    if (record.flowDirection !== "in" || Number(record.pph ?? 0) <= 0) {
+      return false;
+    }
+  }
+
+  if (input.search?.trim()) {
+    const search = input.search.trim().toLowerCase();
+    if (!buildFinancialSearchHaystack(record).includes(search)) {
+      return false;
+    }
+  }
+
+  return true;
 }

@@ -1,14 +1,13 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { toLocalTime } from "~/server/utils/datetime";
 import { updateProfileSchema } from "~/server/validation/profile.schema";
 import { parseBody } from "~/server/utils/zod";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
+import {
+  getAppUserRecordById,
+  updateAppUserRecord,
+} from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -28,61 +27,58 @@ export default defineEventHandler(async (event) => {
     await readBody(event)
   );
 
-  /* ================= UPDATE ================= */
-  const updated = await db.transaction(async (tx) => {
+  const current = await getAppUserRecordById(actor.id);
 
-    const oldRows = await tx
-      .select({
-        firstName: users.firstName,
-        lastName: users.lastName,
-        phone: users.phone,
-        region: users.region,
-        area: users.area,
-        avatarUrl: users.avatarUrl,
-      })
-      .from(users)
-      .where(eq(users.id, actor.id))
-      .limit(1);
-
-    const oldUser = oldRows[0];
-
-    if (!oldUser) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "User not found",
-      });
-    }
-
-    const rows = await tx
-      .update(users)
-      .set({
-        firstName: body.firstName ?? oldUser.firstName,
-        lastName: body.lastName ?? oldUser.lastName,
-        phone: body.phone ?? oldUser.phone,
-        region: body.region ?? oldUser.region,
-        area: body.area ?? oldUser.area,
-        avatarUrl: body.avatarUrl ?? oldUser.avatarUrl,
-        updatedAt: dbTime(),
-      })
-      .where(eq(users.id, actor.id))
-      .returning({
-        updatedAt: users.updatedAt,
-      });
-
-    await logAudit({
-      event,
-      actorId: actor.id,
-      action: "UPDATE",
-      targetTable: "users",
-      targetId: actor.id,
-      oldData: oldUser,
-      newData: requireFirstRow(rows, "Profile not found"),
+  if (!current) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "User not found",
     });
+  }
 
-    return requireFirstRow(rows, "Profile not found");
+  const updated = await updateAppUserRecord(actor.id, {
+    firstName: body.firstName ?? current.user.firstName,
+    lastName: body.lastName ?? current.user.lastName,
+    phone: body.phone ?? current.user.phone,
+    region: body.region ?? current.user.region,
+    area: body.area ?? current.user.area,
+    avatarUrl: body.avatarUrl ?? current.user.avatarUrl,
+    updatedUser: actor.id,
+    updatedBy: actor.email,
   });
 
-  return successResponse(event, "Profile updated successfully", {
-    updatedAt: toLocalTime(updated.updatedAt),
+  if (!updated) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "User not found",
+    });
+  }
+
+  await logAudit({
+    event,
+    actorId: actor.id,
+    action: "UPDATE",
+    targetTable: "users",
+    targetId: actor.id,
+    oldData: {
+      firstName: current.user.firstName,
+      lastName: current.user.lastName,
+      phone: current.user.phone,
+      region: current.user.region,
+      area: current.user.area,
+      avatarUrl: current.user.avatarUrl,
+    },
+    newData: {
+      firstName: updated.user.firstName,
+      lastName: updated.user.lastName,
+      phone: updated.user.phone,
+      region: updated.user.region,
+      area: updated.user.area,
+      avatarUrl: updated.user.avatarUrl,
+    },
+  });
+
+  return successResponse(event, "Profile updated", {
+    updatedAt: toLocalTime(updated.user.updatedAt),
   });
 });

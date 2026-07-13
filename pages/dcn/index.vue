@@ -7,11 +7,15 @@ const {
   flowFilter,
   typeFilter,
   deletingId,
+  showDeleteModal,
+  deleteTargetDcn,
   canCreate,
   canEdit,
   canDelete,
   changePage,
-  remove,
+  openDeleteModal,
+  cancelDelete,
+  performDelete,
   flowBadgeClass,
   typeLabelByCode,
   showingStart,
@@ -20,7 +24,7 @@ const {
 } = useDcnListPage();
 
 const displayType = (value: string | null | undefined) => {
-  if (!value) return "—";
+  if (!value) return "-";
   return typeLabelByCode[value] ?? value;
 };
 </script>
@@ -30,7 +34,7 @@ const displayType = (value: string | null | undefined) => {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">DCN</h4>
+      <h4 class="text-brand mb-0" data-page-focus>DCN</h4>
       <NuxtLink v-if="canCreate" to="/dcn/create" class="btn btn-primary">
         + New DCN
       </NuxtLink>
@@ -100,21 +104,21 @@ const displayType = (value: string | null | undefined) => {
                 <td class="text-center data-meta">
                   {{ (store.page - 1) * store.limit + index + 1 }}
                 </td>
-                <td>{{ item.letterDate || "—" }}</td>
+                <td>{{ item.letterDate || "-" }}</td>
                 <td>
                   <NuxtLink
                     v-if="canEdit"
                     :to="`/dcn/update?id=${item.id}`"
                     class="fw-semibold text-primary text-decoration-none"
                   >
-                    {{ item.number || "—" }}
+                    {{ item.number || "-" }}
                   </NuxtLink>
-                  <span v-else class="fw-semibold">{{ item.number || "—" }}</span>
+                  <span v-else class="fw-semibold">{{ item.number || "-" }}</span>
                 </td>
                 <td>{{ displayType(item.type) }}</td>
-                <td>{{ item.fromAddress || "—" }}</td>
-                <td>{{ item.toAddress || "—" }}</td>
-                <td>{{ item.subject || "—" }}</td>
+                <td>{{ item.fromAddress || "-" }}</td>
+                <td>{{ item.toAddress || "-" }}</td>
+                <td>{{ item.subject || "-" }}</td>
                 <td>
                   <span class="badge" :class="flowBadgeClass(item.flow)">
                     {{ item.flow === "out" ? "Out" : "In" }}
@@ -131,7 +135,7 @@ const displayType = (value: string | null | undefined) => {
                     <span
                       class="text-danger small fw-semibold"
                       style="cursor: pointer"
-                      @click.stop="remove(item.id, item.number, item.letterDate)"
+                      @click.stop="openDeleteModal(item.id)"
                     >
                       {{ deletingId === item.id ? "..." : "x" }}
                     </span>
@@ -166,5 +170,27 @@ const displayType = (value: string | null | undefined) => {
         @next="changePage(store.page + 1)"
       />
     </div>
+
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
+    >
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{
+          deleteTargetDcn?.number || "this DCN"
+        }}</span
+        >?
+      </p>
+      <p class="data-meta mt-2 mb-0">
+        {{ deleteTargetDcn?.letterDate || "-" }}
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>

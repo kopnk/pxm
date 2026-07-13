@@ -21,6 +21,7 @@ import {
   pfPercentFromAmount,
 } from "@/composables/useProjectFinancialForm";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import DecimalInput from "@/components/form/DecimalInput.vue";
 import FinancialDocumentUrlFile from "@/components/form/FinancialDocumentUrlFile.vue";
 
 definePageMeta({});
@@ -107,7 +108,7 @@ function syncTaxOutPercentFromDetailSeed() {
 
 const fmtMoney = (v: number | null) => {
   if (v === null) return "—";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("id-ID", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(v);
@@ -115,8 +116,8 @@ const fmtMoney = (v: number | null) => {
 
 const n = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
-  const x = Number(v);
-  return Number.isFinite(x) ? x : null;
+  const numberValue = Number(v);
+  return Number.isFinite(numberValue) ? numberValue : null;
 };
 
 const loadProjects = async () => {
@@ -349,41 +350,31 @@ const handleSubmit = async () => {
     <FormSection v-if="isInFlow" title="Partner Details">
       <div class="col-md-3">
         <label class="form-label">Partner Qty</label>
-        <input
-          v-model.number="form.qtyPartner"
-          type="number"
-          step="0.0001"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.qtyPartner" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.qtyPartner) }}
+        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label">Partner Unit Price</label>
-        <input
-          v-model.number="form.unitPricePartner"
-          type="number"
-          step="0.01"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.unitPricePartner" />
+        <div class="number-helper">
+          {{ fmtMoney(form.unitPricePartner) }}
+        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label">PPH (%)</label>
-        <input
-          v-model.number="form.pphPercent"
-          type="number"
-          step="0.0001"
-          min="0"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.pphPercent" :min="0" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.pphPercent) }}%
+        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label">Tax In (%)</label>
-        <input
-          v-model.number="form.taxInPercent"
-          type="number"
-          step="0.0001"
-          min="0"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.taxInPercent" :min="0" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.taxInPercent) }}%
+        </div>
       </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">
@@ -393,7 +384,7 @@ const handleSubmit = async () => {
           </div>
           <div class="data-meta mt-1 mb-0">
             PPH and tax in are entered as a percentage of the partner line
-            (qty × unit). IDR amounts are calculated when you save.
+            (qty x unit). IDR amounts are calculated when you save.
           </div>
         </div>
       </div>
@@ -509,31 +500,24 @@ const handleSubmit = async () => {
     <FormSection v-if="isOutFlow" title="Client Details">
       <div class="col-md-4">
         <label class="form-label">Client Qty</label>
-        <input
-          v-model.number="form.qtyClient"
-          type="number"
-          step="0.0001"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.qtyClient" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.qtyClient) }}
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Client Unit Price</label>
-        <input
-          v-model.number="form.unitPriceClient"
-          type="number"
-          step="0.01"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.unitPriceClient" />
+        <div class="number-helper">
+          {{ fmtMoney(form.unitPriceClient) }}
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Tax Out (%)</label>
-        <input
-          v-model.number="form.taxOutPercent"
-          type="number"
-          step="0.0001"
-          min="0"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.taxOutPercent" :min="0" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.taxOutPercent) }}%
+        </div>
       </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">
@@ -542,7 +526,7 @@ const handleSubmit = async () => {
             {{ fmtMoney(clientTotalPreview) }}
           </div>
           <div class="data-meta mt-1 mb-0">
-            Tax out is entered as a percentage of the client line (qty × unit).
+            Tax out is entered as a percentage of the client line (qty x unit).
             IDR amount is calculated when you save.
           </div>
         </div>

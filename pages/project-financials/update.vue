@@ -25,6 +25,7 @@ import {
   pfAmountFromPercent,
 } from "@/composables/useProjectFinancialForm";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import DecimalInput from "@/components/form/DecimalInput.vue";
 import FinancialDocumentUrlFile from "@/components/form/FinancialDocumentUrlFile.vue";
 import FinancialDocumentExistingList from "@/components/form/FinancialDocumentExistingList.vue";
 
@@ -70,10 +71,15 @@ syncDocSlots();
 
 const {
   deletingFileId,
+  showDeleteModal: showDeleteFileModal,
+  deleteTargetFile,
   canDelete: canDeleteDoc,
   docsForCategory,
   load: loadProjectFiles,
+  requestDelete: requestDeleteProjectFile,
+  cancelDelete: cancelDeleteProjectFile,
   remove: removeProjectFile,
+  deleteMessage: projectFileDeleteMessage,
 } = useProjectRefFilesList(PROJECT_FILE_REF_TABLE.FINANCIALS, () => id);
 
 const selectedProject = computed(() =>
@@ -138,7 +144,7 @@ const clientInvoicePdfHref = computed(() => {
 
 const fmtMoney = (v: number | null) => {
   if (v === null) return "—";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("id-ID", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(v);
@@ -272,6 +278,7 @@ const handleSubmit = async () => {
     v-else
     title="Update Project Financial"
     :loading="loading"
+    submit-label="Update"
     @submit="
       () => handle(handleSubmit, toastSuccessUpdated('projectFinancial'))
     "
@@ -363,41 +370,31 @@ const handleSubmit = async () => {
     <FormSection v-if="isInFlow" title="Partner Details">
       <div class="col-md-3">
         <label class="form-label">Partner Qty</label>
-        <input
-          v-model.number="form.qtyPartner"
-          type="number"
-          step="0.0001"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.qtyPartner" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.qtyPartner) }}
+        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label">Partner Unit Price</label>
-        <input
-          v-model.number="form.unitPricePartner"
-          type="number"
-          step="0.01"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.unitPricePartner" />
+        <div class="number-helper">
+          {{ fmtMoney(form.unitPricePartner) }}
+        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label">PPH (%)</label>
-        <input
-          v-model.number="form.pphPercent"
-          type="number"
-          step="0.0001"
-          min="0"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.pphPercent" :min="0" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.pphPercent) }}%
+        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label">Tax In (%)</label>
-        <input
-          v-model.number="form.taxInPercent"
-          type="number"
-          step="0.0001"
-          min="0"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.taxInPercent" :min="0" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.taxInPercent) }}%
+        </div>
       </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">
@@ -407,7 +404,7 @@ const handleSubmit = async () => {
           </div>
           <div class="data-meta mt-1 mb-0">
             PPH and tax in are entered as a percentage of the partner line (qty
-            × unit). IDR amounts are calculated when you save.
+            x unit). IDR amounts are calculated when you save.
           </div>
         </div>
       </div>
@@ -442,7 +439,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('partner_po')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">Partner Invoice</label>
@@ -486,7 +483,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('partner_invoice')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">Partner Tax Invoice (FP)</label>
@@ -507,7 +504,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('partner_tax')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">Balap Number</label>
@@ -528,7 +525,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('balap')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">BAST Number</label>
@@ -560,7 +557,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('bast')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
 
       <div class="col-md-4">
@@ -594,31 +591,24 @@ const handleSubmit = async () => {
     <FormSection v-if="isOutFlow" title="Client Details">
       <div class="col-md-4">
         <label class="form-label">Client Qty</label>
-        <input
-          v-model.number="form.qtyClient"
-          type="number"
-          step="0.0001"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.qtyClient" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.qtyClient) }}
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Client Unit Price</label>
-        <input
-          v-model.number="form.unitPriceClient"
-          type="number"
-          step="0.01"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.unitPriceClient" />
+        <div class="number-helper">
+          {{ fmtMoney(form.unitPriceClient) }}
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label">Tax Out (%)</label>
-        <input
-          v-model.number="form.taxOutPercent"
-          type="number"
-          step="0.0001"
-          min="0"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.taxOutPercent" :min="0" />
+        <div class="number-helper number-helper-muted">
+          {{ fmtMoney(form.taxOutPercent) }}%
+        </div>
       </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">
@@ -627,7 +617,7 @@ const handleSubmit = async () => {
             {{ fmtMoney(clientTotalPreview) }}
           </div>
           <div class="data-meta mt-1 mb-0">
-            Tax out is entered as a percentage of the client line (qty × unit).
+            Tax out is entered as a percentage of the client line (qty x unit).
             IDR amount is calculated when you save.
           </div>
         </div>
@@ -657,7 +647,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('client_po')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">Client Invoice</label>
@@ -695,7 +685,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('client_invoice')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">Client Tax Invoice (FP)</label>
@@ -716,7 +706,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('client_tax')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">Balap Number</label>
@@ -737,7 +727,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('balap')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
       <div class="col-md-3">
         <label class="form-label">BAST Number</label>
@@ -758,7 +748,7 @@ const handleSubmit = async () => {
         :files="docsForCategory('bast')"
         :can-delete="canDeleteDoc"
         :deleting-id="deletingFileId"
-        @delete="removeProjectFile"
+          @delete="requestDeleteProjectFile"
       />
 
       <div class="col-md-4">
@@ -813,4 +803,22 @@ const handleSubmit = async () => {
       </div>
     </FormSection>
   </FormShell>
+
+  <AppConfirmDialog
+    :visible="showDeleteFileModal"
+    title="Delete document"
+    :loading="!!deletingFileId"
+    confirm-label="Delete"
+    confirm-variant="danger"
+    focus-target="cancel"
+    @cancel="cancelDeleteProjectFile"
+    @confirm="removeProjectFile"
+  >
+    <p class="mb-0">
+      {{ projectFileDeleteMessage() }}
+    </p>
+    <p class="data-meta mt-2 mb-0">
+      {{ deleteTargetFile?.fileName || deleteTargetFile?.fileCategory || "-" }}
+    </p>
+  </AppConfirmDialog>
 </template>

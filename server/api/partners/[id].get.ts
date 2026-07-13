@@ -1,10 +1,8 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { partners } from "~/server/db/schema/partners";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { toLocalTime } from "~/server/utils/datetime";
+import { getPartnerRecordById } from "~/server/utils/partnerStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -16,21 +14,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  const rows = await db
-    .select()
-    .from(partners)
-    .where(eq(partners.id, id))
-    .limit(1);
-
-  const data = rows[0];
+  const data = await getPartnerRecordById(id);
 
   if (!data) {
     throw createError({ statusCode: 404, statusMessage: "Partner not found" });
   }
 
-  return successResponse(event, "Partner detail", {
+  return successResponse(event, "Partner retrieved", {
     ...data,
-    rating: data.rating ? Number(data.rating) : null,
+    rating: data.rating ?? null,
     createdAt: toLocalTime(data.createdAt),
     updatedAt: toLocalTime(data.updatedAt),
   });

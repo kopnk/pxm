@@ -1,10 +1,8 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { toLocalTime } from "~/server/utils/datetime";
+import { getAppUserRecordById } from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -18,13 +16,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  const rows = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
-
-  const user = rows[0];
+  const record = await getAppUserRecordById(id);
+  const user = record?.user;
 
   if (!user) {
     throw createError({ statusCode: 404, statusMessage: "User not found" });

@@ -1,4 +1,5 @@
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
+import type { ApiSuccessEnvelope } from "~/lib/apiEnvelope";
 import { apiFetch } from "~/utils/apiFetch";
 
 export type ProjectFileItem = {
@@ -27,9 +28,8 @@ const mapProjectFileItem = (row: Record<string, unknown>): ProjectFileItem => ({
   uploadedAt: (row.uploadedAt ?? row.uploaded_at ?? null) as string | null,
 });
 
-/** URL-only record saved manually (GDrive, local path, etc.) — not Supabase upload. */
+/** URL-only record saved manually (GDrive, local path, etc.) and not managed app storage upload. */
 export const isExternalProjectFile = (file: ProjectFileItem) => {
-  if (/supabase\.co\/storage/i.test(file.fileUrl || "")) return false;
   if (file.mimeType) return false;
   if (file.fileSize != null && Number(file.fileSize) > 0) return false;
   return Boolean(file.fileUrl?.trim());
@@ -96,7 +96,7 @@ export const useProjectFilesApi = () => {
   const deleteProjectFile = (id: string) =>
     apiFetch(`/api/project_files/${id}`, {
       method: "DELETE",
-    });
+    }) as Promise<ApiSuccessEnvelope<null>>;
 
   return {
     getProjectFiles,

@@ -1,10 +1,8 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFiles } from "~/server/db/schema/project_files";
-import { eq, and, isNull } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
+import { getProjectFileRecordById } from "~/server/utils/projectFileStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -15,18 +13,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  const rows = await db
-    .select()
-    .from(projectFiles)
-    .where(and(eq(projectFiles.id, id), isNull(projectFiles.deletedAt)))
-    .limit(1);
+  const file = await getProjectFileRecordById(id);
 
-  const file = rows[0];
-
-  if (!file) {
+  if (!file || file.deletedAt) {
     throw createError({ statusCode: 404, statusMessage: "File not found" });
   }
 
   const [signedFile] = await withProjectFileSignedUrls([file]);
-  return successResponse(event, "File retrieved", signedFile);
+  return successResponse(event, "Document retrieved", signedFile);
 });

@@ -17,7 +17,6 @@ const {
   showResetModal,
   deleteTargetUser,
   resetTargetUser,
-  resetDefaultPassword,
   searchFilter,
   roleFilter,
   isActiveFilter,
@@ -41,7 +40,7 @@ const {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Users</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Users</h4>
 
       <NuxtLink v-if="canCreate" to="/users/signup" class="btn btn-primary">
         + New user
@@ -56,7 +55,7 @@ const {
           v-model="searchFilter"
           type="search"
           class="form-control form-control-sm users-filter-search"
-          placeholder="Email, name, phone, region…"
+          placeholder="Email, name, phone, region..."
         />
         <select
           v-model="roleFilter"
@@ -136,7 +135,7 @@ const {
                       :disabled="resettingId === item.id"
                       @click="openResetModal(item.id)"
                     >
-                      {{ resettingId === item.id ? "…" : "Reset" }}
+                      {{ resettingId === item.id ? "..." : "Reset" }}
                     </button>
                     <span v-else class="data-meta">-</span>
                   </td>
@@ -173,7 +172,7 @@ const {
                       @click.stop="openDeleteModal(item.id)"
                     >
                       <span v-if="deletingId === item.id">...</span>
-                      <span v-else>×</span>
+                      <span v-else>x</span>
                     </span>
                   </td>
                 </tr>
@@ -218,131 +217,43 @@ const {
       />
     </div>
 
-    <div
-      v-if="showDeleteModal"
-      class="modal d-block"
-      tabindex="-1"
-      style="background: rgba(0, 0, 0, 0.45)"
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
     >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirm delete</h5>
-            <button
-              type="button"
-              class="btn-close"
-              aria-label="Close"
-              :disabled="!!deletingId"
-              @click="cancelDelete"
-            ></button>
-          </div>
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{ deleteTargetUser?.email || "this user" }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
 
-          <div class="modal-body">
-            <p class="mb-0">
-              Delete
-              <span class="fw-bold">{{
-                deleteTargetUser?.email || "this user"
-              }}</span
-              >?
-            </p>
-          </div>
-
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="!!deletingId"
-              @click="cancelDelete"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-danger"
-              :disabled="!!deletingId"
-              @click="performDelete"
-            >
-              {{ deletingId ? "Deleting..." : "Delete" }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showResetModal"
-      class="modal d-block"
-      tabindex="-1"
-      style="background: rgba(0, 0, 0, 0.45)"
+    <AppConfirmDialog
+      :visible="showResetModal"
+      title="Reset password"
+      :loading="!!resettingId"
+      confirm-label="Reset password"
+      confirm-variant="warning"
+      focus-target="confirm"
+      @cancel="cancelReset"
+      @confirm="performReset"
     >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Reset password</h5>
-            <button
-              type="button"
-              class="btn-close"
-              aria-label="Close"
-              :disabled="!!resettingId"
-              @click="cancelReset"
-            ></button>
-          </div>
-
-          <div class="modal-body">
-            <p class="mb-2">
-              Reset password for
-              <span class="fw-bold">{{
-                resetTargetUser?.email || "this user"
-              }}</span
-              >?
-            </p>
-            <template v-if="resetDefaultPassword">
-              <div class="alert alert-success mb-3" role="alert">
-                Password has been reset successfully.
-              </div>
-              <div class="mb-2">
-                <div class="label-field">Default password</div>
-                <input
-                  class="form-control font-monospace"
-                  :value="resetDefaultPassword"
-                  readonly
-                />
-              </div>
-              <p class="data-meta mb-0">
-                Share this password with the user. The user must change it on
-                first login.
-              </p>
-            </template>
-            <p v-else class="data-meta mb-0">
-              Password will be set to the default. The user must change it on
-              first login.
-            </p>
-          </div>
-
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="!!resettingId"
-              @click="cancelReset"
-            >
-              {{ resetDefaultPassword ? "Close" : "Cancel" }}
-            </button>
-
-            <button
-              v-if="!resetDefaultPassword"
-              type="button"
-              class="btn btn-warning"
-              :disabled="!!resettingId"
-              @click="performReset"
-            >
-              {{ resettingId ? "Resetting..." : "Reset password" }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <p class="mb-2">
+        Reset password for
+        <span class="fw-bold">{{ resetTargetUser?.email || "this user" }}</span
+        >?
+      </p>
+      <p class="data-meta mb-0">
+        The temporary password is configured on the server. After reset, the
+        user must change it on first login.
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>
 

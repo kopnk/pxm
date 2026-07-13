@@ -1,10 +1,8 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { partners } from "~/server/db/schema/partners";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { logAudit } from "~/server/utils/audit";
+import { deletePartnerRecord } from "~/server/utils/partnerStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -21,30 +19,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  await db.transaction(async (tx) => {
+  const oldData = await deletePartnerRecord(id);
 
-    const rows = await tx
-      .select()
-      .from(partners)
-      .where(eq(partners.id, id))
-      .limit(1);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Partner not found" });
+  }
 
-    const oldData = rows[0];
-
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "Partner not found" });
-    }
-
-    await tx.delete(partners).where(eq(partners.id, id));
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "partners",
-      targetId: id,
-      oldData,
-    });
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "partners",
+    targetId: id,
+    oldData,
   });
 
   return successResponse(event, "Partner deleted");

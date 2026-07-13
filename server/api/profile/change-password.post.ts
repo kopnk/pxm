@@ -1,14 +1,18 @@
-import { defineEventHandler, readBody, createError, deleteCookie } from "h3";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
-import argon2 from "argon2";
+import { defineEventHandler, readBody, createError } from "h3";
+import { passwordChangedSignInAgainMessage } from "~/lib/entityMessages";
 import { successResponse } from "~/server/utils/response";
-import { lucia } from "~/server/auth/lucia";
 import { changePasswordSchema } from "~/server/validation/profile.schema";
 import { parseBody } from "~/server/utils/zod";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
+import {
+  changeOwnPassword,
+  clearAuthState,
+  completeNewPasswordChallenge,
+  isCognitoAuthEnabled,
+  resolveAuthSession,
+  signOutActiveSession,
+} from "~/server/utils/cognitoAuth";
+import { updateAppUserRecord } from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -29,78 +33,88 @@ export default defineEventHandler(async (event) => {
     body
   );
 
-  /* ================= GET USER ================= */
-  const rows = await db
-    .select({
-      id: users.id,
-      passwordHash: users.passwordHash,
-      mustChangePassword: users.mustChangePassword,
-    })
-    .from(users)
-    .where(eq(users.id, authUser.id))
-    .limit(1);
-
-  const user = rows[0];
-
-  if (!user) {
+  if (!isCognitoAuthEnabled()) {
     throw createError({
-      statusCode: 404,
-      statusMessage: "User not found",
+      statusCode: 500,
+      statusMessage: "Cognito auth configuration is required",
     });
   }
 
-  const forcedChange = Boolean(user.mustChangePassword);
+  const authSession = await resolveAuthSession(event);
 
-  /* ================= VERIFY OLD PASSWORD ================= */
-  if (!forcedChange) {
-    if (!currentPassword?.trim()) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Current password is required",
-      });
-    }
-
-    const valid = await argon2.verify(user.passwordHash, currentPassword);
-
-    if (!valid) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: "Current password is incorrect",
-      });
-    }
+  if (!authSession) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: "Unauthorized",
+    });
   }
 
-  /* ================= HASH NEW PASSWORD ================= */
-  const newPasswordHash = await argon2.hash(newPassword);
+  if (authSession.kind === "challenge") {
+    const activeState = await completeNewPasswordChallenge(
+      authSession.state,
+      newPassword,
+    );
 
-  /* ================= UPDATE + AUDIT (TRANSACTION) ================= */
-  await db.transaction(async (tx) => {
-
-    await tx
-      .update(users)
-      .set({
-        passwordHash: newPasswordHash,
-        mustChangePassword: false,
-        updatedAt: dbTime(),
-      })
-      .where(eq(users.id, authUser.id));
+    await updateAppUserRecord(authSession.appUser.user.id, {
+      mustChangePassword: false,
+      lastLoginAt: new Date().toISOString(),
+      updatedUser: authSession.appUser.user.id,
+      updatedBy: authSession.appUser.user.email,
+    });
 
     await logAudit({
       event,
-      actorId: authUser.id,
+      actorId: authSession.appUser.user.id,
       action: "CHANGE_PASSWORD",
       targetTable: "users",
-      targetId: authUser.id,
+      targetId: authSession.appUser.user.id,
     });
+
+    try {
+      await signOutActiveSession(activeState);
+    } catch {
+      // Local logout is still enforced even if Cognito global sign-out fails.
+    }
+
+    clearAuthState(event);
+
+    return successResponse(event, passwordChangedSignInAgainMessage());
+  }
+
+  if (!currentPassword?.trim()) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Current password is required",
+    });
+  }
+
+  await changeOwnPassword({
+    accessToken: authSession.state.accessToken,
+    currentPassword,
+    newPassword,
   });
 
-  /* ================= INVALIDATE SESSION ================= */
-  await lucia.invalidateUserSessions(authUser.id);
+  await updateAppUserRecord(authSession.appUser.user.id, {
+    mustChangePassword: false,
+    updatedUser: authSession.appUser.user.id,
+    updatedBy: authSession.appUser.user.email,
+  });
 
-  deleteCookie(event, lucia.sessionCookieName);
-
-  return successResponse(
+  await logAudit({
     event,
-    "Password changed successfully. Please login again."
-  );
+    actorId: authSession.appUser.user.id,
+    action: "CHANGE_PASSWORD",
+    targetTable: "users",
+    targetId: authSession.appUser.user.id,
+  });
+
+  try {
+    await signOutActiveSession(authSession.state);
+  } catch {
+    // Local logout is still enforced even if Cognito global sign-out fails.
+  }
+
+  clearAuthState(event);
+
+  return successResponse(event, passwordChangedSignInAgainMessage());
 });

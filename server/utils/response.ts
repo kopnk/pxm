@@ -1,12 +1,17 @@
-import { setResponseStatus } from "h3";
+import { setResponseStatus, type H3Event } from "h3";
+import type { ApiErrorEnvelope, ApiSuccessEnvelope } from "~/lib/apiEnvelope";
 import { toLocalTime } from "~/server/utils/datetime";
 
-export function successResponse(
-  event: any,
+function buildTimestamp() {
+  return toLocalTime(new Date()) ?? new Date().toISOString();
+}
+
+export function successResponse<T>(
+  event: H3Event,
   message = "Success",
-  data: any = null,
-  statusCode = 200
-) {
+  data: T | null = null,
+  statusCode = 200,
+): ApiSuccessEnvelope<T | null> {
   setResponseStatus(event, statusCode);
 
   return {
@@ -14,16 +19,16 @@ export function successResponse(
     statusCode,
     message,
     data,
-    timestamp: toLocalTime(new Date()), // ✅ WIB
+    timestamp: buildTimestamp(),
   };
 }
 
 export function errorResponse(
-  event: any,
+  event: H3Event,
   message = "Error",
   statusCode = 500,
-  errors: any = null
-) {
+  errors: unknown = null,
+): ApiErrorEnvelope {
   setResponseStatus(event, statusCode);
 
   return {
@@ -31,6 +36,6 @@ export function errorResponse(
     statusCode,
     message,
     errors,
-    timestamp: toLocalTime(new Date()), // ✅ WIB
+    timestamp: buildTimestamp(),
   };
 }

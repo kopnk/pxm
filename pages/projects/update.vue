@@ -6,6 +6,7 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessUpdated } from "@/composables/useToastMessages";
 import { useProjectForm } from "@/composables/useProjectForm";
 import { useNotify } from "@/composables/useNotify";
+import { confirmDeleteDocumentMessage } from "@/lib/entityMessages";
 import {
   useProjectFilesApi,
   isExternalProjectFile,
@@ -15,6 +16,7 @@ import { useAuthStore } from "@/stores/auth";
 
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
+import DecimalInput from "@/components/form/DecimalInput.vue";
 
 definePageMeta({});
 
@@ -30,9 +32,9 @@ const {
   clients,
   clientsError,
   isValid,
-  netPrice,
-  vatAmount,
-  grandTotal,
+  netPriceDisplay,
+  vatAmountDisplay,
+  grandTotalDisplay,
   formatCurrency,
   loadClientOptions,
   fillFromProject,
@@ -52,6 +54,8 @@ const documentUrl = ref("");
 const uploadInput = ref<HTMLInputElement | null>(null);
 const projectFiles = ref<ProjectFileItem[]>([]);
 const deletingFileId = ref<string | null>(null);
+const showDeleteFileModal = ref(false);
+const deleteFileTargetId = ref<string | null>(null);
 const fileCategory = ref("po");
 const fileCategoryOptions = [
   { value: "po", label: "PO" },
@@ -112,6 +116,17 @@ const resetDocumentFields = () => {
 };
 
 const saveProjectDocument = async (projectId: string) => {
+  const trimmedUrl = documentUrl.value.trim();
+
+  if (trimmedUrl) {
+    await createProjectFileByUrl({
+      refTable: "projects",
+      refId: projectId,
+      fileCategory: fileCategory.value,
+      externalUrl: trimmedUrl,
+    });
+  }
+
   if (selectedFile.value) {
     await uploadProjectFile({
       refTable: "projects",
@@ -119,18 +134,7 @@ const saveProjectDocument = async (projectId: string) => {
       fileCategory: fileCategory.value,
       file: selectedFile.value,
     });
-    return;
   }
-
-  const trimmedUrl = documentUrl.value.trim();
-  if (!trimmedUrl) return;
-
-  await createProjectFileByUrl({
-    refTable: "projects",
-    refId: projectId,
-    fileCategory: fileCategory.value,
-    externalUrl: trimmedUrl,
-  });
 };
 
 const handleSubmit = async () => {
@@ -159,17 +163,34 @@ const handleSubmit = async () => {
   }, toastSuccessUpdated("project"));
 };
 
-const removeFile = async (fileId: string) => {
+const requestDeleteFile = (fileId: string) => {
   if (!canDeleteFile.value) return;
-  if (!window.confirm("Delete this document permanently?")) return;
+  deleteFileTargetId.value = fileId;
+  showDeleteFileModal.value = true;
+};
 
-  deletingFileId.value = fileId;
+const cancelDeleteFile = () => {
+  if (deletingFileId.value) return;
+  showDeleteFileModal.value = false;
+  deleteFileTargetId.value = null;
+};
+
+const removeFile = async () => {
+  if (!canDeleteFile.value || !deleteFileTargetId.value) return;
+
+  const targetId = deleteFileTargetId.value;
+
   try {
-    await deleteProjectFile(fileId);
-    await loadProjectFiles();
-    notify.success("Document deleted");
-  } catch (err: any) {
-    notify.error(err?.data?.message || err?.message || "Failed to delete document");
+    await handle(async () => {
+      deletingFileId.value = targetId;
+      const response = await deleteProjectFile(targetId);
+      await loadProjectFiles();
+      return response;
+    });
+    showDeleteFileModal.value = false;
+    deleteFileTargetId.value = null;
+  } catch {
+    // `useFormHandler` already shows the toast.
   } finally {
     deletingFileId.value = null;
   }
@@ -313,8 +334,8 @@ onMounted(fetchProject);
             >
               <div class="flex-grow-1 min-w-0">
                 <div class="data-value" style="font-size: 0.95rem">
-                  [{{ String(file.fileCategory || "contract").toUpperCase() }}]
                   <template v-if="!isExternalProjectFile(file)">
+                    File:
                     <a
                       v-if="file.signedUrl"
                       :href="file.signedUrl"
@@ -326,7 +347,7 @@ onMounted(fetchProject);
                     </a>
                     <span v-else>{{ file.fileName || "Unnamed file" }}</span>
                   </template>
-                  <span v-else>{{ file.fileName || "Document URL" }}</span>
+                  <span v-else>URL: {{ file.fileName || "Document URL" }}</span>
                 </div>
                 <div
                   v-if="isExternalProjectFile(file)"
@@ -341,9 +362,9 @@ onMounted(fetchProject);
                 class="btn btn-sm btn-outline-danger px-2 py-0"
                 :disabled="deletingFileId === file.id"
                 title="Delete document"
-                @click="removeFile(file.id)"
+                @click="requestDeleteFile(file.id)"
               >
-                {{ deletingFileId === file.id ? "..." : "🗑" }}
+                {{ deletingFileId === file.id ? "..." : "Delete" }}
               </button>
             </div>
           </div>
@@ -353,48 +374,39 @@ onMounted(fetchProject);
       <FormSection title="Financial Summary">
         <div class="col-12 col-md-6">
           <label class="form-label">PO Price</label>
-          <input
-            v-model.number="form.subTotal"
-            type="number"
-            class="form-control"
-          />
-          <div class="data-meta mt-1">
+          <DecimalInput v-model="form.subTotal" />
+          <div class="number-helper">
             {{ formatCurrency(form.subTotal) }}
           </div>
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">Discount</label>
-          <input
-            v-model.number="form.discount"
-            type="number"
-            class="form-control"
-          />
+          <DecimalInput v-model="form.discount" />
+          <div class="number-helper number-helper-muted">
+            {{ formatCurrency(form.discount) }}
+          </div>
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">VAT Rate (%)</label>
-          <input
-            v-model.number="form.vatRate"
-            type="number"
-            class="form-control"
-          />
+          <DecimalInput v-model="form.vatRate" />
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">Net Price</label>
-          <input :value="netPrice" class="form-control" readonly />
+          <input :value="netPriceDisplay" class="form-control" readonly />
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">VAT Amount</label>
-          <input :value="vatAmount" class="form-control" readonly />
+          <input :value="vatAmountDisplay" class="form-control" readonly />
         </div>
 
         <div class="col-12 col-md-6">
           <label class="form-label">Grand Total</label>
           <input
-            :value="grandTotal"
+            :value="grandTotalDisplay"
             class="form-control fw-semibold"
             readonly
           />
@@ -402,4 +414,19 @@ onMounted(fetchProject);
       </FormSection>
     </template>
   </FormShell>
+
+  <AppConfirmDialog
+    :visible="showDeleteFileModal"
+    title="Delete document"
+    :loading="!!deletingFileId"
+    confirm-label="Delete"
+    confirm-variant="danger"
+    focus-target="cancel"
+    @cancel="cancelDeleteFile"
+    @confirm="removeFile"
+  >
+    <p class="mb-0">
+      {{ confirmDeleteDocumentMessage() }}
+    </p>
+  </AppConfirmDialog>
 </template>

@@ -6,7 +6,6 @@ import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useProgressStageStore } from "@/stores/progressStage";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
-import { useAuthStore } from "@/stores/auth";
 import { useProjectProgressExport } from "@/composables/useProjectProgressExport";
 import {
   createStoreFilter,
@@ -20,14 +19,11 @@ export const useProjectProgressListPage = () => {
   const { getProjectProgress, deleteProjectProgress } = useProjectProgressApi();
   const { getProgressStages } = useProgressStageApi();
   const progressStageStore = useProgressStageStore();
-  const authStore = useAuthStore();
   const { canCreate, canEdit, canDelete } =
     useListPagePermissions("project_progress");
+  const { canRead: canReadProgressStage } =
+    useListPagePermissions("progress_stage");
   const { handle } = useFormHandler();
-
-  const canCreateProjectProgress = computed(
-    () => canCreate.value && authStore.user?.role === "superadmin",
-  );
 
   const { exporting, downloadExcel } = useProjectProgressExport();
 
@@ -172,7 +168,7 @@ export const useProjectProgressListPage = () => {
     canCreate,
     canEdit,
     canDelete,
-    canCreateProjectProgress,
+    canReadProgressStage,
     exporting,
     searchFilter,
     stageFilter,

@@ -1,11 +1,67 @@
 <script setup lang="ts">
-defineProps<{
-  title: string;
-  loading: boolean;
-  submitLabel?: string;
-}>();
+import { nextTick, onMounted, ref, watch } from "vue";
 
-defineEmits(["submit", "cancel"]);
+const props = withDefaults(
+  defineProps<{
+    title: string;
+    loading: boolean;
+    submitLabel?: string;
+    autofocus?: boolean;
+  }>(),
+  {
+    autofocus: true,
+  },
+);
+
+const emit = defineEmits(["submit", "cancel"]);
+
+const formRef = ref<HTMLFormElement | null>(null);
+
+const focusableSelector = [
+  "[data-autofocus]",
+  "input:not([type='hidden']):not([disabled]):not([readonly])",
+  "select:not([disabled])",
+  "textarea:not([disabled]):not([readonly])",
+  "button:not([disabled])",
+].join(", ");
+
+const focusPrimaryField = async () => {
+  if (!props.autofocus) return;
+
+  await nextTick();
+
+  const target = formRef.value?.querySelector<HTMLElement>(focusableSelector);
+  target?.focus();
+};
+
+const focusFirstInvalidField = () => {
+  const target = formRef.value?.querySelector<HTMLElement>(":invalid");
+  target?.focus();
+};
+
+const submitForm = () => {
+  const form = formRef.value;
+  if (form && !form.checkValidity()) {
+    focusFirstInvalidField();
+    form.reportValidity();
+    return;
+  }
+
+  emit("submit");
+};
+
+onMounted(() => {
+  void focusPrimaryField();
+});
+
+watch(
+  () => props.loading,
+  (loading, wasLoading) => {
+    if (wasLoading && !loading) {
+      void focusPrimaryField();
+    }
+  },
+);
 </script>
 
 <template>
@@ -21,7 +77,7 @@ defineEmits(["submit", "cancel"]);
               <slot name="header-actions" />
             </div>
 
-            <form @submit.prevent="$emit('submit')">
+            <form ref="formRef" @submit.prevent="submitForm">
               <slot />
 
               <div class="d-flex justify-content-end gap-2 mt-4">

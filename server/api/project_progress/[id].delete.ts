@@ -1,76 +1,49 @@
-import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { projectProgress } from "~/server/db/schema/project_progress";
-
-import { eq } from "drizzle-orm";
-
-import { successResponse } from "~/server/utils/response";
+import { createError, defineEventHandler } from "h3";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { logAudit } from "~/server/utils/audit";
+import { createHttpErrorFromUnknown } from "~/server/utils/httpError";
+import { ensureProjectProgressDeleteAllowed } from "~/server/utils/projectDeleteGuard";
+import {
+  deleteProjectProgressRecord,
+  getProjectProgressRecordById,
+} from "~/server/utils/projectProgressStore";
+import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
-
-  /* ================= AUTH ================= */
-
   const forbidden = requireDeleteSuperadmin(event);
   if (forbidden) return forbidden;
 
   const userId = event.context.user?.id;
-
   if (!userId) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  /* ================= PARAM ================= */
-
   const id = event.context.params?.id;
-
   if (!id) {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  /* ================= TRANSACTION ================= */
+  const oldData = await getProjectProgressRecordById(id);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Project progress not found" });
+  }
 
-  await db.transaction(async (tx) => {
+  try {
+    await ensureProjectProgressDeleteAllowed(id);
+  } catch (error: unknown) {
+    throw createHttpErrorFromUnknown(error, "Failed to delete project progress");
+  }
 
-    /* ===== GET OLD DATA ===== */
+  await deleteProjectProgressRecord(id);
 
-    const rows = await tx
-      .select()
-      .from(projectProgress)
-      .where(eq(projectProgress.id, id))
-      .limit(1);
-
-    const oldData = rows[0];
-
-    if (!oldData) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Project progress not found",
-      });
-    }
-
-    /* ===== DELETE ===== */
-
-    await tx
-      .delete(projectProgress)
-      .where(eq(projectProgress.id, id));
-
-    /* ===== AUDIT ===== */
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "project_progress",
-      targetId: id,
-      oldData,
-    });
-
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "project_progress",
+    targetId: id,
+    oldData,
   });
 
-  /* ================= RESPONSE ================= */
-
   return successResponse(event, "Project progress deleted");
-
 });

@@ -1,3 +1,41 @@
+<script setup lang="ts">
+import { nextTick, onMounted, watch } from "vue";
+
+const route = useRoute();
+
+const focusPageTarget = async () => {
+  await nextTick();
+
+  if (document.querySelector("[data-autofocus]")) {
+    return;
+  }
+
+  const main = document.querySelector("main");
+  const target =
+    main?.querySelector<HTMLElement>("[data-page-focus]") ??
+    main?.querySelector<HTMLElement>("h1, h2, h3, h4");
+
+  if (!target) return;
+
+  if (!target.hasAttribute("tabindex")) {
+    target.setAttribute("tabindex", "-1");
+  }
+
+  target.focus({ preventScroll: true });
+};
+
+onMounted(() => {
+  void focusPageTarget();
+});
+
+watch(
+  () => route.fullPath,
+  () => {
+    void focusPageTarget();
+  },
+);
+</script>
+
 <template>
   <div class="app-wrapper">
     <Header />
@@ -15,17 +53,15 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden; /* ⛔ body tidak scroll */
+  overflow: hidden; /* body tidak scroll */
 }
 
-/* FOOTER STICKY */
 footer {
   position: sticky;
   bottom: 0;
   z-index: 1100;
 }
 
-/* CONTENT SCROLL AREA — z-index di bawah navbar agar dropdown tidak ketimpa */
 .main-scroll {
   flex: 1;
   position: relative;

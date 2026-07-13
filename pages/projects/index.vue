@@ -45,7 +45,7 @@ const onExportExcel = () => {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Projects</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Projects</h4>
 
       <NuxtLink v-if="canCreate" to="/projects/create" class="btn btn-primary">
         + New Project
@@ -61,7 +61,7 @@ const onExportExcel = () => {
           v-model="searchFilter"
           type="search"
           class="form-control form-control-sm projects-filter-search"
-          placeholder="Project, PO, PR/SC, client…"
+          placeholder="Project, PO, PR/SC, client..."
         />
         <select
           v-model="statusFilter"
@@ -79,7 +79,7 @@ const onExportExcel = () => {
         <span class="text-nowrap flex-shrink-0 small text-muted">
           Total PO Price
           <span class="fw-bold text-dark ms-1">{{
-            store.loading ? "…" : formatCurrency(store.meta.listTotalPoPrice)
+            store.loading ? "..." : formatCurrency(store.meta.listTotalPoPrice)
           }}</span>
         </span>
         <button
@@ -89,7 +89,7 @@ const onExportExcel = () => {
           aria-label="Download Excel for current search and status filters"
           @click="onExportExcel"
         >
-          {{ exporting ? "…" : "Excel" }}
+          {{ exporting ? "..." : "Excel" }}
         </button>
       </div>
     </div>
@@ -319,57 +319,24 @@ const onExportExcel = () => {
     </div>
 
     <!-- DELETE MODAL -->
-    <div
-      v-if="showDeleteModal"
-      class="modal d-block"
-      tabindex="-1"
-      style="background: rgba(0, 0, 0, 0.45)"
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
     >
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirm delete</h5>
-            <button
-              type="button"
-              class="btn-close"
-              aria-label="Close"
-              :disabled="!!deletingId"
-              @click="cancelDelete"
-            ></button>
-          </div>
-
-          <div class="modal-body">
-            <p class="mb-0">
-              Delete
-              <span class="fw-bold">{{
-                deleteTargetProject?.projectName || "this project"
-              }}</span
-              >?
-            </p>
-          </div>
-
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              :disabled="!!deletingId"
-              @click="cancelDelete"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              class="btn btn-danger"
-              :disabled="!!deletingId"
-              @click="performDelete"
-            >
-              {{ deletingId ? "Deleting..." : "Delete" }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{
+          deleteTargetProject?.projectName || "this project"
+        }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>
 

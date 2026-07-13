@@ -48,7 +48,7 @@ const submit = async () => {
       addressText: form.addressText,
       contactName: form.contactName,
       contactPhone: form.contactPhone,
-      contactEmail: form.contactEmail,
+      contactEmail: form.contactEmail || undefined,
       signatoryName: form.signatoryName || undefined,
       signatoryTitle: form.signatoryTitle || undefined,
       rating: form.rating,
@@ -85,7 +85,13 @@ const submit = async () => {
     <FormSection>
       <div class="col-md-6">
         <label class="label-field">Name</label>
-        <input v-model="form.name" class="form-control" />
+        <input
+          v-model="form.name"
+          name="name"
+          class="form-control"
+          required
+          minlength="2"
+        />
       </div>
 
       <div class="col-md-6">
@@ -154,7 +160,12 @@ const submit = async () => {
 
       <div class="col-md-6">
         <label class="label-field">Email</label>
-        <input v-model="form.contactEmail" class="form-control" />
+        <input
+          v-model="form.contactEmail"
+          name="contactEmail"
+          type="email"
+          class="form-control"
+        />
       </div>
 
       <div class="col-md-6">
@@ -170,7 +181,7 @@ const submit = async () => {
       <div class="col-md-6">
         <label>Rating</label>
         <input
-          v-model="form.rating"
+          v-model.number="form.rating"
           type="number"
           step="0.1"
           class="form-control"

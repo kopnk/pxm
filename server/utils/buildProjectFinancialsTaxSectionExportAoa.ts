@@ -1,6 +1,3 @@
-import type { SQL } from "drizzle-orm";
-import { sql } from "drizzle-orm";
-import { projectFinancials } from "~/server/db/schema/project_financials";
 import {
   pfClientTaxRupiahForDisplay,
   pfFormatIdDate,
@@ -43,28 +40,17 @@ export type ProjectFinancialTaxSectionExportRow = {
 };
 
 /** Filter baris = sama logika filter di halaman tax-in / tax-out / pph. */
-export function projectFinancialsTaxSectionKindWhere(
+export function matchesProjectFinancialsTaxSectionKind(
   kind: ProjectFinancialTaxSectionKind,
-): SQL {
+  row: Pick<ProjectFinancialTaxSectionExportRow, "flowDirection" | "taxIn" | "taxOut" | "pph">,
+) {
   if (kind === "taxIn") {
-    return sql`(
-      ${projectFinancials.flowDirection} = 'in'
-      AND ${projectFinancials.taxIn} IS NOT NULL
-      AND (${projectFinancials.taxIn})::numeric > 0
-    )`;
+    return row.flowDirection === "in" && Number(row.taxIn ?? 0) > 0;
   }
   if (kind === "taxOut") {
-    return sql`(
-      ${projectFinancials.flowDirection} = 'out'
-      AND ${projectFinancials.taxOut} IS NOT NULL
-      AND (${projectFinancials.taxOut})::numeric > 0
-    )`;
+    return row.flowDirection === "out" && Number(row.taxOut ?? 0) > 0;
   }
-  return sql`(
-    ${projectFinancials.flowDirection} = 'in'
-    AND ${projectFinancials.pph} IS NOT NULL
-    AND (${projectFinancials.pph})::numeric > 0
-  )`;
+  return row.flowDirection === "in" && Number(row.pph ?? 0) > 0;
 }
 
 function cityFromAddressMeta(meta: unknown): string {

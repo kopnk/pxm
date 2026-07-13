@@ -11,6 +11,7 @@ import { useRouter, navigateTo } from "#imports";
 
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
+import DecimalInput from "@/components/form/DecimalInput.vue";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -23,9 +24,9 @@ const {
   clients,
   clientsError,
   isValid,
-  netPrice,
-  vatAmount,
-  grandTotal,
+  netPriceDisplay,
+  vatAmountDisplay,
+  grandTotalDisplay,
   formatCurrency,
   loadClientOptions,
   buildPayload,
@@ -53,6 +54,17 @@ const resetDocumentFields = () => {
 };
 
 const saveProjectDocument = async (projectId: string) => {
+  const trimmedUrl = documentUrl.value.trim();
+
+  if (trimmedUrl) {
+    await createProjectFileByUrl({
+      refTable: "projects",
+      refId: projectId,
+      fileCategory: fileCategory.value,
+      externalUrl: trimmedUrl,
+    });
+  }
+
   if (selectedFile.value) {
     await uploadProjectFile({
       refTable: "projects",
@@ -60,19 +72,11 @@ const saveProjectDocument = async (projectId: string) => {
       fileCategory: fileCategory.value,
       file: selectedFile.value,
     });
-    return;
   }
-
-  const trimmedUrl = documentUrl.value.trim();
-  if (!trimmedUrl) return;
-
-  await createProjectFileByUrl({
-    refTable: "projects",
-    refId: projectId,
-    fileCategory: fileCategory.value,
-    externalUrl: trimmedUrl,
-  });
 };
+
+const getCreatedProjectId = (created: any) =>
+  (created?.data?.id || created?.id) as string | undefined;
 
 
 /* ================= ROLE GUARD ================= */
@@ -102,7 +106,7 @@ const submit = async () => {
 
   await handle(async () => {
     const created: any = await createProject(buildPayload());
-    const projectId = created?.data?.id as string | undefined;
+    const projectId = getCreatedProjectId(created);
 
     if (projectId && (selectedFile.value || documentUrl.value.trim())) {
       try {
@@ -253,47 +257,38 @@ const submit = async () => {
     <FormSection title="Financial Summary">
       <div class="col-12 col-md-6">
         <label class="form-label">PO Price</label>
-        <input
-          v-model.number="form.subTotal"
-          type="number"
-          class="form-control"
-        />
-        <div class="data-meta mt-1">
+        <DecimalInput v-model="form.subTotal" />
+        <div class="number-helper">
           {{ formatCurrency(form.subTotal) }}
         </div>
       </div>
 
       <div class="col-12 col-md-6">
         <label class="form-label">Discount</label>
-        <input
-          v-model.number="form.discount"
-          type="number"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.discount" />
+        <div class="number-helper number-helper-muted">
+          {{ formatCurrency(form.discount) }}
+        </div>
       </div>
 
       <div class="col-12 col-md-6">
         <label class="form-label">VAT Rate (%)</label>
-        <input
-          v-model.number="form.vatRate"
-          type="number"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.vatRate" />
       </div>
 
       <div class="col-12 col-md-6">
         <label class="form-label">Net Price</label>
-        <input :value="netPrice" class="form-control" readonly />
+        <input :value="netPriceDisplay" class="form-control" readonly />
       </div>
 
       <div class="col-12 col-md-6">
         <label class="form-label">VAT Amount</label>
-        <input :value="vatAmount" class="form-control" readonly />
+        <input :value="vatAmountDisplay" class="form-control" readonly />
       </div>
 
       <div class="col-12 col-md-6">
         <label class="form-label">Grand Total</label>
-        <input :value="grandTotal" class="form-control fw-semibold" readonly />
+        <input :value="grandTotalDisplay" class="form-control fw-semibold" readonly />
       </div>
     </FormSection>
   </FormShell>

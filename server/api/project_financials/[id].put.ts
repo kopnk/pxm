@@ -1,26 +1,14 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFinancials } from "~/server/db/schema/project_financials";
-import { eq } from "drizzle-orm";
 import { parseBody } from "~/server/utils/zod";
 import { updateProjectFinancialSchema } from "~/server/validation/project_financials.schema";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
-import { mergePgNumeric } from "~/server/utils/pgNumeric";
 import {
-  syncProgressAfterOutFlowFinancialSave,
-} from "~/server/utils/syncProjectFinancialPaidWithProgress";
-
-function pickStr(
-  bodyVal: string | null | undefined,
-  previous: string | null,
-): string | null {
-  if (bodyVal === undefined) return previous;
-  return bodyVal ?? null;
-}
+  getProjectFinancialRecordById,
+  updateProjectFinancialRecord,
+} from "~/server/utils/projectFinancialStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin"]);
@@ -38,142 +26,75 @@ export default defineEventHandler(async (event) => {
 
   const body = parseBody(updateProjectFinancialSchema, await readBody(event));
 
-  const updated = await db.transaction(async (tx) => {
-    const oldRows = await tx
-      .select()
-      .from(projectFinancials)
-      .where(eq(projectFinancials.id, id))
-      .limit(1);
-
-    const oldData = oldRows[0];
-
-    if (!oldData) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Project financial not found",
-      });
-    }
-
-    const rows = await tx
-      .update(projectFinancials)
-      .set({
-        projectId: body.projectId ?? oldData.projectId,
-        projectDetailId: body.projectDetailId ?? oldData.projectDetailId,
-        projectProgressId:
-          body.projectProgressId === undefined
-            ? oldData.projectProgressId
-            : body.projectProgressId ?? null,
-
-        balapId:
-          body.balapId === undefined ? oldData.balapId : body.balapId ?? null,
-        bastId:
-          body.bastId === undefined ? oldData.bastId : body.bastId ?? null,
-        balapNumber: pickStr(body.balapNumber, oldData.balapNumber),
-        balapDate: pickStr(body.balapDate, oldData.balapDate),
-
-        flowDirection: body.flowDirection ?? oldData.flowDirection,
-
-        status: body.status ?? oldData.status,
-
-        docType: pickStr(body.docType, oldData.docType),
-        docNumber: pickStr(body.docNumber, oldData.docNumber),
-        docDate: pickStr(body.docDate, oldData.docDate),
-
-        vbNumber: pickStr(body.vbNumber, oldData.vbNumber),
-        vbDate: pickStr(body.vbDate, oldData.vbDate),
-        mcmNumber: pickStr(body.mcmNumber, oldData.mcmNumber),
-        mcmDate: pickStr(body.mcmDate, oldData.mcmDate),
-        paidNumber: pickStr(body.paidNumber, oldData.paidNumber),
-        paidDate: pickStr(body.paidDate, oldData.paidDate),
-
-        taxIn: mergePgNumeric(body.taxIn, oldData.taxIn, 4),
-        taxOut: mergePgNumeric(body.taxOut, oldData.taxOut, 4),
-        pph: mergePgNumeric(body.pph, oldData.pph, 4),
-
-        note: pickStr(body.note, oldData.note),
-        stage:
-          body.stage === undefined ? oldData.stage : body.stage ?? null,
-
-        clientId:
-          body.clientId === undefined ? oldData.clientId : body.clientId ?? null,
-        partnerId:
-          body.partnerId === undefined
-            ? oldData.partnerId
-            : body.partnerId ?? null,
-
-        bastNumber: pickStr(body.bastNumber, oldData.bastNumber),
-        bastDate: pickStr(body.bastDate, oldData.bastDate),
-
-        poNumberPartner: pickStr(body.poNumberPartner, oldData.poNumberPartner),
-        poDatePartner: pickStr(body.poDatePartner, oldData.poDatePartner),
-        invoiceNumberPartner: pickStr(
-          body.invoiceNumberPartner,
-          oldData.invoiceNumberPartner,
-        ),
-        invoiceDatePartner: pickStr(
-          body.invoiceDatePartner,
-          oldData.invoiceDatePartner,
-        ),
-        fpNumberPartner: pickStr(body.fpNumberPartner, oldData.fpNumberPartner),
-        fpDatePartner: pickStr(body.fpDatePartner, oldData.fpDatePartner),
-        qtyPartner: mergePgNumeric(body.qtyPartner, oldData.qtyPartner, 4),
-        unitPricePartner: mergePgNumeric(
-          body.unitPricePartner,
-          oldData.unitPricePartner,
-          2,
-        ),
-
-        poNumberClient: pickStr(body.poNumberClient, oldData.poNumberClient),
-        poDateClient: pickStr(body.poDateClient, oldData.poDateClient),
-        invoiceNumberClient: pickStr(
-          body.invoiceNumberClient,
-          oldData.invoiceNumberClient,
-        ),
-        invoiceDateClient: pickStr(
-          body.invoiceDateClient,
-          oldData.invoiceDateClient,
-        ),
-        fpNumberClient: pickStr(body.fpNumberClient, oldData.fpNumberClient),
-        fpDateClient: pickStr(body.fpDateClient, oldData.fpDateClient),
-        qtyClient: mergePgNumeric(body.qtyClient, oldData.qtyClient, 4),
-        unitPriceClient: mergePgNumeric(
-          body.unitPriceClient,
-          oldData.unitPriceClient,
-          2,
-        ),
-
-        updatedUser: userId,
-        updatedAt: dbTime(),
-      })
-      .where(eq(projectFinancials.id, id))
-      .returning();
-
-    const updatedRow = rows[0];
-
-    if (!updatedRow) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: "Update failed",
-      });
-    }
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "project_financials",
-      targetId: id,
-      oldData,
-      newData: updatedRow,
+  const oldData = await getProjectFinancialRecordById(id);
+  if (!oldData) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Project financial not found",
     });
+  }
 
-    await syncProgressAfterOutFlowFinancialSave(tx, {
-      projectDetailId: updatedRow.projectDetailId,
-      flowDirection: updatedRow.flowDirection,
-      paidDate: updatedRow.paidDate,
+  const updated = await updateProjectFinancialRecord(id, {
+    projectId: body.projectId,
+    projectDetailId: body.projectDetailId,
+    projectProgressId: body.projectProgressId,
+    balapId: body.balapId,
+    bastId: body.bastId,
+    balapNumber: body.balapNumber,
+    balapDate: body.balapDate,
+    flowDirection: body.flowDirection,
+    status: body.status,
+    docType: body.docType,
+    docNumber: body.docNumber,
+    docDate: body.docDate,
+    vbNumber: body.vbNumber,
+    vbDate: body.vbDate,
+    mcmNumber: body.mcmNumber,
+    mcmDate: body.mcmDate,
+    paidNumber: body.paidNumber,
+    paidDate: body.paidDate,
+    taxIn: body.taxIn,
+    taxOut: body.taxOut,
+    pph: body.pph,
+    note: body.note,
+    stage: body.stage,
+    clientId: body.clientId,
+    partnerId: body.partnerId,
+    bastNumber: body.bastNumber,
+    bastDate: body.bastDate,
+    poNumberPartner: body.poNumberPartner,
+    poDatePartner: body.poDatePartner,
+    invoiceNumberPartner: body.invoiceNumberPartner,
+    invoiceDatePartner: body.invoiceDatePartner,
+    fpNumberPartner: body.fpNumberPartner,
+    fpDatePartner: body.fpDatePartner,
+    qtyPartner: body.qtyPartner,
+    unitPricePartner: body.unitPricePartner,
+    poNumberClient: body.poNumberClient,
+    poDateClient: body.poDateClient,
+    invoiceNumberClient: body.invoiceNumberClient,
+    invoiceDateClient: body.invoiceDateClient,
+    fpNumberClient: body.fpNumberClient,
+    fpDateClient: body.fpDateClient,
+    qtyClient: body.qtyClient,
+    unitPriceClient: body.unitPriceClient,
+    updatedUser: userId,
+  });
+  if (!updated) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Project financial not found",
     });
+  }
 
-    return updatedRow;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "project_financials",
+    targetId: id,
+    oldData,
+    newData: updated,
   });
 
   return successResponse(

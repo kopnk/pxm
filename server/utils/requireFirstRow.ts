@@ -1,6 +1,6 @@
 import { createError } from "h3";
 
-/** Guard after Drizzle `.returning()` — throws 404 when no row. */
+/** Guard for create/update result arrays — throws 404 when no row is returned. */
 export function requireFirstRow<T>(
   rows: T[],
   message = "Record not found",

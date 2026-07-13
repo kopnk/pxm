@@ -47,11 +47,18 @@ export const RLS_MENU_REGISTRY = [
     staffDefault: "ru",
   },
   {
+    key: "progress_stage",
+    label: "Progress Stage",
+    route: "/progress-stage",
+    adminDefault: "cru",
+    staffDefault: "r",
+  },
+  {
     key: "project_financials",
     label: "Financial",
     route: "/project-financials",
     adminDefault: "cru",
-    staffDefault: "u",
+    staffDefault: "r",
   },
   {
     key: "tax_in",
@@ -99,7 +106,7 @@ export const RLS_MENU_REGISTRY = [
     key: "users",
     label: "Users",
     route: "/users",
-    adminDefault: "ru",
+    adminDefault: "cru",
     staffDefault: "none",
   },
   {
@@ -169,12 +176,6 @@ function buildMatrixFromRegistry(
 }
 
 /** Admin tidak boleh delete di menu manapun (kebijakan tetap). */
-function stripAdminDeletePermissions(matrix: RlsMatrix): void {
-  for (const resource of RLS_RESOURCES) {
-    matrix[resource].delete = false;
-  }
-}
-
 /** Superadmin — full access on every registered menu. */
 export function buildSuperadminMatrix(): RlsMatrix {
   return buildMatrixFromRegistry(() => "full");
@@ -182,9 +183,7 @@ export function buildSuperadminMatrix(): RlsMatrix {
 
 /** Default admin template (derived from registry `adminDefault`). */
 export function buildAdminDefaultMatrix(): RlsMatrix {
-  const matrix = buildMatrixFromRegistry((menu) => menu.adminDefault);
-  stripAdminDeletePermissions(matrix);
-  return matrix;
+  return buildMatrixFromRegistry((menu) => menu.adminDefault);
 }
 
 /** Default staff template (derived from registry `staffDefault`). */
@@ -219,18 +218,7 @@ export function normalizeRlsMatrix(
     }
   }
 
-  if (normalizedRole === "admin") {
-    stripAdminDeletePermissions(base);
-  }
-
   return base;
-}
-
-export function isAdminDeleteActionLocked(
-  role?: string | null,
-  action?: RlsAction,
-): boolean {
-  return role?.toLowerCase() === "admin" && action === "delete";
 }
 
 export function hasRlsPermission(

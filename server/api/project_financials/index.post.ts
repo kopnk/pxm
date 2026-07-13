@@ -1,17 +1,11 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFinancials } from "~/server/db/schema/project_financials";
 import { parseBody } from "~/server/utils/zod";
 import { createProjectFinancialSchema } from "~/server/validation/project_financials.schema";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
-import { numToPgString } from "~/server/utils/pgNumeric";
-import {
-  syncProgressAfterOutFlowFinancialSave,
-} from "~/server/utils/syncProjectFinancialPaidWithProgress";
+import { createProjectFinancialRecord } from "~/server/utils/projectFinancialStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin"]);
@@ -27,89 +21,61 @@ export default defineEventHandler(async (event) => {
     await readBody(event),
   );
 
-  const created = await db.transaction(async (tx) => {
-    const rows = await tx.insert(projectFinancials).values({
-      projectId: body.projectId,
-      projectDetailId: body.projectDetailId,
-      projectProgressId: body.projectProgressId ?? null,
+  const created = await createProjectFinancialRecord({
+    projectId: body.projectId,
+    projectDetailId: body.projectDetailId,
+    projectProgressId: body.projectProgressId ?? null,
+    balapId: body.balapId ?? null,
+    bastId: body.bastId ?? null,
+    balapNumber: body.balapNumber ?? null,
+    balapDate: body.balapDate ?? null,
+    flowDirection: body.flowDirection,
+    status: body.status ?? "draft",
+    docType: body.docType ?? null,
+    docNumber: body.docNumber ?? null,
+    docDate: body.docDate ?? null,
+    vbNumber: body.vbNumber ?? null,
+    vbDate: body.vbDate ?? null,
+    mcmNumber: body.mcmNumber ?? null,
+    mcmDate: body.mcmDate ?? null,
+    paidNumber: body.paidNumber ?? null,
+    paidDate: body.paidDate ?? null,
+    taxIn: body.taxIn ?? null,
+    taxOut: body.taxOut ?? null,
+    pph: body.pph ?? null,
+    note: body.note ?? null,
+    stage: body.stage ?? null,
+    clientId: body.clientId ?? null,
+    partnerId: body.partnerId ?? null,
+    bastNumber: body.bastNumber ?? null,
+    bastDate: body.bastDate ?? null,
+    poNumberPartner: body.poNumberPartner ?? null,
+    poDatePartner: body.poDatePartner ?? null,
+    invoiceNumberPartner: body.invoiceNumberPartner ?? null,
+    invoiceDatePartner: body.invoiceDatePartner ?? null,
+    fpNumberPartner: body.fpNumberPartner ?? null,
+    fpDatePartner: body.fpDatePartner ?? null,
+    qtyPartner: body.qtyPartner ?? null,
+    unitPricePartner: body.unitPricePartner ?? null,
+    poNumberClient: body.poNumberClient ?? null,
+    poDateClient: body.poDateClient ?? null,
+    invoiceNumberClient: body.invoiceNumberClient ?? null,
+    invoiceDateClient: body.invoiceDateClient ?? null,
+    fpNumberClient: body.fpNumberClient ?? null,
+    fpDateClient: body.fpDateClient ?? null,
+    qtyClient: body.qtyClient ?? null,
+    unitPriceClient: body.unitPriceClient ?? null,
+    createdUser: userId,
+    updatedUser: userId,
+  });
 
-      balapId: body.balapId ?? null,
-      bastId: body.bastId ?? null,
-      balapNumber: body.balapNumber ?? null,
-      balapDate: body.balapDate ?? null,
-
-      flowDirection: body.flowDirection,
-
-      status: body.status ?? "draft",
-
-      docType: body.docType ?? null,
-      docNumber: body.docNumber ?? null,
-      docDate: body.docDate ?? null,
-      vbNumber: body.vbNumber ?? null,
-      vbDate: body.vbDate ?? null,
-      mcmNumber: body.mcmNumber ?? null,
-      mcmDate: body.mcmDate ?? null,
-      paidNumber: body.paidNumber ?? null,
-      paidDate: body.paidDate ?? null,
-      taxIn: numToPgString(body.taxIn, 4),
-      taxOut: numToPgString(body.taxOut, 4),
-      pph: numToPgString(body.pph, 4),
-      note: body.note ?? null,
-      stage: body.stage ?? null,
-
-      clientId: body.clientId ?? null,
-      partnerId: body.partnerId ?? null,
-
-      bastNumber: body.bastNumber ?? null,
-      bastDate: body.bastDate ?? null,
-
-      poNumberPartner: body.poNumberPartner ?? null,
-      poDatePartner: body.poDatePartner ?? null,
-      invoiceNumberPartner: body.invoiceNumberPartner ?? null,
-      invoiceDatePartner: body.invoiceDatePartner ?? null,
-      fpNumberPartner: body.fpNumberPartner ?? null,
-      fpDatePartner: body.fpDatePartner ?? null,
-      qtyPartner: numToPgString(body.qtyPartner, 4),
-      unitPricePartner: numToPgString(body.unitPricePartner, 2),
-
-      poNumberClient: body.poNumberClient ?? null,
-      poDateClient: body.poDateClient ?? null,
-      invoiceNumberClient: body.invoiceNumberClient ?? null,
-      invoiceDateClient: body.invoiceDateClient ?? null,
-      fpNumberClient: body.fpNumberClient ?? null,
-      fpDateClient: body.fpDateClient ?? null,
-      qtyClient: numToPgString(body.qtyClient, 4),
-      unitPriceClient: numToPgString(body.unitPriceClient, 2),
-
-      createdUser: userId,
-      createdAt: dbTime(),
-      updatedAt: dbTime(),
-    }).returning();
-
-    const createdRow = rows[0];
-    if (!createdRow) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: "Insert failed",
-      });
-    }
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "CREATE",
-      targetTable: "project_financials",
-      targetId: createdRow.id,
-      newData: createdRow,
-    });
-
-    await syncProgressAfterOutFlowFinancialSave(tx, {
-      projectDetailId: createdRow.projectDetailId,
-      flowDirection: createdRow.flowDirection,
-      paidDate: createdRow.paidDate,
-    });
-
-    return createdRow;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "CREATE",
+    targetTable: "project_financials",
+    targetId: created.id,
+    newData: created,
   });
 
   return successResponse(

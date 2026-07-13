@@ -1,10 +1,11 @@
-import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { progressStage } from "~/server/db/schema/progress_stage";
-import { eq } from "drizzle-orm";
-import { successResponse } from "~/server/utils/response";
-import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
+import { createError, defineEventHandler } from "h3";
 import { logAudit } from "~/server/utils/audit";
+import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
+import {
+  deleteProgressStageRecord,
+  getProgressStageRecordById,
+} from "~/server/utils/progressStageStore";
+import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
 
@@ -21,30 +22,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  await db.transaction(async (tx) => {
+  const oldData = await getProgressStageRecordById(id);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });
+  }
 
-    const rows = await tx
-      .select()
-      .from(progressStage)
-      .where(eq(progressStage.id, id))
-      .limit(1);
+  await deleteProgressStageRecord(id);
 
-    const oldData = rows[0];
-
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "Progress stage not found" });
-    }
-
-    await tx.delete(progressStage).where(eq(progressStage.id, id));
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "progress_stage",
-      targetId: id,
-      oldData,
-    });
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "progress_stage",
+    targetId: id,
+    oldData,
   });
 
   return successResponse(event, "Progress stage deleted");

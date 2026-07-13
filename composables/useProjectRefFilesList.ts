@@ -4,7 +4,8 @@ import {
   useProjectFilesApi,
   type ProjectFileItem,
 } from "@/composables/useProjectFilesApi";
-import { useNotify } from "@/composables/useNotify";
+import { useFormHandler } from "@/composables/useFormHandler";
+import { confirmDeleteDocumentMessage } from "@/lib/entityMessages";
 
 export function useProjectRefFilesList(
   refTable: string,
@@ -12,11 +13,16 @@ export function useProjectRefFilesList(
 ) {
   const { getProjectFiles, deleteProjectFile } = useProjectFilesApi();
   const auth = useAuthStore();
-  const notify = useNotify();
+  const { handle } = useFormHandler();
 
   const projectFiles = ref<ProjectFileItem[]>([]);
   const deletingFileId = ref<string | null>(null);
+  const showDeleteModal = ref(false);
+  const deleteTargetId = ref<string | null>(null);
   const canDelete = computed(() => auth.user?.role === "superadmin");
+  const deleteTargetFile = computed(() =>
+    projectFiles.value.find((file) => file.id === deleteTargetId.value),
+  );
 
   const docsForCategory = (category: string) =>
     projectFiles.value.filter((file) => file.fileCategory === category);
@@ -32,17 +38,34 @@ export function useProjectRefFilesList(
     });
   };
 
-  const remove = async (fileId: string) => {
+  const requestDelete = (fileId: string) => {
     if (!canDelete.value) return;
-    if (!window.confirm("Delete this document permanently?")) return;
+    deleteTargetId.value = fileId;
+    showDeleteModal.value = true;
+  };
 
-    deletingFileId.value = fileId;
+  const cancelDelete = () => {
+    if (deletingFileId.value) return;
+    showDeleteModal.value = false;
+    deleteTargetId.value = null;
+  };
+
+  const remove = async () => {
+    if (!canDelete.value || !deleteTargetId.value) return;
+
+    const fileId = deleteTargetId.value;
+
     try {
-      await deleteProjectFile(fileId);
-      await load();
-      notify.success("Document deleted");
-    } catch (err: any) {
-      notify.error(err?.data?.message || err?.message || "Delete failed");
+      await handle(async () => {
+        deletingFileId.value = fileId;
+        const response = await deleteProjectFile(fileId);
+        await load();
+        return response;
+      });
+      showDeleteModal.value = false;
+      deleteTargetId.value = null;
+    } catch {
+      // `useFormHandler` already shows the toast.
     } finally {
       deletingFileId.value = null;
     }
@@ -51,9 +74,14 @@ export function useProjectRefFilesList(
   return {
     projectFiles,
     deletingFileId,
+    showDeleteModal,
+    deleteTargetFile,
     canDelete,
     docsForCategory,
     load,
+    requestDelete,
+    cancelDelete,
     remove,
+    deleteMessage: confirmDeleteDocumentMessage,
   };
 }

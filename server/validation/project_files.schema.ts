@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 
+const normalizeManagedUrlPrefix = (value?: string) =>
+  value?.trim().replace(/\/+$/, "").toLowerCase() || "";
+
+const managedStoragePrefixes = [
+  normalizeManagedUrlPrefix(process.env.AWS_APP_FILES_CLOUDFRONT_DOMAIN),
+  normalizeManagedUrlPrefix(process.env.APP_FILES_CLOUDFRONT_DOMAIN),
+].filter(Boolean);
+
 export const projectFileRefTableSchema = z.enum([
   "projects",
   "project_financials",
@@ -17,8 +25,15 @@ export const externalFileUrlSchema = z
     "Invalid URL scheme",
   )
   .refine(
-    (value) => !/supabase\.co\/storage/i.test(value),
-    "Use Upload File for Supabase storage",
+    (value) => !value.toLowerCase().startsWith("s3://"),
+    "Use Upload File for managed app storage",
+  )
+  .refine(
+    (value) =>
+      !managedStoragePrefixes.some((prefix) =>
+        value.toLowerCase().startsWith(prefix),
+      ),
+    "Use Upload File for managed app storage",
   );
 
 export const uploadProjectFileSchema = z.object({

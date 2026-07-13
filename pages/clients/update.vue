@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({});
 
-import { reactive, ref, onMounted, computed } from "vue";
+import { reactive, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "#imports";
 import { useClientsApi } from "@/composables/useClientsApi";
 import { useFormHandler } from "@/composables/useFormHandler";
@@ -39,9 +39,6 @@ const form = reactive({
   isActive: true,
 });
 
-/* ================= VALIDATION ================= */
-const isValid = computed(() => form.name.trim().length >= 2);
-
 /* ================= FETCH DETAIL ================= */
 onMounted(async () => {
   if (!id) return;
@@ -72,8 +69,6 @@ onMounted(async () => {
 
 /* ================= SUBMIT ================= */
 const submit = async () => {
-  if (!isValid.value) return;
-
   await handle(async () => {
     await updateClient(id, { ...form });
     await router.replace("/clients");
@@ -96,7 +91,13 @@ const submit = async () => {
       <FormSection>
         <div class="col-12 col-md-6">
           <label class="label-field">Name</label>
-          <input v-model="form.name" class="form-control" />
+          <input
+            v-model="form.name"
+            name="name"
+            class="form-control"
+            required
+            minlength="2"
+          />
         </div>
 
         <div class="col-12 col-md-6">
@@ -157,7 +158,12 @@ const submit = async () => {
 
         <div class="col-12 col-md-4">
           <label class="label-field">Contact Email</label>
-          <input v-model="form.contactEmail" class="form-control" />
+          <input
+            v-model="form.contactEmail"
+            name="contactEmail"
+            type="email"
+            class="form-control"
+          />
         </div>
 
         <div class="col-12 col-md-6">

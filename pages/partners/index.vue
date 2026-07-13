@@ -5,13 +5,18 @@ const {
   store,
   searchFilter,
   isActiveFilter,
+  deletingId,
+  showDeleteModal,
+  deleteTargetPartner,
   canCreate,
   canEdit,
   canDelete,
   changePage,
   goCreate,
   goEdit,
-  remove,
+  openDeleteModal,
+  cancelDelete,
+  performDelete,
   showingStart,
   showingEnd,
 } = usePartnersListPage();
@@ -22,7 +27,7 @@ const {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Partners</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Partners</h4>
 
       <button v-if="canCreate" class="btn btn-primary" @click="goCreate">
         + New Partner
@@ -86,20 +91,20 @@ const {
                     {{ p.name }}
                   </span>
                   <span v-else>{{ p.name }}</span>
-                  <div class="data-meta mt-1">{{ p.contactEmail || "—" }}</div>
+                  <div class="data-meta mt-1">{{ p.contactEmail || "-" }}</div>
                 </td>
 
                 <td>{{ p.npwp }}</td>
                 <td>
-                  <div class="fw-semibold">{{ p.bankName || "—" }}</div>
-                  <div class="data-meta">{{ p.bankAccount || "—" }}</div>
+                  <div class="fw-semibold">{{ p.bankName || "-" }}</div>
+                  <div class="data-meta">{{ p.bankAccount || "-" }}</div>
                 </td>
                 <td>
-                  <div class="fw-semibold">{{ p.contactName || "—" }}</div>
-                  <div class="data-meta">{{ p.contactPhone || "—" }}</div>
+                  <div class="fw-semibold">{{ p.contactName || "-" }}</div>
+                  <div class="data-meta">{{ p.contactPhone || "-" }}</div>
                 </td>
                 <td>
-                  {{ p.addressText || "—" }}
+                  {{ p.addressText || "-" }}
                   <div v-if="p.addressMeta">
                     <div class="data-meta mt-1">
                       {{ p.addressMeta.city }},
@@ -127,9 +132,9 @@ const {
                     v-if="canDelete"
                     class="text-danger fw-semibold"
                     style="cursor: pointer"
-                    @click.stop="remove(p.id, p.name)"
+                    @click.stop="openDeleteModal(p.id)"
                   >
-                    ×
+                    x
                   </span>
                 </td>
               </tr>
@@ -161,5 +166,24 @@ const {
         @next="changePage(store.page + 1)"
       />
     </div>
+
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
+    >
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{
+          deleteTargetPartner?.name || "this partner"
+        }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>

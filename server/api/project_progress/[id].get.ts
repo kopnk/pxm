@@ -1,13 +1,8 @@
-import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { projectProgress } from "~/server/db/schema/project_progress";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { eq } from "drizzle-orm";
-
-import { successResponse } from "~/server/utils/response";
+import { createError, defineEventHandler } from "h3";
 import { requireRole } from "~/server/utils/authorize";
-import { toLocalTime, toLocalDate } from "~/server/utils/datetime";
-import { reconcilePaidSyncForProjectDetail } from "~/server/utils/syncProjectFinancialPaidWithProgress";
+import { mapProjectProgressResponse } from "~/server/utils/projectProgressResponse";
+import { getProjectProgressListItemById } from "~/server/utils/projectProgressStore";
+import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
 
@@ -22,87 +17,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  /* ================= QUERY ================= */
-
-  const rows = await db
-    .select({
-      progress: projectProgress,
-      remarksProjectsDetails: projectDetails.remarksProjectsDetails,
-      remarksDelay: projectDetails.remarksDelay,
-      remarksCancel: projectDetails.remarksCancel,
-    })
-    .from(projectProgress)
-    .leftJoin(
-      projectDetails,
-      eq(projectDetails.id, projectProgress.projectDetailId),
-    )
-    .where(eq(projectProgress.id, id))
-    .limit(1);
-
-  const hit = rows[0];
-
-  if (!hit) {
+  const item = await getProjectProgressListItemById(id);
+  if (!item) {
     throw createError({
       statusCode: 404,
       statusMessage: "Project progress not found",
     });
   }
-
-  await db.transaction(async (tx) => {
-    await reconcilePaidSyncForProjectDetail(tx, hit.progress.projectDetailId);
-  });
-
-  const refreshed = await db
-    .select({
-      progress: projectProgress,
-      remarksProjectsDetails: projectDetails.remarksProjectsDetails,
-      remarksDelay: projectDetails.remarksDelay,
-      remarksCancel: projectDetails.remarksCancel,
-    })
-    .from(projectProgress)
-    .leftJoin(
-      projectDetails,
-      eq(projectDetails.id, projectProgress.projectDetailId),
-    )
-    .where(eq(projectProgress.id, id))
-    .limit(1);
-
-  const refreshedHit = refreshed[0] ?? hit;
-
-  const row = refreshedHit.progress;
-  const remarksProjectsDetails = refreshedHit.remarksProjectsDetails ?? null;
-  const remarksDelay = refreshedHit.remarksDelay ?? null;
-  const remarksCancel = refreshedHit.remarksCancel ?? null;
-
-  /* ================= FORMAT STAGE JSON ================= */
-
-  const stageData = Object.fromEntries(
-    Object.entries(row.stageData ?? {}).map(([stageCode, stage]: any) => [
-      stageCode,
-      {
-        ...stage,
-        plan_submit_date: toLocalDate(stage.plan_submit_date),
-        actual_approve_date: toLocalDate(stage.actual_approve_date),
-      },
-    ])
+  return successResponse(
+    event,
+    "Project progress retrieved",
+    mapProjectProgressResponse(item),
   );
-
-  /* ================= RESPONSE ================= */
-
-  const { stageData: _sd, ...progressRest } = row;
-
-  const item = {
-    ...progressRest,
-    stageData,
-
-    remarksProjectsDetails,
-    remarksDelay,
-    remarksCancel,
-
-    createdAt: toLocalTime(row.createdAt),
-    updatedAt: toLocalTime(row.updatedAt),
-  };
-
-  return successResponse(event, "Project progress retrieved", item);
-
 });

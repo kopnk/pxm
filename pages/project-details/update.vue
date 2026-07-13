@@ -8,6 +8,7 @@ import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessUpdated } from "@/composables/useToastMessages";
 import { useProjectDetailForm } from "@/composables/useProjectDetailForm";
 import { useNotify } from "@/composables/useNotify";
+import DecimalInput from "@/components/form/DecimalInput.vue";
 
 /* ================= ROUTER ================= */
 const route = useRoute();
@@ -26,16 +27,15 @@ const {
   cities,
   selectedRegion,
   selectedSubRegion,
-  projectSearch,
-  showProjectDropdown,
   loading: optionsLoading,
   error,
   statusOptions,
   isValid,
+  requiredFieldMessage,
+  formatNumber,
+  totalPriceDisplay,
   loadProjects,
   loadRegions,
-  openProjectDropdown,
-  selectProject,
   fillFromDetail,
   buildPayload,
 } = useProjectDetailForm();
@@ -73,7 +73,7 @@ onMounted(async () => {
 
 const handleSubmit = async () => {
   if (!isValid.value) {
-    notify.warning("Project, city/kab, system key, and NE ID are required");
+    notify.warning(requiredFieldMessage.value);
     return;
   }
 
@@ -88,36 +88,20 @@ const handleSubmit = async () => {
   <FormShell
     title="Update Project Detail"
     :loading="formLoading"
+    submit-label="Update"
     @submit="handleSubmit"
     @cancel="() => router.push('/project-details')"
   >
     <!-- ================= PROJECT ================= -->
     <FormSection>
-      <div class="col-md-12 position-relative">
+      <div class="col-md-12">
         <label class="form-label">Project</label>
-        <input
-          class="form-control"
-          v-model="projectSearch"
-          @focus="openProjectDropdown"
-          placeholder="Search project..."
-          required
-        />
-
-        <div
-          v-if="showProjectDropdown"
-          class="list-group position-absolute w-100 shadow"
-          style="z-index: 1000; max-height: 250px; overflow: auto"
-        >
-          <button
-            type="button"
-            class="list-group-item list-group-item-action"
-            v-for="p in projects"
-            :key="p.id"
-            @click="selectProject(p)"
-          >
+        <select v-model="form.projectId" class="form-select" required>
+          <option value="">-- Select Project --</option>
+          <option v-for="p in projects" :key="p.id" :value="p.id">
             {{ p.projectName }} - {{ p.poNumber }}
-          </button>
-        </div>
+          </option>
+        </select>
       </div>
     </FormSection>
 
@@ -176,7 +160,7 @@ const handleSubmit = async () => {
       </div>
       <div class="col-md-4">
         <label class="form-label">NE ID</label>
-        <input v-model="form.neId" class="form-control" required />
+        <input v-model="form.neId" class="form-control" />
       </div>
       <div class="col-md-4">
         <label class="form-label">System Key</label>
@@ -206,7 +190,7 @@ const handleSubmit = async () => {
 
       <div class="col-md-6">
         <label class="form-label">Site Name</label>
-        <input v-model="form.siteName" class="form-control" />
+        <input v-model="form.siteName" class="form-control" required />
       </div>
     </FormSection>
 
@@ -214,11 +198,7 @@ const handleSubmit = async () => {
     <FormSection>
       <div class="col-md-4">
         <label class="form-label">Quantity</label>
-        <input
-          type="number"
-          v-model.number="form.quantity"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.quantity" required />
       </div>
 
       <div class="col-md-4">
@@ -228,18 +208,16 @@ const handleSubmit = async () => {
 
       <div class="col-md-4">
         <label class="form-label">Unit Price</label>
-        <input
-          type="number"
-          v-model.number="form.unitPrice"
-          class="form-control"
-        />
+        <DecimalInput v-model="form.unitPrice" required />
+        <div class="number-helper">
+          {{ formatNumber(form.unitPrice) }}
+        </div>
       </div>
 
       <div class="col-md-4">
         <label class="form-label">Total Price</label>
         <input
-          type="number"
-          v-model="form.totalPrice"
+          :value="totalPriceDisplay"
           class="form-control"
           readonly
         />

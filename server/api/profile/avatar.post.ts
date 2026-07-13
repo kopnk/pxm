@@ -1,11 +1,16 @@
 import { defineEventHandler, readMultipartFormData, createError } from "h3";
-import { supabase } from "~/server/utils/supabase";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
+import {
+  deleteAppFileObject,
+  fileKeyFromManagedUrl,
+  uploadAppFileObject,
+} from "~/server/utils/appFilesStorage";
+import { randomUUID } from "node:crypto";
+import {
+  getAppUserRecordById,
+  updateAppUserRecord,
+} from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -55,13 +60,7 @@ export default defineEventHandler(async (event) => {
   const userId = authUser.id;
 
   /* ================= GET OLD AVATAR ================= */
-  const rows = await db
-    .select({ avatarUrl: users.avatarUrl })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  const oldUser = rows[0];
+  const oldUser = await getAppUserRecordById(userId);
 
   if (!oldUser) {
     throw createError({
@@ -70,60 +69,51 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  /* ================= DELETE OLD AVATAR ================= */
-  if (oldUser.avatarUrl) {
-    const oldPath = oldUser.avatarUrl.split(
-      "/storage/v1/object/public/avatars/"
-    )[1];
-
-    if (oldPath) {
-      await supabase.storage.from("avatars").remove([oldPath]);
-    }
-  }
-
   /* ================= UPLOAD NEW FILE ================= */
   const fileExt = file.type.split("/")[1] || "jpg";
-  const filePath = `users/${userId}/${Date.now()}.${fileExt}`;
+  const filePath = `avatars/users/${userId}/${randomUUID()}.${fileExt}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("avatars")
-    .upload(filePath, file.data, {
-      contentType: file.type,
-      upsert: false,
-    });
+  const { publicUrl } = await uploadAppFileObject({
+    key: filePath,
+    body: file.data,
+    contentType: file.type,
+    cacheControl: "public, max-age=31536000, immutable",
+  });
 
-  if (uploadError) {
+  const oldAvatarKey = oldUser.user.avatarUrl
+    ? fileKeyFromManagedUrl(oldUser.user.avatarUrl)
+    : null;
+
+  const updated = await updateAppUserRecord(userId, {
+    avatarUrl: publicUrl,
+    updatedUser: userId,
+    updatedBy: authUser.email,
+  });
+
+  if (!updated) {
     throw createError({
-      statusCode: 500,
-      statusMessage: "Upload failed",
+      statusCode: 404,
+      statusMessage: "User not found",
     });
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
-  /* ================= UPDATE DB (TRANSACTION SAFE) ================= */
-  await db.transaction(async (tx) => {
-
-    await tx
-      .update(users)
-      .set({
-        avatarUrl: publicUrl,
-        updatedAt: dbTime(),
-      })
-      .where(eq(users.id, userId));
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "users",
-      targetId: userId,
-      newData: { avatarUrl: publicUrl },
-    });
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "users",
+    targetId: userId,
+    oldData: { avatarUrl: oldUser.user.avatarUrl },
+    newData: { avatarUrl: publicUrl },
   });
 
+  if (oldAvatarKey) {
+    try {
+      await deleteAppFileObject(oldAvatarKey);
+    } catch {
+      // Best-effort cleanup. Keep the new avatar reference even if old object deletion fails.
+    }
+  }
   return successResponse(event, "Avatar updated", {
     avatarUrl: publicUrl,
   });

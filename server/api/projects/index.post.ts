@@ -1,18 +1,17 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { projects } from "~/server/db/schema/projects";
+import { getClientRecordById } from "~/server/utils/clientStore";
+import { mapLocalTimestamps, toLocalDate } from "~/server/utils/datetime";
+import {
+  calculateProjectAmounts,
+  createProjectRecord,
+} from "~/server/utils/projectStore";
 import { parseBody } from "~/server/utils/zod";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { createProjectSchema } from "~/server/validation/projects.schema";
-import { toLocalDate, toLocalTime } from "~/server/utils/datetime";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
 
 export default defineEventHandler(async (event) => {
-
-  /* ================= AUTH ================= */
   const forbidden = requireRole(event, ["admin", "superadmin"]);
   if (forbidden) return forbidden;
 
@@ -21,84 +20,53 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  /* ================= BODY ================= */
   const body = parseBody(createProjectSchema, await readBody(event));
-
-  /* ================= BUSINESS CALC ================= */
-  const subTotal = Number(body.subTotal ?? 0);
-  const discount = Number(body.discount ?? 0);
-  const vatRate = Number(body.vatRate ?? 11);
-
-  const netPrice = subTotal - discount;
-  const vatAmount = (netPrice * vatRate) / 100;
-  const grandTotal = netPrice + vatAmount;
-
   const poDate = toLocalDate(body.poDate);
   if (!poDate) {
     throw createError({ statusCode: 400, statusMessage: "Invalid PO date" });
   }
 
-  /* ================= INSERT ================= */
-  const created = await db.transaction(async (tx) => {
+  if (body.clientId) {
+    const client = await getClientRecordById(body.clientId);
+    if (!client) {
+      throw createError({ statusCode: 400, statusMessage: "Client not found" });
+    }
+  }
 
-    const rows = await tx
-      .insert(projects)
-      .values({
-        contractNumber: body.contractNumber ?? null,
-        prScNumber: body.prScNumber,
-        poNumber: body.poNumber,
-
-        poDate,
-        deliveryDate: toLocalDate(body.deliveryDate),
-        komDate: toLocalDate(body.komDate),
-
-        projectName: body.projectName,
-
-        subTotal: subTotal.toString(),
-        discount: discount.toString(),
-        netPrice: netPrice.toString(),
-
-        vatRate: vatRate.toString(),
-        vatAmount: vatAmount.toString(),
-        grandTotal: grandTotal.toString(),
-
-        status: body.status ?? "active",
-        pm: body.pm ?? null,
-
-        clientId: body.clientId ?? null,
-
-        createdUser: userId,
-
-        // ✅ AUTHORITATIVE DB TIME
-        createdAt: dbTime(),
-        updatedAt: dbTime(),
-      })
-      .returning();
-
-    const createdRow = requireFirstRow(rows, "Project not created");
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "CREATE",
-      targetTable: "projects",
-      targetId: createdRow.id,
-      newData: createdRow,
-    });
-
-    return createdRow;
+  const amounts = calculateProjectAmounts(body);
+  const created = await createProjectRecord({
+    contractNumber: body.contractNumber ?? null,
+    prScNumber: body.prScNumber,
+    poNumber: body.poNumber,
+    poDate,
+    deliveryDate: toLocalDate(body.deliveryDate),
+    komDate: toLocalDate(body.komDate),
+    projectName: body.projectName,
+    subTotal: amounts.subTotal,
+    discount: amounts.discount,
+    vatRate: amounts.vatRate,
+    status: body.status ?? "active",
+    pm: body.pm ?? null,
+    clientId: body.clientId ?? null,
+    createdUser: userId,
+    updatedUser: userId,
   });
 
-  /* ================= RESPONSE ================= */
-  return successResponse(event, "Project created", {
-    ...created,
-    createdAt: toLocalTime(created.createdAt),
-    updatedAt: toLocalTime(created.updatedAt),
-    subTotal: Number(created.subTotal),
-    discount: Number(created.discount),
-    netPrice: Number(created.netPrice),
-    vatRate: Number(created.vatRate),
-    vatAmount: Number(created.vatAmount),
-    grandTotal: Number(created.grandTotal),
-  }, 201);
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "CREATE",
+    targetTable: "projects",
+    targetId: created.id,
+    newData: created,
+  });
+
+  return successResponse(
+    event,
+    "Project created",
+    {
+      ...mapLocalTimestamps(created),
+    },
+    201,
+  );
 });

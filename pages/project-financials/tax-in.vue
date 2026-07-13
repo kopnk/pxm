@@ -19,6 +19,7 @@ const {
   getRowNumber,
 } = useProjectFinancialsListPage({
   flowDirection: "in",
+  taxSection: "taxIn",
   rlsResource: "tax_in",
 });
 
@@ -34,19 +35,15 @@ const onExportExcel = () => {
   });
 };
 
-const taxInRows = computed(() =>
-  store.items.filter((item) => {
-    if (item.flowDirection !== "in") return false;
-    const taxInRate = Number(item.taxIn ?? 0);
-    return Number.isFinite(taxInRate) && taxInRate > 0;
-  }),
-);
+const taxInRows = computed(() => store.items);
 
-const sectionRowCount = computed(() => taxInRows.value.length);
+const sectionRowCount = computed(() => store.total);
 const sectionShowingStart = computed(() =>
-  sectionRowCount.value === 0 ? 0 : 1,
+  store.total === 0 ? 0 : (store.page - 1) * store.limit + 1,
 );
-const sectionShowingEnd = computed(() => sectionRowCount.value);
+const sectionShowingEnd = computed(() =>
+  Math.min(store.page * store.limit, store.total),
+);
 
 const sectionTotalDpp = computed(() =>
   store.loading ? null : store.listTotals.taxInSection.dppIdr,

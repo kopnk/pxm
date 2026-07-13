@@ -13,6 +13,7 @@ export const useProjectFinancialsApi = () => {
     search?: string;
     status?: string;
     flowDirection?: string;
+    taxSection?: "taxIn" | "taxOut" | "pph";
   }) => {
     store.setLoading(true);
 
@@ -26,6 +27,7 @@ export const useProjectFinancialsApi = () => {
           search: store.filters.search || undefined,
           status: store.filters.status || undefined,
           flowDirection: store.filters.flowDirection || undefined,
+          taxSection: params?.taxSection,
         },
       });
 

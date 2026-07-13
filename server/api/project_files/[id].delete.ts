@@ -1,11 +1,12 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFiles } from "~/server/db/schema/project_files";
+import { crudActionMessage } from "~/lib/entityMessages";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { successResponse } from "~/server/utils/response";
-import { eq, isNull } from "drizzle-orm";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
+import {
+  getProjectFileRecordById,
+  updateProjectFileRecord,
+} from "~/server/utils/projectFileStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireDeleteSuperadmin(event);
@@ -21,38 +22,25 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  await db.transaction(async (tx) => {
-    const rows = await tx
-      .select()
-      .from(projectFiles)
-      .where(eq(projectFiles.id, id))
-      .limit(1);
+  const oldData = await getProjectFileRecordById(id);
+  if (!oldData || oldData.deletedAt) {
+    throw createError({ statusCode: 404, statusMessage: "File not found" });
+  }
 
-    const oldData = rows[0];
-
-    if (!oldData || oldData.deletedAt) {
-      throw createError({ statusCode: 404, statusMessage: "File not found" });
-    }
-
-    const updatedRows = await tx
-      .update(projectFiles)
-      .set({
-        deletedAt: dbTime(),
-        deletedBy: userId,
-      })
-      .where(eq(projectFiles.id, id))
-      .returning();
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "project_files",
-      targetId: id,
-      oldData,
-      newData: updatedRows[0],
-    });
+  const updated = await updateProjectFileRecord(id, {
+    deletedAt: new Date().toISOString(),
+    deletedBy: userId,
   });
 
-  return successResponse(event, "File soft deleted");
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "project_files",
+    targetId: id,
+    oldData,
+    newData: updated,
+  });
+
+  return successResponse(event, crudActionMessage("document", "deleted"));
 });

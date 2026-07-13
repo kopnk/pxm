@@ -22,7 +22,6 @@ const {
   areasLoading,
   loading,
   creatableRoles,
-  defaultPassword,
   submit,
 } = useUserSignupForm();
 </script>
@@ -49,9 +48,7 @@ const {
 
       <div class="col-12">
         <p class="data-meta mb-0">
-          Default password:
-          <span class="data-value">{{ defaultPassword }}</span>
-          — user must change it on first login.
+          Temporary password is configured on the server and the user must change it on first login.
         </p>
       </div>
 

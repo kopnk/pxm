@@ -19,6 +19,7 @@ const {
   getRowNumber,
 } = useProjectFinancialsListPage({
   flowDirection: "in",
+  taxSection: "pph",
   rlsResource: "pph",
 });
 
@@ -33,19 +34,15 @@ const onExportExcel = () => {
   });
 };
 
-const pphRows = computed(() =>
-  store.items.filter((item) => {
-    if (item.flowDirection !== "in") return false;
-    const pphRate = Number(item.pph ?? 0);
-    return Number.isFinite(pphRate) && pphRate > 0;
-  }),
-);
+const pphRows = computed(() => store.items);
 
-const sectionRowCount = computed(() => pphRows.value.length);
+const sectionRowCount = computed(() => store.total);
 const sectionShowingStart = computed(() =>
-  sectionRowCount.value === 0 ? 0 : 1,
+  store.total === 0 ? 0 : (store.page - 1) * store.limit + 1,
 );
-const sectionShowingEnd = computed(() => sectionRowCount.value);
+const sectionShowingEnd = computed(() =>
+  Math.min(store.page * store.limit, store.total),
+);
 
 const sectionTotalDpp = computed(() =>
   store.loading ? null : store.listTotals.pphSection.dppIdr,

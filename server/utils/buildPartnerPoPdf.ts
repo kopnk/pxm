@@ -1,11 +1,10 @@
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   pfPartnerLineTotal,
   pfParseNum,
 } from "~/lib/projectFinancialsMath";
+import { readKopindosatLogoBuffer } from "~/server/utils/pdfBranding";
 
 export type PartnerPoPdfLine = {
   detailSiteId: string | null;
@@ -56,7 +55,7 @@ function pageInnerBounds(doc: InstanceType<typeof PDFDocument>) {
   return { ml, mr, mt, mb, mw: mr - ml };
 }
 
-/** Column x positions and widths from current page margins (recompute after addPage). */
+/** Column ?? positions and widths from current page margins (recompute after addPage). */
 function tableLayout(doc: InstanceType<typeof PDFDocument>) {
   const { ml, mr, mw } = pageInnerBounds(doc);
   const wNo = 0.05 * mw;
@@ -110,14 +109,9 @@ export async function buildPartnerPoPdfBuffer(
   /* One line: logo/text Kopindosat | Purchase Order */
   doc.font("Helvetica-Bold").fontSize(13);
   const headerH = doc.currentLineHeight();
-  const logoCandidates = [
-    join(process.cwd(), "public", "kopindosat.JPG"),
-    join(process.cwd(), "public", "kopindosat.jpg"),
-  ];
-  const logoPath = logoCandidates.find((p) => existsSync(p));
+  const logo = readKopindosatLogoBuffer();
 
-  if (logoPath) {
-    const logo = readFileSync(logoPath);
+  if (logo) {
     doc.image(logo, ml, y - 3, { height: LOGO_HEADER_HEIGHT });
   } else {
     doc.text("Kopindosat", ml, y, { lineBreak: false });

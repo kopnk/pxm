@@ -1,8 +1,10 @@
-import { supabase } from "~/server/utils/supabase";
+import {
+  fileKeyFromManagedUrl,
+  toAppFileUrl,
+  toManagedFileUrl,
+} from "~/server/utils/appFilesStorage";
 
-export const PROJECT_FILES_BUCKET = "project-files";
-const STORAGE_URL_PREFIX = `supabase://${PROJECT_FILES_BUCKET}/`;
-const SIGNED_URL_EXPIRES_IN = 10 * 60;
+export const PROJECT_FILES_PREFIX = "project-files";
 
 type ProjectFileRow = {
   fileUrl: string;
@@ -10,18 +12,13 @@ type ProjectFileRow = {
 };
 
 export function toProjectStorageUrl(path: string): string {
-  return `${STORAGE_URL_PREFIX}${path}`;
+  return toManagedFileUrl(`${PROJECT_FILES_PREFIX}/${path.replace(/^\/+/, "")}`);
 }
 
-function storagePathFromUrl(fileUrl: string): string | null {
-  if (fileUrl.startsWith(STORAGE_URL_PREFIX)) {
-    return fileUrl.slice(STORAGE_URL_PREFIX.length);
-  }
-
-  const marker = `/storage/v1/object/public/${PROJECT_FILES_BUCKET}/`;
-  const markerIndex = fileUrl.indexOf(marker);
-  if (markerIndex >= 0) {
-    return fileUrl.slice(markerIndex + marker.length);
+function projectFileKeyFromUrl(fileUrl: string) {
+  const key = fileKeyFromManagedUrl(fileUrl);
+  if (key?.startsWith(`${PROJECT_FILES_PREFIX}/`)) {
+    return key;
   }
 
   return null;
@@ -30,19 +27,13 @@ function storagePathFromUrl(fileUrl: string): string | null {
 export async function withProjectFileSignedUrls<T extends ProjectFileRow>(
   rows: T[],
 ): Promise<Array<T & { signedUrl?: string | null }>> {
-  return Promise.all(
-    rows.map(async (row) => {
-      const path = storagePathFromUrl(row.fileUrl);
-      if (!path) return { ...row, signedUrl: null };
+  return rows.map((row) => {
+    const key = projectFileKeyFromUrl(row.fileUrl);
+    if (!key) return { ...row, signedUrl: null };
 
-      const { data, error } = await supabase.storage
-        .from(PROJECT_FILES_BUCKET)
-        .createSignedUrl(path, SIGNED_URL_EXPIRES_IN);
-
-      return {
-        ...row,
-        signedUrl: error ? null : data.signedUrl,
-      };
-    }),
-  );
+    return {
+      ...row,
+      signedUrl: toAppFileUrl(key),
+    };
+  });
 }

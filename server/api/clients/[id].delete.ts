@@ -1,10 +1,8 @@
 import { defineEventHandler, createError } from "h3";
-import { db } from "~/server/db";
-import { clients } from "~/server/db/schema/clients";
-import { eq } from "drizzle-orm";
 import { successResponse } from "~/server/utils/response";
 import { requireDeleteSuperadmin } from "~/server/utils/deleteGuard";
 import { logAudit } from "~/server/utils/audit";
+import { deleteClientRecord } from "~/server/utils/clientStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -21,30 +19,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  await db.transaction(async (tx) => {
+  const oldData = await deleteClientRecord(id);
 
-    const rows = await tx
-      .select()
-      .from(clients)
-      .where(eq(clients.id, id))
-      .limit(1);
+  if (!oldData) {
+    throw createError({ statusCode: 404, statusMessage: "Client not found" });
+  }
 
-    const oldData = rows[0];
-
-    if (!oldData) {
-      throw createError({ statusCode: 404, statusMessage: "Client not found" });
-    }
-
-    await tx.delete(clients).where(eq(clients.id, id));
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "DELETE",
-      targetTable: "clients",
-      targetId: id,
-      oldData,
-    });
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "DELETE",
+    targetTable: "clients",
+    targetId: id,
+    oldData,
   });
 
   return successResponse(event, "Client deleted");

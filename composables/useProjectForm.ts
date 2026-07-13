@@ -74,8 +74,17 @@ export const useProjectForm = () => {
 
   const formatCurrency = (value: string | number | null | undefined) => {
     const numberValue = Number(value || 0);
-    return Number.isNaN(numberValue) ? "0" : numberValue.toLocaleString("id-ID");
+    return Number.isNaN(numberValue)
+      ? "0"
+      : numberValue.toLocaleString("id-ID", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
   };
+
+  const netPriceDisplay = computed(() => formatCurrency(netPrice.value));
+  const vatAmountDisplay = computed(() => formatCurrency(vatAmount.value));
+  const grandTotalDisplay = computed(() => formatCurrency(grandTotal.value));
 
   const loadClientOptions = async () => {
     clientsLoading.value = true;
@@ -149,6 +158,9 @@ export const useProjectForm = () => {
     netPrice,
     vatAmount,
     grandTotal,
+    netPriceDisplay,
+    vatAmountDisplay,
+    grandTotalDisplay,
     formatCurrency,
     loadClientOptions,
     fillFromProject,

@@ -9,6 +9,10 @@ export interface RegionMasterItem {
   type: RegionType;
   parentId: string | null;
   parentName?: string | null;
+  regionId?: string | null;
+  regionName?: string | null;
+  subRegionId?: string | null;
+  subRegionName?: string | null;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt: string;
@@ -25,7 +29,9 @@ export const useRegionMasterStore = defineStore("regionMaster", {
     loading: false,
     filters: {
       search: "",
-      type: "" as "" | RegionType,
+      regionId: "",
+      subRegionId: "",
+      cityKabId: "",
     },
   }),
 
@@ -44,8 +50,23 @@ export const useRegionMasterStore = defineStore("regionMaster", {
       this.totalPages = data.totalPages;
     },
 
-    setFilters(filters: Partial<{ search: string; type: "" | RegionType }>) {
-      this.filters = { ...this.filters, ...filters };
+    setFilters(
+      filters: Partial<{
+        search: string;
+        regionId: string;
+        subRegionId: string;
+        cityKabId: string;
+      }>,
+    ) {
+      const nextFilters = { ...this.filters, ...filters };
+      const unchanged = Object.entries(nextFilters).every(
+        ([key, value]) =>
+          Object.is(this.filters[key as keyof typeof this.filters], value),
+      );
+
+      if (unchanged) return;
+
+      this.filters = nextFilters;
     },
 
     setPage(page: number) {

@@ -6,22 +6,21 @@ import {
   createError,
   type H3Event,
 } from "h3";
-import { db } from "~/server/db";
-import { projectFiles } from "~/server/db/schema/project_files";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
-import { supabase } from "~/server/utils/supabase";
 import { randomUUID } from "crypto";
 import {
-  PROJECT_FILES_BUCKET,
+  PROJECT_FILES_PREFIX,
   toProjectStorageUrl,
 } from "~/server/utils/projectFileStorage";
 import {
   uploadProjectFileSchema,
   createProjectFileSchema,
 } from "~/server/validation/project_files.schema";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
+import { uploadAppFileObject } from "~/server/utils/appFilesStorage";
+import { createProjectFileRecord } from "~/server/utils/projectFileStore";
+import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
 
 const displayNameFromUrl = (fileUrl: string, fileName?: string | null) =>
   fileName?.trim() ||
@@ -57,38 +56,30 @@ const insertExternalUrlRecord = async (
     fileName?: string | null;
   },
 ) => {
-  const created = await db.transaction(async (tx) => {
-    const rows = await tx
-      .insert(projectFiles)
-      .values({
-        refTable: input.refTable,
-        refId: input.refId,
-        fileCategory: input.fileCategory,
-        fileName: displayNameFromUrl(input.fileUrl, input.fileName),
-        fileUrl: input.fileUrl,
-        fileSize: null,
-        mimeType: null,
-        version: 1,
-        uploadedBy: userId,
-        isArchived: false,
-      })
-      .returning();
-
-    const row = requireFirstRow(rows, "File record not created");
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "CREATE",
-      targetTable: "project_files",
-      targetId: row.id,
-      newData: row,
-    });
-
-    return row;
+  const created = await createProjectFileRecord({
+    refTable: input.refTable,
+    refId: input.refId,
+    fileCategory: input.fileCategory,
+    fileName: displayNameFromUrl(input.fileUrl, input.fileName),
+    fileUrl: input.fileUrl,
+    fileSize: null,
+    mimeType: null,
+    version: 1,
+    uploadedBy: userId,
+    isArchived: false,
   });
 
-  return successResponse(event, "Document URL saved", created, 201);
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "CREATE",
+    targetTable: "project_files",
+    targetId: created.id,
+    newData: created,
+  });
+
+  const [signedFile] = await withProjectFileSignedUrls([created]);
+  return successResponse(event, "Document URL saved", signedFile, 201);
 };
 
 export default defineEventHandler(async (event) => {
@@ -190,75 +181,37 @@ export default defineEventHandler(async (event) => {
 
   const fileExt = file.filename?.split(".").pop();
   const uniqueName = `${randomUUID()}.${fileExt}`;
-  const bucketName = PROJECT_FILES_BUCKET;
-  const filePath = `${refTable}/${refId}/${uniqueName}`;
+  const filePath = `${PROJECT_FILES_PREFIX}/${refTable}/${refId}/${uniqueName}`;
 
-  const uploadToBucket = async () =>
-    supabase.storage
-      .from(bucketName)
-      .upload(filePath, file.data, {
-        contentType: file.type,
-      });
-
-  let { error: uploadError } = await uploadToBucket();
-
-  if (uploadError?.message?.toLowerCase().includes("bucket not found")) {
-    const { error: createBucketError } = await supabase.storage.createBucket(
-      bucketName,
-      { public: false },
-    );
-
-    if (
-      createBucketError &&
-      !createBucketError.message?.toLowerCase().includes("already exists")
-    ) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: createBucketError.message,
-      });
-    }
-
-    ({ error: uploadError } = await uploadToBucket());
-  }
-
-  if (uploadError) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: uploadError.message,
-    });
-  }
-
-  const created = await db.transaction(async (tx) => {
-    const rows = await tx
-      .insert(projectFiles)
-      .values({
-        refTable,
-        refId,
-        fileCategory,
-        fileName: file.filename ?? null,
-        fileUrl: toProjectStorageUrl(filePath),
-        fileSize: file.data.length,
-        mimeType: file.type ?? null,
-        version: 1,
-        uploadedBy: userId,
-        isArchived: false,
-      })
-      .returning();
-
-    const row = requireFirstRow(rows, "File record not created");
-
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "CREATE",
-      targetTable: "project_files",
-      targetId: row.id,
-      newData: row,
-    });
-
-    return row;
+  await uploadAppFileObject({
+    key: filePath,
+    body: file.data,
+    contentType: file.type,
   });
 
-  return successResponse(event, "File uploaded", created, 201);
+  const created = await createProjectFileRecord({
+    refTable,
+    refId,
+    fileCategory,
+    fileName: file.filename ?? null,
+    fileUrl: toProjectStorageUrl(`${refTable}/${refId}/${uniqueName}`),
+    fileSize: file.data.length,
+    mimeType: file.type ?? null,
+    version: 1,
+    uploadedBy: userId,
+    isArchived: false,
+  });
+
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "CREATE",
+    targetTable: "project_files",
+    targetId: created.id,
+    newData: created,
+  });
+
+  const [signedFile] = await withProjectFileSignedUrls([created]);
+  return successResponse(event, "Document uploaded", signedFile, 201);
 });
 

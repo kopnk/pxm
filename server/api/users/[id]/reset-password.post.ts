@@ -1,14 +1,17 @@
 import { defineEventHandler, createError } from "h3";
-import argon2 from "argon2";
-import { eq } from "drizzle-orm";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { DEFAULT_USER_PASSWORD } from "~/lib/authDefaults";
+import { passwordResetToDefaultMessage } from "~/lib/entityMessages";
 import { requireRole } from "~/server/utils/authorize";
 import { successResponse } from "~/server/utils/response";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
 import { assertNotSuperadminTarget } from "~/server/utils/userRolePolicy";
+import { getDefaultUserPassword } from "~/server/utils/defaultUserPassword";
+import {
+  resetCognitoUserPassword,
+} from "~/server/utils/cognitoAuth";
+import {
+  getAppUserRecordById,
+  updateAppUserRecord,
+} from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin"]);
@@ -24,47 +27,37 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "User id is required" });
   }
 
-  const target = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-    })
-    .from(users)
-    .where(eq(users.id, targetId))
-    .limit(1)
-    .then((rows) => rows[0]);
+  const target = await getAppUserRecordById(targetId);
 
-  if (!target) {
+  if (!target?.user) {
     throw createError({ statusCode: 404, statusMessage: "User not found" });
   }
 
-  assertNotSuperadminTarget(target.role ?? "staff", "reset_password");
+  assertNotSuperadminTarget(target.user.role ?? "staff", "reset_password");
+  const temporaryPassword = getDefaultUserPassword();
 
-  const passwordHash = await argon2.hash(DEFAULT_USER_PASSWORD);
+  await resetCognitoUserPassword({
+    email: target.user.email,
+    temporaryPassword,
+  });
 
-  await db
-    .update(users)
-    .set({
-      passwordHash,
-      mustChangePassword: true,
-      updatedUser: actor.id,
-      updatedAt: dbTime(),
-    })
-    .where(eq(users.id, targetId));
+  await updateAppUserRecord(targetId, {
+    mustChangePassword: true,
+    updatedUser: actor.id,
+    updatedBy: actor.email,
+  });
 
   await logAudit({
     event,
     actorId: actor.id,
     action: "RESET_PASSWORD",
     targetTable: "users",
-    targetId: target.id,
-    newData: { email: target.email },
+    targetId: target.user.id,
+    newData: { email: target.user.email },
   });
 
-  return successResponse(event, "Password reset to default", {
-    id: target.id,
-    defaultPassword: DEFAULT_USER_PASSWORD,
+  return successResponse(event, passwordResetToDefaultMessage(), {
+    id: target.user.id,
     mustChangePassword: true,
   });
 });

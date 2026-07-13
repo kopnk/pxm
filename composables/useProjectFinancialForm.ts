@@ -137,11 +137,11 @@ export function emptyProjectFinancialForm(): ProjectFinancialFormModel {
 
 function n(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null;
-  const x = Number(v);
-  return Number.isFinite(x) ? x : null;
+  const numberValue = Number(v);
+  return Number.isFinite(numberValue) ? numberValue : null;
 }
 
-/** Payload POST/PUT — pph / tax in / tax out disimpan sebagai PERSEN (2 = 2%, 11 = 11%). Rupiah dihitung di list dari qty × harga. */
+/** Payload POST/PUT - pph / tax in / tax out disimpan sebagai persen. */
 export function buildProjectFinancialPayload(form: ProjectFinancialFormModel) {
   const isInFlow = form.flowDirection === "in";
   const isOutFlow = form.flowDirection === "out";

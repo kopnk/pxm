@@ -1,17 +1,12 @@
 import { defineEventHandler, getQuery, getRequestURL, createError } from "h3";
-import { db } from "~/server/db";
-import { projectFinancials } from "~/server/db/schema/project_financials";
-import { projects } from "~/server/db/schema/projects";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { partners } from "~/server/db/schema/partners";
 import { requireRole } from "~/server/utils/authorize";
-import { and, asc, eq, ne } from "drizzle-orm";
 import { buildPartnerPoPdfBuffer } from "~/server/utils/buildPartnerPoPdf";
 import {
   signPartnerPoAccess,
   verifyPartnerPoAccess,
 } from "~/server/utils/partnerPoPdfAccess";
 import { pfFormatIdDate } from "~/lib/projectFinancialsMath";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 function safeFilename(po: string) {
   return po.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "PO";
@@ -38,39 +33,17 @@ export default defineEventHandler(async (event) => {
     if (forbidden) return forbidden;
   }
 
-  const rows = await db
-    .select({
-      detailSiteId: projectDetails.siteId,
-      detailSiteName: projectDetails.siteName,
-      detailMaterialName: projectDetails.materialName,
-      qtyPartner: projectFinancials.qtyPartner,
-      unitPricePartner: projectFinancials.unitPricePartner,
-      pph: projectFinancials.pph,
-      taxIn: projectFinancials.taxIn,
-      projectName: projects.projectName,
-      projectPoNumber: projects.poNumber,
-      poDatePartner: projectFinancials.poDatePartner,
-      partnerName: partners.name,
-      partnerNpwp: partners.npwp,
-      partnerAddressText: partners.addressText,
-      signatoryName: partners.signatoryName,
-      signatoryTitle: partners.signatoryTitle,
-    })
-    .from(projectFinancials)
-    .innerJoin(projects, eq(projectFinancials.projectId, projects.id))
-    .innerJoin(
-      projectDetails,
-      eq(projectFinancials.projectDetailId, projectDetails.id),
-    )
-    .leftJoin(partners, eq(projectFinancials.partnerId, partners.id))
-    .where(
-      and(
-        eq(projectFinancials.flowDirection, "in"),
-        eq(projectFinancials.poNumberPartner, po),
-        ne(projectFinancials.status, "cancelled"),
-      ),
-    )
-    .orderBy(asc(projectDetails.siteName), asc(projectDetails.siteId));
+  const rows = (await listProjectFinancialRecords({
+    flowDirection: "in",
+  }))
+    .filter((row) => row.poNumberPartner === po && row.status !== "cancelled")
+    .sort((a, b) => {
+      const siteNameCompare = String(a.detailSiteName ?? "").localeCompare(
+        String(b.detailSiteName ?? ""),
+      );
+      if (siteNameCompare !== 0) return siteNameCompare;
+      return String(a.detailSiteId ?? "").localeCompare(String(b.detailSiteId ?? ""));
+    });
 
   if (!rows.length) {
     throw createError({
@@ -102,8 +75,8 @@ export default defineEventHandler(async (event) => {
     partnerName: first.partnerName,
     partnerNpwp: first.partnerNpwp,
     partnerAddressText: first.partnerAddressText,
-    signatoryName: first.signatoryName,
-    signatoryTitle: first.signatoryTitle,
+    signatoryName: first.partnerSignatoryName,
+    signatoryTitle: first.partnerSignatoryTitle,
     qrTargetUrl,
   });
 

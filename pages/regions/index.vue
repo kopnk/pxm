@@ -4,14 +4,23 @@ import { useRegionsListPage } from "@/composables/useRegionsListPage";
 const {
   store,
   searchFilter,
-  typeFilter,
+  regionFilter,
+  subRegionFilter,
+  regionOptions,
+  subRegionOptions,
+  filtersLoading,
   deletingId,
+  showDeleteModal,
+  deleteTargetRegion,
   canCreate,
   canEdit,
   canDelete,
   changePage,
-  remove,
+  openDeleteModal,
+  cancelDelete,
+  performDelete,
   typeLabel,
+  hierarchyLabel,
   showingStart,
   showingEnd,
 } = useRegionsListPage();
@@ -22,7 +31,7 @@ const {
     <div
       class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
     >
-      <h4 class="text-brand mb-0">Regions</h4>
+      <h4 class="text-brand mb-0" data-page-focus>Regions</h4>
 
       <NuxtLink v-if="canCreate" to="/regions/create" class="btn btn-primary">
         + New Region
@@ -31,20 +40,44 @@ const {
 
     <div class="card mb-3 border-0 shadow-sm">
       <div class="card-body row g-2">
-        <div class="col-md-5">
+        <div class="col-lg-4 col-md-6">
           <input
             v-model="searchFilter"
             type="search"
             class="form-control"
-            placeholder="Search name…"
+            placeholder="Search region, sub region, city..."
           />
         </div>
-        <div class="col-md-3">
-          <select v-model="typeFilter" class="form-select">
-            <option value="">All types</option>
-            <option value="region">Region</option>
-            <option value="sub_region">Sub Region</option>
-            <option value="city_kab">City / Kab</option>
+        <div class="col-lg-4 col-md-6">
+          <select
+            v-model="regionFilter"
+            class="form-select"
+            :disabled="filtersLoading"
+          >
+            <option value="">All regions</option>
+            <option
+              v-for="region in regionOptions"
+              :key="region.id"
+              :value="region.id"
+            >
+              {{ region.name }}
+            </option>
+          </select>
+        </div>
+        <div class="col-lg-4 col-md-6">
+          <select
+            v-model="subRegionFilter"
+            class="form-select"
+            :disabled="filtersLoading"
+          >
+            <option value="">All sub regions</option>
+            <option
+              v-for="subRegion in subRegionOptions"
+              :key="subRegion.id"
+              :value="subRegion.id"
+            >
+              {{ subRegion.name }}
+            </option>
           </select>
         </div>
       </div>
@@ -86,7 +119,7 @@ const {
                 </td>
 
                 <td>{{ typeLabel(item.type) }}</td>
-                <td>{{ item.parentName || "—" }}</td>
+                <td>{{ hierarchyLabel(item) }}</td>
 
                 <td>
                   <AppAuditMeta
@@ -99,10 +132,10 @@ const {
                     v-if="canDelete"
                     class="text-danger fw-semibold d-block mt-1"
                     style="cursor: pointer"
-                    @click.stop="remove(item.id, item.name)"
+                    @click.stop="openDeleteModal(item.id)"
                   >
                     <span v-if="deletingId === item.id">...</span>
-                    <span v-else>×</span>
+                    <span v-else>x</span>
                   </span>
                 </td>
               </tr>
@@ -134,6 +167,25 @@ const {
         @next="changePage(store.page + 1)"
       />
     </div>
+
+    <AppConfirmDialog
+      :visible="showDeleteModal"
+      title="Confirm delete"
+      :loading="!!deletingId"
+      confirm-label="Delete"
+      confirm-variant="danger"
+      focus-target="cancel"
+      @cancel="cancelDelete"
+      @confirm="performDelete"
+    >
+      <p class="mb-0">
+        Delete
+        <span class="fw-bold">{{
+          deleteTargetRegion?.name || "this region"
+        }}</span
+        >?
+      </p>
+    </AppConfirmDialog>
   </div>
 </template>
 

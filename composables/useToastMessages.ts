@@ -1,39 +1,24 @@
-/**
- * Redaksi toast sukses standar FE (create / update / delete).
- * Pola tetap: `Success! {Entity} {created|updated|deleted}.`
- * Hanya nama entitas yang berbeda per modul.
- */
+import {
+  passwordChangedSignInAgainMessage,
+  toastCrudSuccessMessage,
+  type EntityMessageKey,
+} from "~/lib/entityMessages";
 
-export const ToastEntity = {
-  user: "User",
-  client: "Client",
-  partner: "Partner",
-  dcn: "DCN",
-  project: "Project",
-  projectDetail: "Project detail",
-  projectProgress: "Project progress",
-  projectFinancial: "Project financial",
-  profile: "Profile",
-  password: "Password",
-  auditLog: "Audit log",
-  region: "Region",
-} as const;
-
-export type ToastEntityKey = keyof typeof ToastEntity;
+export type ToastEntityKey = EntityMessageKey;
 
 export function toastSuccessCreated(key: ToastEntityKey): string {
-  return `Success! ${ToastEntity[key]} created.`;
+  return toastCrudSuccessMessage(key, "created");
 }
 
 export function toastSuccessUpdated(key: ToastEntityKey): string {
-  return `Success! ${ToastEntity[key]} updated.`;
+  return toastCrudSuccessMessage(key, "updated");
 }
 
 export function toastSuccessDeleted(key: ToastEntityKey): string {
-  return `Success! ${ToastEntity[key]} deleted.`;
+  return toastCrudSuccessMessage(key, "deleted");
 }
 
-/** Ganti password lalu logout — tetap satu kalimat standar + instruksi singkat. */
+/** Change password, then prompt the user to sign in again. */
 export function toastPasswordChangedSignInAgain(): string {
-  return "Success! Password updated. Please sign in again.";
+  return passwordChangedSignInAgainMessage();
 }

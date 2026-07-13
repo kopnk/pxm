@@ -1,11 +1,10 @@
 import PDFDocument from "pdfkit";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   pfListLineBase,
   pfParseNum,
   pfPartnerTaxRupiahForDisplay,
 } from "~/lib/projectFinancialsMath";
+import { readKopindosatLogoBuffer } from "~/server/utils/pdfBranding";
 import { formatDateToIdText } from "~/utils/formatDateToIdText";
 
 export type PartnerEprPdfLine = {
@@ -133,13 +132,8 @@ export async function buildPartnerEprPdfBuffer(
   doc.moveTo(topX2, y).lineTo(topX2, y + h1).stroke();
   doc.moveTo(bottomX1, y + h1).lineTo(bottomX1, y + h1 + h2).stroke();
 
-  const logoCandidates = [
-    join(process.cwd(), "public", "kopindosat.JPG"),
-    join(process.cwd(), "public", "kopindosat.jpg"),
-  ];
-  const logoPath = logoCandidates.find((p) => existsSync(p));
-  if (logoPath) {
-    const logo = readFileSync(logoPath);
+  const logo = readKopindosatLogoBuffer();
+  if (logo) {
     doc.image(logo, ml + 8, y + 8, { fit: [wLeft - 16, h1 - 16] });
   } else {
     doc.font(FONT_BOLD).fontSize(11).text("KOPINDOSAT", ml + 8, y + 8, {

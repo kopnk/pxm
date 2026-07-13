@@ -10,11 +10,15 @@ export type RegionPayload = {
 
 export const useRegionMasterApi = () => {
   const store = useRegionMasterStore();
+  const optionalQuery = (value?: string) => value || undefined;
 
   const getRegions = async (params?: {
     page?: number;
     limit?: number;
     parentId?: string;
+    regionId?: string;
+    subRegionId?: string;
+    cityKabId?: string;
   }) => {
     store.setLoading(true);
 
@@ -24,8 +28,12 @@ export const useRegionMasterApi = () => {
           page: params?.page ?? store.page,
           limit: params?.limit ?? store.limit ?? DEFAULT_PAGE_LIMIT,
           search: store.filters.search || undefined,
-          type: store.filters.type || undefined,
           parentId: params?.parentId || undefined,
+          regionId: optionalQuery(params?.regionId ?? store.filters.regionId),
+          subRegionId: optionalQuery(
+            params?.subRegionId ?? store.filters.subRegionId,
+          ),
+          cityKabId: optionalQuery(params?.cityKabId ?? store.filters.cityKabId),
         },
       });
 

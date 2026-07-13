@@ -1,253 +1,190 @@
-# Memahami Kodebase PXM (Nuxt 4 Fullstack)
+# Memahami Kodebase PXM (AWS Runtime)
 
-Dokumen ini adalah peta teknis PXM agar Anda bisa cepat paham:
-- struktur folder,
-- alur data dari UI sampai database,
-- pola coding yang wajib diikuti,
-- dan cara tracing bug/fitur tanpa tersesat.
-
----
+Dokumen ini adalah peta teknis PXM dalam kondisi aktif saat ini: Nuxt 4 SPA di frontend, Nitro API di backend, dan layanan data/auth/file di AWS.
 
 ## 1) Gambaran Arsitektur Singkat
 
-PXM memakai pola **Frontend SPA + API internal Nuxt (Nitro) + PostgreSQL**.
+PXM memakai pola **frontend SPA + API internal Nuxt (Nitro) + backend terkelola AWS**.
 
 | Lapisan | Lokasi | Peran |
 |---|---|---|
-| Frontend UI | `pages/`, `components/` | Menampilkan list, form, dashboard, filter, chart |
+| Frontend UI | `pages/`, `components/` | Menampilkan list, form, dashboard, filter, dan chart |
 | Business logic client | `composables/` | Tempat API call, mapping data, helper form/list |
-| State | `stores/` | Menyimpan state saja (tanpa logic berat/API) |
-| API server | `server/api/` | Validasi, otorisasi, query DB, response standar |
-| Middleware server | `server/middleware/auth.ts` | Memastikan request `/api/*` valid session |
-| Data access/schema | `server/db/schema/`, `server/db/index.ts` | Definisi tabel dan koneksi Drizzle |
-| Validasi input | `server/validation/*.schema.ts` | Semua body endpoint pakai Zod |
-| Utility server | `server/utils/` | response wrapper, role check, pagination, audit, waktu |
+| State | `stores/` | Menyimpan state saja |
+| API server | `server/api/` | Validasi, otorisasi, operasi domain, response standar |
+| Middleware server | `server/middleware/` | Memastikan request `/api/*` punya sesi valid |
+| Data access | `server/utils/*Store.ts` | Adapter DynamoDB single-table per domain |
+| Validasi input | `server/validation/*.schema.ts` | Semua body/query endpoint pakai Zod |
+| Infra | `infra/` | AWS CDK untuk stage `dev` dan `prod` |
 
-**Stack utama:** Nuxt 4, TypeScript, Pinia, PostgreSQL, Drizzle ORM, Lucia Auth, Zod.
+**Stack utama:** Nuxt 4, TypeScript, Pinia, Cognito, DynamoDB single-table, S3, CloudFront, SES, dan Zod.
 
----
-
-## 2) Alur Data End-to-End (Wajib Dipahami)
+## 2) Alur Data End-to-End
 
 Alur normal untuk halaman CRUD:
 
 1. User buka halaman di `pages/...`.
-2. Halaman memanggil composable (`useXxxApi`) untuk fetch/submit data.
-3. Composable melakukan request ke endpoint `server/api/...`.
-4. `server/middleware/auth.ts` memvalidasi session untuk endpoint terproteksi.
+2. Halaman memanggil composable `useXxxApi`.
+3. Composable melakukan request ke `/api/...`.
+4. Middleware auth memvalidasi sesi cookie berbasis Cognito.
 5. Handler endpoint:
    - cek role (`requireRole`),
-   - validasi input (Zod + `parseBody`),
-   - operasi DB (Drizzle),
-   - catat audit (untuk aksi penting),
-   - balikan `successResponse`/`errorResponse`.
-6. Composable menerima response, update store (via setter), UI otomatis re-render.
+   - validasi input (`parseBody` + Zod),
+   - panggil store/helper domain DynamoDB,
+   - tulis audit log bila perlu,
+   - balikan `successResponse` atau `errorResponse`.
+6. Composable menerima response, update store lewat setter, lalu UI re-render.
 
-Inti yang perlu diingat: **komponen UI tidak menampung logika berat**, semua dipindah ke composable.
+Prinsipnya tetap sama: **komponen UI tidak menampung logika berat**.
 
----
+## 3) Struktur Folder Penting
 
-## 3) Struktur Folder yang Paling Sering Dipakai
-
-### Root penting
+### Root
 
 | Path | Fungsi |
 |---|---|
-| `nuxt.config.ts` | Konfigurasi global Nuxt (termasuk mode SPA `ssr: false`) |
-| `app.vue` | Root app, layout frame utama, mount global component |
+| `nuxt.config.ts` | Konfigurasi global Nuxt |
+| `app.vue` | Root app |
 | `assets/scss/main.scss` | SCSS utama + utility class visual |
-| `utils/apiFetch.ts` | Wrapper request agar pola API konsisten |
+| `utils/apiFetch.ts` | Wrapper request |
+| `infra/` | AWS CDK stack dan konfigurasi stage |
 
 ### Frontend
 
 | Path | Fungsi |
 |---|---|
-| `pages/` | File-based routing (`index.vue`, `create.vue`, `update.vue`, dll.) |
-| `components/` | Komponen presentational reusable (`Header`, `AppToast`, form shell) |
+| `pages/` | File-based routing |
+| `components/` | Komponen presentational reusable |
 | `composables/` | Logic API/form/list/dashboard |
-| `stores/` | State Pinia untuk domain (projects, clients, users, profile, dst.) |
-| `middleware/` | Guard route frontend (contoh: auth global) |
+| `stores/` | State Pinia per domain |
+| `lib/` | Helper murni + konstanta shared lintas client/server |
+| `utils/` | Helper frontend ringan seperti fetch wrapper dan formatter UI/export |
+| `middleware/` | Guard route frontend |
 
 ### Backend
 
 | Path | Fungsi |
 |---|---|
 | `server/api/` | Endpoint REST internal Nuxt |
-| `server/db/schema/` | Definisi tabel per domain |
-| `server/db/migrations/` | SQL migrasi DB |
-| `server/validation/` | Zod schema input endpoint |
-| `server/utils/` | Helper lintas endpoint (response, audit, pagination, datetime) |
+| `server/utils/*Store.ts` | CRUD/query DynamoDB per domain |
+| `server/utils/` | Helper runtime backend: auth, response, audit, storage, PDF, query helpers |
+| `server/utils/cognitoAuth.ts` | Integrasi auth ke Cognito |
+| `server/utils/audit.ts` | Audit log ke DynamoDB |
+| `server/validation/` | Zod schema input |
 
----
+## Aturan Praktis Folder Helper
 
-## 4) Pola Frontend yang Dipakai di PXM
+- Taruh di `lib/` bila helper itu pure, tidak tergantung browser, tidak tergantung event/request server, dan aman dipakai di dua sisi.
+- Taruh di `utils/` bila helper itu khusus kebutuhan frontend seperti `apiFetch`, formatter tampilan, atau formatter export yang dipanggil dari composable/page.
+- Taruh di `server/utils/` bila helper menyentuh Cognito, DynamoDB, S3, request event, response envelope, atau logic backend lain yang tidak boleh bocor ke client.
 
-### 4.1 Halaman (`pages/`)
-- `index.vue` umumnya list/table + filter + pagination.
-- `create.vue` dan `update.vue` memakai form reusable.
-- Route update saat ini umumnya memakai query `?id=...`, misalnya `pages/users/update.vue`.
+Contoh saat ini:
 
-### 4.2 Komponen (`components/`)
-- Fokus ke presentasi.
-- Contoh:
-  - `components/AppToast.vue` untuk feedback sukses/gagal.
-  - `components/form/FormShell.vue` untuk struktur form konsisten.
-  - `components/form/FormSection.vue` untuk grouping field.
+- `lib/pagination.ts` = aturan pagination bersama
+- `utils/apiFetch.ts` = wrapper request client
+- `server/utils/projectStore.ts` = akses data DynamoDB
 
-### 4.3 Composable (`composables/`)
-Domain utama sudah dipisah rapi:
-- Master/operasional: `useProjectsApi.ts`, `useClientsApi.ts`, `usePartnersApi.ts`, `useDcnApi.ts`, `useRegionsApi.ts`, `useProgressStageApi.ts`.
-- Detail domain: `useProjectDetailsApi.ts`, `useProjectProgressApi.ts`, `useProjectFinancialsApi.ts`, `useProjectFilesApi.ts`.
-- Halaman: `useProjectsListPage.ts`, `useProjectDetailsListPage.ts`, `useProjectFinancialsListPage.ts`.
-- Form handler: `useFormHandler.ts`, `useProjectForm.ts`, `useProjectDetailForm.ts`, `useProjectFinancialForm.ts`.
-- Auth/profile/user: `useUsersApi.ts`, `useProfileApi.ts`.
-- Notifikasi/akses: `useNotify.ts`, `useToastMessages.ts`, `useListPagePermissions.ts`.
+## 4) Pola Backend Endpoint
 
----
+### Write endpoint
 
-## 5) Pola Backend Endpoint (Standar Tim)
+1. `requireRole(...)`
+2. `parseBody(...)`
+3. operasi domain/store
+4. audit log
+5. `successResponse(...)`
 
-### 5.1 Penamaan file endpoint
+### Get endpoint
 
-| Nama file | Method | Contoh route |
-|---|---|---|
-| `index.get.ts` | GET list | `/api/projects` |
-| `index.post.ts` | POST create | `/api/projects` |
-| `[id].get.ts` | GET detail | `/api/projects/:id` |
-| `[id].put.ts` | PUT update | `/api/projects/:id` |
-| `[id].delete.ts` | DELETE | `/api/projects/:id` |
+- Wajib pagination
+- Wajib support filtering bila data list
+- Gunakan `buildPagination` dan `buildTotalPages`
+- Jangan return object mentah
 
-### 5.2 Urutan write endpoint (create/update/delete)
+## 5) DynamoDB Single-Table
 
-1. `requireRole(...)` (jika endpoint terproteksi role tertentu).
-2. `parseBody(...)` pakai Zod schema.
-3. DB operation (opsional transaction).
-4. Audit log untuk aksi penting.
-5. `successResponse(...)` (atau `errorResponse(...)` kalau gagal).
+PXM tidak lagi memakai tabel SQL per domain. Semua data aplikasi hidup di satu table DynamoDB per stage.
 
-### 5.3 Urutan get endpoint
+Atribut umum:
 
-- Wajib dukung pagination (`page`, `limit`).
-- Dukung filtering jika data list.
-- Gunakan helper `buildPagination` dan `buildTotalPages`.
-- Balas dalam format response standar.
+- `pk`, `sk`
+- `gsi1pk`, `gsi1sk`
+- `gsi2pk`, `gsi2sk`
+- `entityType`
+- `stage`
 
----
+Contoh keluarga item:
 
-## 6) State Management (Pinia) di Proyek Ini
+- `USER#<id>`
+- `CLIENT#<id>`
+- `PARTNER#<id>`
+- `REGION#<id>`
+- `PROJECT#<id>`
+- `PROJECT_DETAIL#<id>`
+- `PROJECT_PROGRESS#<id>`
+- `PROJECT_FINANCIAL#<id>`
+- `PROJECT_FILE#<id>`
+- `AUDIT#<yyyy-mm>`
 
-Prinsip penting:
-- Store = **state container**, bukan service layer.
-- API call + mapping data dilakukan di composable.
-- Store diisi lewat setter (`setItems`, `setMeta`, `setLoading`, dst.).
+Kalau menambah fitur, pikirkan dulu access pattern list, filter, dan export-nya, baru tentukan key atau GSI yang cocok.
 
-Store domain yang tersedia meliputi:
-- auth/profile/users,
-- projects/clients/partners/dcn/regions,
-- projectDetails/projectProgress/projectFinancials,
-- progressStage/notifications.
+## 6) Auth, File, dan Audit
 
----
+- Auth memakai Cognito, tetapi kontrak frontend tetap lewat endpoint `/api/auth/*`.
+- File avatar dan file project disimpan di S3, lalu diakses lewat CloudFront.
+- Metadata file tetap dicatat di DynamoDB.
+- Audit log tidak lagi memakai database relasional; semuanya masuk ke DynamoDB.
 
-## 7) Dashboard: Cara Kerja Tingkat Kode
+## 7) Stage `dev` dan `prod`
 
-Dashboard utama ada di `pages/index.vue`.
+Stage adalah konsep inti di PXM saat ini:
 
-Yang dilakukan halaman ini:
-1. Ambil data gabungan dari beberapa endpoint (`projects`, `project_details`, `project_progress`, `project_financials`).
-2. Terapkan filter keyword + region + sub region.
-3. Hitung KPI turunan (CPI, SPI, PV, EV, AC, progress site).
-4. Bangun seri 8 minggu terakhir untuk chart.
-5. Render 3 chart utama + summary panel.
+- `dev` untuk verifikasi dan iterasi
+- `prod` untuk data hidup
 
-Catatan penting:
-- Kalkulasi chart dilakukan di fungsi `rebuildSeries()`.
-- Data diproses kumulatif per minggu.
-- Budget baseline prioritas dari subtotal project (dengan fallback aman).
+Keduanya harus terpisah untuk:
 
----
+- DynamoDB table
+- Cognito User Pool/App Client
+- S3 bucket
+- CloudFront distribution
+- Lambda/API Gateway
 
-## 8) Database & Migrasi
+Setiap instance app hanya boleh menunjuk ke resource stage yang sama lewat env.
 
-### 8.1 Schema
-- Setiap domain punya file schema sendiri di `server/db/schema/`.
-- `server/db/schema/index.ts` menjadi penggabung export schema.
+## 8) Jalur Baca Cepat
 
-### 8.2 Migrasi
-- SQL migrasi ada di `server/db/migrations/`.
-- Snapshot metadata ada di `server/db/migrations/meta/`.
-- Saat ada perubahan tabel:
-  1. ubah schema,
-  2. generate migrasi,
-  3. jalankan migrasi,
-  4. sinkronkan validation + endpoint + composable + UI.
+Urutan yang paling efektif:
 
----
-
-## 9) Auth, Security, dan Validasi
-
-- Auth session menggunakan cookie (Lucia).
-- Middleware server menjaga endpoint `/api/*` yang butuh login.
-- Input endpoint **wajib** tervalidasi Zod.
-- Role sensitif dicek via `requireRole`.
-- Response endpoint wajib format standar (`successResponse`/`errorResponse`).
-- Timestamp DB mengikuti helper `dbTime()` (bukan `new Date()` untuk kolom DB).
-
----
-
-## 10) Jalur Belajar Paling Efektif (Untuk Pemahaman Cepat)
-
-Urutan baca yang direkomendasikan:
-
-1. `nuxt.config.ts` dan `app.vue` untuk konteks global app.
-2. Login flow:
-   - `pages/auth/signin.vue`
-   - `server/api/auth/login.post.ts`
-   - `server/middleware/auth.ts`
-3. Satu CRUD lengkap, misalnya Clients:
+1. `README.md`
+2. `infra/README.md`
+3. `scripts/dev/dev-stage-dev.mjs`
+4. `server/api/auth/login.post.ts`
+5. `server/utils/cognitoAuth.ts`
+6. Salah satu alur CRUD lengkap, misalnya:
    - `pages/clients/index.vue`
    - `composables/useClientsApi.ts`
    - `stores/clients.ts`
    - `server/api/clients/index.get.ts`
-4. Dashboard:
-   - `pages/index.vue`
-5. Database:
-   - `server/db/schema/projects.ts` dan schema domain terkait.
+   - `server/utils/clientStore.ts`
+7. `server/utils/projectStore.ts` dan domain store terkait
 
----
+## 9) Checklist Saat Menambah Fitur
 
-## 11) Cara Menambah Fitur Baru (Checklist Praktis)
-
-1. Definisikan kebutuhan data (kolom baru atau tabel baru).
-2. Update schema di `server/db/schema/` + generate migrasi.
-3. Update `server/validation/` untuk body request.
+1. Tentukan access pattern DynamoDB-nya.
+2. Tambah/ubah validation di `server/validation/`.
+3. Tambah/ubah store helper di `server/utils/`.
 4. Tambah/ubah endpoint `server/api/...`.
 5. Tambah/ubah composable `useXxxApi.ts`.
-6. Update store jika perlu state baru.
+6. Update store jika hanya perlu state baru.
 7. Update halaman/komponen.
-8. Pastikan toast, loading, error handling, dan pagination tetap konsisten.
+8. Verifikasi pagination, audit, dan response envelope tetap konsisten.
 
----
+## 10) Prinsip Implementasi
 
-## 12) Glossary Singkat (Biar Tidak Bingung Istilah)
+- Sederhana
+- Aman
+- Konsisten dengan pola repo
+- Tidak menghidupkan lagi PostgreSQL, Drizzle, Lucia, atau Supabase ke jalur runtime aktif
 
-- **Project**: data kontrak utama.
-- **Project Detail**: item/line/scope pekerjaan per project.
-- **Project Progress**: status tanggal plan vs actual per stage.
-- **Project Financial**: catatan arus biaya/tagihan operasional.
-- **CPI**: efisiensi biaya (EV dibanding AC).
-- **SPI**: ketepatan jadwal (EV dibanding PV).
-- **PV/EV/AC**: komponen dasar Earned Value Management.
-
----
-
-## 13) Prinsip Implementasi yang Selalu Dijaga
-
-- Sederhana, aman, konsisten dengan pola yang sudah ada.
-- Hindari duplikasi logika (ekstrak ke composable/helper).
-- UI fokus presentasi, logic fokus di composable/server util.
-- Jangan menambah endpoint/path/schema secara asumsi.
-
----
-
-Dokumen ini ditulis untuk kondisi struktur kode saat ini. Jika ada modul baru, tambahkan ke bagian yang relevan agar tetap menjadi peta utama tim.
+Dokumen ini harus dijaga sinkron dengan arsitektur aktif proyek.

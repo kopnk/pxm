@@ -7,7 +7,8 @@ import { toastSuccessCreated } from "@/composables/useToastMessages";
 import { useProjectDetailForm } from "@/composables/useProjectDetailForm";
 import { useNotify } from "@/composables/useNotify";
 import { useAuthStore } from "@/stores/auth";
-import * as XLSX from "xlsx";
+import DecimalInput from "@/components/form/DecimalInput.vue";
+import { apiFetch } from "~/utils/apiFetch";
 
 /* ================= ROUTER ================= */
 const router = useRouter();
@@ -17,6 +18,7 @@ const notify = useNotify();
 const authStore = useAuthStore();
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const bulkLoading = ref(false);
+const loadXlsx = () => import("xlsx");
 
 const BULK_TEMPLATE_HEADERS = [
   "projectId",
@@ -38,6 +40,7 @@ const BULK_TEMPLATE_HEADERS = [
   "remarksCancel",
   "taxOut",
 ] as const;
+const PROJECT_DETAIL_STATUSES = ["active", "delay", "closed", "cancelled"] as const;
 
 type BulkTemplateHeader = (typeof BULK_TEMPLATE_HEADERS)[number];
 const {
@@ -48,16 +51,15 @@ const {
   cities,
   selectedRegion,
   selectedSubRegion,
-  projectSearch,
-  showProjectDropdown,
   loading: optionsLoading,
   error,
   statusOptions,
   isValid,
+  requiredFieldMessage,
+  formatNumber,
+  totalPriceDisplay,
   loadProjects,
   loadRegions,
-  openProjectDropdown,
-  selectProject,
   buildPayload,
 } = useProjectDetailForm();
 
@@ -78,8 +80,47 @@ const normalizeRequiredText = (value: unknown): string => {
 
 const normalizeNumber = (value: unknown): number | null => {
   if (value == null || value === "") return null;
-  const num = Number(value);
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+
+  const text = String(value).trim().replace(/\s/g, "");
+  if (!text) return null;
+
+  const lastComma = text.lastIndexOf(",");
+  const lastDot = text.lastIndexOf(".");
+  let normalized = text;
+
+  if (lastComma >= 0 && lastDot >= 0) {
+    normalized =
+      lastComma > lastDot
+        ? text.replace(/\./g, "").replace(",", ".")
+        : text.replace(/,/g, "");
+  } else if (lastComma >= 0) {
+    normalized = text.replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(text)) {
+    normalized = text.replace(/\./g, "");
+  }
+
+  const num = Number(normalized);
   return Number.isFinite(num) ? num : null;
+};
+
+const normalizeInteger = (value: unknown): number | null => {
+  const num = normalizeNumber(value);
+  if (num == null) return null;
+  return Number.isInteger(num) ? num : null;
+};
+
+const isEmptyCell = (value: unknown) => value == null || value === "";
+
+const isOptionalIntegerCellValid = (value: unknown) => {
+  if (isEmptyCell(value)) return true;
+  const num = normalizeNumber(value);
+  return num != null && Number.isInteger(num);
+};
+
+const normalizeStatus = (value: unknown) => {
+  const text = normalizeRequiredText(value).toLowerCase();
+  return text || "active";
 };
 
 const hasRequiredBulkFields = (row: Record<string, unknown>) => {
@@ -100,22 +141,30 @@ const downloadBulkTemplate = async () => {
   }
 
   try {
-    const [cityResponse, subRegionResponse, regionResponse] = await Promise.all([
-      $fetch<any>("/api/regions", {
+    const XLSX = await loadXlsx();
+    const [projectResponse, cityResponse, subRegionResponse, regionResponse] =
+      await Promise.all([
+      apiFetch<any>("/api/projects", {
+        query: {
+          page: 1,
+          limit: 1000,
+        },
+      }),
+      apiFetch<any>("/api/regions", {
         query: {
           type: "city_kab",
           page: 1,
           limit: 1000,
         },
       }),
-      $fetch<any>("/api/regions", {
+      apiFetch<any>("/api/regions", {
         query: {
           type: "sub_region",
           page: 1,
           limit: 1000,
         },
       }),
-      $fetch<any>("/api/regions", {
+      apiFetch<any>("/api/regions", {
         query: {
           type: "region",
           page: 1,
@@ -124,6 +173,9 @@ const downloadBulkTemplate = async () => {
       }),
     ]);
 
+    const projectItems = Array.isArray(projectResponse?.data?.items)
+      ? projectResponse.data.items
+      : [];
     const cityItems = Array.isArray(cityResponse?.data?.items)
       ? cityResponse.data.items
       : [];
@@ -134,10 +186,11 @@ const downloadBulkTemplate = async () => {
       ? regionResponse.data.items
       : [];
 
+    const sampleProjectId = projectItems[0]?.id || "uuid-project";
     const sampleCityKabId = cityItems[0]?.id || "uuid-city-kab";
 
     const sampleRow: Record<BulkTemplateHeader, string | number> = {
-      projectId: "uuid-project",
+      projectId: sampleProjectId,
       cityKabId: sampleCityKabId,
       lineNumber: 1,
       systemkey: "SYS-001",
@@ -191,8 +244,29 @@ const downloadBulkTemplate = async () => {
       header: ["regionName", "subRegionName", "cityKabName", "cityKabId"],
     });
 
+    const projectReferenceRows = projectItems
+      .map((item: any) => ({
+        projectName: item.projectName ?? "",
+        poNumber: item.poNumber ?? "",
+        status: item.status ?? "",
+        projectId: item.id ?? "",
+      }))
+      .sort(
+        (
+          a: { projectName: string; poNumber: string },
+          b: { projectName: string; poNumber: string },
+        ) =>
+          a.projectName.localeCompare(b.projectName, "id") ||
+          a.poNumber.localeCompare(b.poNumber, "id"),
+      );
+
+    const projectReferenceSheet = XLSX.utils.json_to_sheet(projectReferenceRows, {
+      header: ["projectName", "poNumber", "status", "projectId"],
+    });
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "project_details");
+    XLSX.utils.book_append_sheet(workbook, projectReferenceSheet, "project_reference");
     XLSX.utils.book_append_sheet(workbook, cityReferenceSheet, "city_kab_reference");
     XLSX.writeFile(workbook, "project-details-bulk-template.xlsx");
   } catch (err: any) {
@@ -225,6 +299,7 @@ const handleBulkFileChange = async (event: Event) => {
 
   try {
     bulkLoading.value = true;
+    const XLSX = await loadXlsx();
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array" });
     const firstSheet = workbook.SheetNames[0];
@@ -256,10 +331,29 @@ const handleBulkFileChange = async (event: Event) => {
       return;
     }
 
+    const invalidLineNumberIndex = rows.findIndex(
+      (row) => !isOptionalIntegerCellValid(row.lineNumber),
+    );
+    if (invalidLineNumberIndex !== -1) {
+      notify.warning(`Row ${invalidLineNumberIndex + 2} lineNumber harus angka bulat`);
+      return;
+    }
+
+    const invalidStatusIndex = rows.findIndex((row) => {
+      const status = normalizeStatus(row.status);
+      return !PROJECT_DETAIL_STATUSES.includes(status as any);
+    });
+    if (invalidStatusIndex !== -1) {
+      notify.warning(
+        `Row ${invalidStatusIndex + 2} status harus: active, delay, closed, atau cancelled`,
+      );
+      return;
+    }
+
     const payload = rows.map((row) => ({
       projectId: normalizeRequiredText(row.projectId),
       cityKabId: normalizeRequiredText(row.cityKabId),
-      lineNumber: normalizeNumber(row.lineNumber),
+      lineNumber: normalizeInteger(row.lineNumber),
       systemkey: normalizeRequiredText(row.systemkey),
       neId: normalizeText(row.neId),
       materialId: normalizeText(row.materialId),
@@ -270,7 +364,7 @@ const handleBulkFileChange = async (event: Event) => {
       quantity: normalizeNumber(row.quantity),
       uom: normalizeText(row.uom),
       unitPrice: normalizeNumber(row.unitPrice),
-      status: normalizeText(row.status) ?? "active",
+      status: normalizeStatus(row.status),
       remarksProjectsDetails: normalizeText(row.remarksProjectsDetails),
       remarksDelay: normalizeText(row.remarksDelay),
       remarksCancel: normalizeText(row.remarksCancel),
@@ -291,9 +385,7 @@ const handleBulkFileChange = async (event: Event) => {
 
 const handleSubmit = async () => {
   if (!isValid.value) {
-    notify.warning(
-      "Project, city/kab, site name, quantity, unit price, dan system key wajib diisi",
-    );
+    notify.warning(requiredFieldMessage.value);
     return;
   }
 
@@ -349,31 +441,14 @@ onMounted(async () => {
 
     <!-- ================= PROJECT ================= -->
     <FormSection>
-      <div class="col-md-12 position-relative">
+      <div class="col-md-12">
         <label class="form-label">Project</label>
-        <input
-          class="form-control"
-          v-model="projectSearch"
-          @focus="openProjectDropdown"
-          placeholder="Search project..."
-          required
-        />
-
-        <div
-          v-if="showProjectDropdown"
-          class="list-group position-absolute w-100 shadow"
-          style="z-index: 1000; max-height: 250px; overflow: auto"
-        >
-          <button
-            type="button"
-            class="list-group-item list-group-item-action"
-            v-for="p in projects"
-            :key="p.id"
-            @click="selectProject(p)"
-          >
+        <select v-model="form.projectId" class="form-select" required>
+          <option value="">-- Select Project --</option>
+          <option v-for="p in projects" :key="p.id" :value="p.id">
             {{ p.projectName }} - {{ p.poNumber }}
-          </button>
-        </div>
+          </option>
+        </select>
       </div>
     </FormSection>
 
@@ -470,12 +545,7 @@ onMounted(async () => {
     <FormSection>
       <div class="col-md-4">
         <label class="form-label">Quantity</label>
-        <input
-          type="number"
-          v-model.number="form.quantity"
-          class="form-control"
-          required
-        />
+        <DecimalInput v-model="form.quantity" required />
       </div>
 
       <div class="col-md-4">
@@ -485,19 +555,16 @@ onMounted(async () => {
 
       <div class="col-md-4">
         <label class="form-label">Unit Price</label>
-        <input
-          type="number"
-          v-model.number="form.unitPrice"
-          class="form-control"
-          required
-        />
+        <DecimalInput v-model="form.unitPrice" required />
+        <div class="number-helper">
+          {{ formatNumber(form.unitPrice) }}
+        </div>
       </div>
 
       <div class="col-md-4">
         <label class="form-label">Total Price</label>
         <input
-          type="number"
-          v-model="form.totalPrice"
+          :value="totalPriceDisplay"
           class="form-control"
           readonly
         />

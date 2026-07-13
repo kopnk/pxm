@@ -1,7 +1,4 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { regions } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
 import { parseBody } from "~/server/utils/zod";
 import {
   createRegionSchema,
@@ -11,9 +8,11 @@ import {
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
 import { mapLocalTimestamps } from "~/server/utils/datetime";
+import {
+  getRegionRecordById,
+  updateRegionRecord,
+} from "~/server/utils/regionStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
@@ -26,62 +25,51 @@ export default defineEventHandler(async (event) => {
 
   const { id } = regionIdSchema.parse(event.context.params);
   const body = parseBody(updateRegionSchema, await readBody(event));
+  const oldData = await getRegionRecordById(id);
 
-  const updated = await db.transaction(async (tx) => {
-    const oldRows = await tx
-      .select()
-      .from(regions)
-      .where(eq(regions.id, id))
-      .limit(1);
-
-    const oldData = oldRows[0];
-
-    if (!oldData) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Region not found",
-      });
-    }
-
-    const nextType = body.type ?? oldData.type;
-    const nextParentId =
-      body.parentId !== undefined
-        ? body.parentId
-        : nextType === "region"
-          ? null
-          : oldData.parentId;
-
-    createRegionSchema.parse({
-      name: body.name ?? oldData.name,
-      type: nextType,
-      parentId: nextParentId,
+  if (!oldData) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Region not found",
     });
+  }
 
-    const rows = await tx
-      .update(regions)
-      .set({
-        name: body.name ?? oldData.name,
-        type: nextType,
-        parentId: nextParentId,
-        updatedUser: userId,
-        updatedAt: dbTime(),
-      })
-      .where(eq(regions.id, id))
-      .returning();
+  const nextType = body.type ?? oldData.type;
+  const nextParentId =
+    body.parentId !== undefined
+      ? body.parentId
+      : nextType === "region"
+        ? null
+        : oldData.parentId;
 
-    const updatedRow = requireFirstRow(rows, "Region not found");
+  createRegionSchema.parse({
+    name: body.name ?? oldData.name,
+    type: nextType,
+    parentId: nextParentId,
+  });
 
-    await logAudit({
-      event,
-      actorId: userId,
-      action: "UPDATE",
-      targetTable: "regions",
-      targetId: id,
-      oldData,
-      newData: updatedRow,
+  const updated = await updateRegionRecord(id, {
+    name: body.name ?? oldData.name,
+    type: nextType,
+    parentId: nextParentId,
+    updatedUser: userId,
+  });
+
+  if (!updated) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Region not found",
     });
+  }
 
-    return updatedRow;
+  await logAudit({
+    event,
+    actorId: userId,
+    action: "UPDATE",
+    targetTable: "regions",
+    targetId: id,
+    oldData,
+    newData: updated,
   });
 
   return successResponse(event, "Region updated", mapLocalTimestamps(updated));

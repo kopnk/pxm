@@ -1,11 +1,25 @@
-import type { SQL } from "drizzle-orm";
-import { and, eq, ilike, or, sql } from "drizzle-orm";
-import { projectProgress } from "~/server/db/schema/project_progress";
-import { projects } from "~/server/db/schema/projects";
-import { projectDetails } from "~/server/db/schema/project_details";
-import { buildSearchOr } from "~/server/utils/searchAmountSql";
-
 export type StageDateTypeFilter = "planned" | "actual";
+
+export type ProjectProgressFilterRecord = {
+  projectName?: string | null;
+  poNumber?: string | null;
+  contractNumber?: string | null;
+  siteName?: string | null;
+  materialName?: string | null;
+  systemKey?: string | null;
+  siteId?: string | null;
+  neId?: string | null;
+  materialId?: string | null;
+  detailStatus?: string | null;
+  stageData?: Record<
+    string,
+    {
+      plan_submit_date?: string | null;
+      actual_approve_date?: string | null;
+      status?: string | null;
+    }
+  > | null;
+};
 
 export type ProjectProgressListFilterInput = {
   search?: string;
@@ -34,42 +48,74 @@ function normalizeStageDateType(
   return undefined;
 }
 
-const hasPlanDate = sql`coalesce(trim(st.value ->> 'plan_submit_date'), '') <> ''`;
-const hasActualDate = sql`coalesce(trim(st.value ->> 'actual_approve_date'), '') <> ''`;
+function hasPlanDate(stage?: {
+  plan_submit_date?: string | null;
+}) {
+  return Boolean(String(stage?.plan_submit_date ?? "").trim());
+}
 
-function stageExistsCondition(
+function hasActualDate(stage?: {
+  actual_approve_date?: string | null;
+}) {
+  return Boolean(String(stage?.actual_approve_date ?? "").trim());
+}
+
+function matchesStageCondition(
+  record: ProjectProgressFilterRecord,
   stageKey: string,
   options?: {
     status?: string;
     stageDateType?: StageDateTypeFilter;
   },
-): SQL {
-  const parts: SQL[] = [sql`st.key = ${stageKey}`];
+) {
+  const stage = record.stageData?.[stageKey];
+  if (!stage) return false;
 
-  if (options?.status) {
-    parts.push(sql`st.value ->> 'status' = ${options.status}`);
-  }
-  if (options?.stageDateType === "planned") {
-    parts.push(hasPlanDate);
-  }
-  if (options?.stageDateType === "actual") {
-    parts.push(hasActualDate);
+  if (options?.status && stage.status !== options.status) {
+    return false;
   }
 
-  return sql`exists (
-    select 1 from jsonb_each(${projectProgress.stageData}) as st
-    where ${and(...parts)}
-  )`;
+  if (options?.stageDateType === "planned" && !hasPlanDate(stage)) {
+    return false;
+  }
+
+  if (options?.stageDateType === "actual" && !hasActualDate(stage)) {
+    return false;
+  }
+
+  return true;
 }
 
-/**
- * WHERE untuk `GET /api/project_progress` (list) dan export Excel.
- */
-export function buildProjectProgressListWhere(
-  input: ProjectProgressListFilterInput,
-): SQL | undefined {
-  const conditions: SQL[] = [];
+function anyStageMatchesStatus(
+  record: ProjectProgressFilterRecord,
+  stageStatus: string,
+) {
+  return Object.values(record.stageData ?? {}).some(
+    (stage) => stage?.status === stageStatus,
+  );
+}
 
+function buildProgressSearchHaystack(record: ProjectProgressFilterRecord) {
+  return [
+    record.projectName ?? "",
+    record.poNumber ?? "",
+    record.contractNumber ?? "",
+    record.siteName ?? "",
+    record.materialName ?? "",
+    record.systemKey ?? "",
+    record.siteId ?? "",
+    record.neId ?? "",
+    record.materialId ?? "",
+    JSON.stringify(record.stageData ?? {}),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+export function matchesProjectProgressListFilters(
+  record: ProjectProgressFilterRecord,
+  input: ProjectProgressListFilterInput,
+) {
   const globalSearch = input.search?.trim();
   const project = input.project?.trim();
   const detail = input.detail?.trim();
@@ -78,44 +124,30 @@ export function buildProjectProgressListWhere(
   const statusFilter = input.status?.trim();
 
   if (globalSearch) {
-    const sOr = buildSearchOr(globalSearch, {
-      ilike: [
-        projects.projectName,
-        projects.poNumber,
-        projects.contractNumber,
-        projectDetails.siteName,
-        projectDetails.materialName,
-        projectDetails.systemkey,
-        projectDetails.siteId,
-        projectDetails.neId,
-        projectDetails.materialId,
-      ],
-      asText: [
-        projectDetails.lineNumber,
-        projectDetails.quantity,
-        projectDetails.unitPrice,
-        projectDetails.totalPrice,
-        projectProgress.stageData,
-      ],
-    });
-    if (sOr) conditions.push(sOr);
+    if (!buildProgressSearchHaystack(record).includes(globalSearch.toLowerCase())) {
+      return false;
+    }
   } else {
     if (project) {
-      const pattern = `%${project}%`;
-      const pOr = or(
-        ilike(projects.projectName, pattern),
-        ilike(projects.poNumber, pattern),
-      );
-      if (pOr) conditions.push(pOr);
+      const pattern = project.toLowerCase();
+      const projectMatch = [record.projectName ?? "", record.poNumber ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(pattern);
+      if (!projectMatch) return false;
     }
 
     if (detail) {
-      const dOr = or(
-        ilike(projectDetails.siteName, `%${detail}%`),
-        ilike(projectDetails.materialName, `%${detail}%`),
-        ilike(projectDetails.systemkey, `%${detail}%`),
-      );
-      if (dOr) conditions.push(dOr);
+      const detailPattern = detail.toLowerCase();
+      const detailMatch = [
+        record.siteName ?? "",
+        record.materialName ?? "",
+        record.systemKey ?? "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(detailPattern);
+      if (!detailMatch) return false;
     }
   }
 
@@ -125,67 +157,53 @@ export function buildProjectProgressListWhere(
     if (statusFilter.startsWith("detail:")) {
       const detailStatus = statusFilter.slice("detail:".length);
       if ((detailAllowed as readonly string[]).includes(detailStatus)) {
-        conditions.push(
-          eq(
-            projectDetails.status,
-            detailStatus as (typeof detailAllowed)[number],
-          ),
-        );
+        if (record.detailStatus !== detailStatus) return false;
       }
     } else if (statusFilter.startsWith("stage:")) {
       const stageStatus = statusFilter.slice("stage:".length);
       if ((stageAllowed as readonly string[]).includes(stageStatus)) {
         if (stageCode) {
           stageFilterHandled = true;
-          conditions.push(
-            stageExistsCondition(stageCode, {
+          if (
+            !matchesStageCondition(record, stageCode, {
               status: stageStatus,
               stageDateType,
-            }),
-          );
+            })
+          ) {
+            return false;
+          }
         } else {
-          conditions.push(
-            sql`exists (
-              select 1 from jsonb_each(${projectProgress.stageData}) as st
-              where st.value ->> 'status' = ${stageStatus}
-            )`,
-          );
+          if (!anyStageMatchesStatus(record, stageStatus)) return false;
         }
       }
     } else if ((detailAllowed as readonly string[]).includes(statusFilter)) {
-      conditions.push(
-        eq(
-          projectDetails.status,
-          statusFilter as (typeof detailAllowed)[number],
-        ),
-      );
+      if (record.detailStatus !== statusFilter) return false;
     } else if ((stageAllowed as readonly string[]).includes(statusFilter)) {
       if (stageCode) {
         stageFilterHandled = true;
-        conditions.push(
-          stageExistsCondition(stageCode, {
+        if (
+          !matchesStageCondition(record, stageCode, {
             status: statusFilter,
             stageDateType,
-          }),
-        );
+          })
+        ) {
+          return false;
+        }
       } else {
-        conditions.push(
-          sql`exists (
-            select 1 from jsonb_each(${projectProgress.stageData}) as st
-            where st.value ->> 'status' = ${statusFilter}
-          )`,
-        );
+        if (!anyStageMatchesStatus(record, statusFilter)) return false;
       }
     }
   }
 
   if (stageCode && !stageFilterHandled) {
-    conditions.push(
-      stageExistsCondition(stageCode, {
+    if (
+      !matchesStageCondition(record, stageCode, {
         stageDateType,
-      }),
-    );
+      })
+    ) {
+      return false;
+    }
   }
 
-  return conditions.length ? and(...conditions) : undefined;
+  return true;
 }

@@ -1,19 +1,18 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { projects } from "~/server/db/schema/projects";
-import { eq } from "drizzle-orm";
+import { getClientRecordById } from "~/server/utils/clientStore";
+import { mapLocalTimestamps, toLocalDate } from "~/server/utils/datetime";
+import {
+  calculateProjectAmounts,
+  getProjectRecordById,
+  updateProjectRecord,
+} from "~/server/utils/projectStore";
 import { parseBody } from "~/server/utils/zod";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { updateProjectSchema } from "~/server/validation/projects.schema";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
-import { mapLocalTimestamps, toLocalDate } from "~/server/utils/datetime";
 
 export default defineEventHandler(async (event) => {
-
-  /* ================= AUTH ================= */
   const forbidden = requireRole(event, ["admin", "superadmin"]);
   if (forbidden) return forbidden;
 
@@ -22,83 +21,60 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  /* ================= PARAM ================= */
   const id = event.context.params?.id;
   if (!id) {
     throw createError({ statusCode: 400, statusMessage: "Invalid ID" });
   }
 
-  /* ================= BODY ================= */
   const body = parseBody(updateProjectSchema, await readBody(event));
-
-  /* ================= OLD DATA ================= */
-  const oldRows = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.id, id))
-    .limit(1);
-
-  const oldData = oldRows[0];
-
+  const oldData = await getProjectRecordById(id);
   if (!oldData) {
     throw createError({ statusCode: 404, statusMessage: "Project not found" });
   }
 
-  /* ================= BUSINESS CALC ================= */
-  const subTotal = Number(body.subTotal ?? oldData.subTotal ?? 0);
-  const discount = Number(body.discount ?? oldData.discount ?? 0);
-  const vatRate = Number(body.vatRate ?? oldData.vatRate ?? 11);
+  if (body.clientId) {
+    const client = await getClientRecordById(body.clientId);
+    if (!client) {
+      throw createError({ statusCode: 400, statusMessage: "Client not found" });
+    }
+  }
 
-  const netPrice = subTotal - discount;
-  const vatAmount = (netPrice * vatRate) / 100;
-  const grandTotal = netPrice + vatAmount;
+  const amounts = calculateProjectAmounts({
+    subTotal: body.subTotal ?? oldData.subTotal,
+    discount: body.discount ?? oldData.discount,
+    vatRate: body.vatRate ?? oldData.vatRate,
+  });
 
-  /* ================= UPDATE ================= */
-  const updatedRows = await db
-    .update(projects)
-    .set({
-      contractNumber: body.contractNumber ?? oldData.contractNumber,
-      prScNumber: body.prScNumber ?? oldData.prScNumber,
-      poNumber: body.poNumber ?? oldData.poNumber,
-
-      poDate:
-        body.poDate !== undefined
-          ? (toLocalDate(body.poDate) ?? oldData.poDate)
-          : oldData.poDate,
-
-      deliveryDate: body.deliveryDate !== undefined
+  const updated = await updateProjectRecord(id, {
+    contractNumber: body.contractNumber ?? oldData.contractNumber,
+    prScNumber: body.prScNumber ?? oldData.prScNumber,
+    poNumber: body.poNumber ?? oldData.poNumber,
+    poDate:
+      body.poDate !== undefined
+        ? (toLocalDate(body.poDate) ?? oldData.poDate)
+        : oldData.poDate,
+    deliveryDate:
+      body.deliveryDate !== undefined
         ? toLocalDate(body.deliveryDate)
         : oldData.deliveryDate,
-
-      komDate: body.komDate !== undefined
+    komDate:
+      body.komDate !== undefined
         ? toLocalDate(body.komDate)
         : oldData.komDate,
+    projectName: body.projectName ?? oldData.projectName,
+    subTotal: amounts.subTotal,
+    discount: amounts.discount,
+    vatRate: amounts.vatRate,
+    status: body.status ?? oldData.status,
+    pm: body.pm !== undefined ? body.pm : oldData.pm,
+    clientId: body.clientId !== undefined ? body.clientId : oldData.clientId,
+    updatedUser: userId,
+  });
 
-      projectName: body.projectName ?? oldData.projectName,
+  if (!updated) {
+    throw createError({ statusCode: 404, statusMessage: "Project not found" });
+  }
 
-      subTotal: subTotal.toString(),
-      discount: discount.toString(),
-      netPrice: netPrice.toString(),
-
-      vatRate: vatRate.toString(),
-      vatAmount: vatAmount.toString(),
-      grandTotal: grandTotal.toString(),
-
-      status: body.status ?? oldData.status,
-      pm: body.pm !== undefined ? body.pm : oldData.pm,
-
-      clientId:
-        body.clientId !== undefined ? body.clientId : oldData.clientId,
-
-      updatedUser: userId,
-      updatedAt: dbTime(),
-    })
-    .where(eq(projects.id, id))
-    .returning();
-
-  const updated = requireFirstRow(updatedRows, "Project not found");
-
-  /* ================= AUDIT ================= */
   await logAudit({
     event,
     actorId: userId,
@@ -109,14 +85,7 @@ export default defineEventHandler(async (event) => {
     newData: updated,
   });
 
-  /* ================= RESPONSE ================= */
   return successResponse(event, "Project updated", {
     ...mapLocalTimestamps(updated),
-    subTotal: Number(updated.subTotal),
-    discount: Number(updated.discount),
-    netPrice: Number(updated.netPrice),
-    vatRate: Number(updated.vatRate),
-    vatAmount: Number(updated.vatAmount),
-    grandTotal: Number(updated.grandTotal),
   });
 });

@@ -71,7 +71,7 @@ const {
           required
         >
           <option value="" disabled>
-            {{ regionsLoading ? "Loading…" : "Select region" }}
+            {{ regionsLoading ? "Loading..." : "Select region" }}
           </option>
           <option
             v-for="region in regions"
@@ -96,7 +96,7 @@ const {
               !selectedRegionId
                 ? "Select region first"
                 : areasLoading
-                  ? "Loading…"
+                  ? "Loading..."
                   : areas.length
                     ? "Select area"
                     : "No area available"

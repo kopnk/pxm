@@ -1,10 +1,8 @@
 import { defineEventHandler, getQuery } from "h3";
-import { and, asc, eq } from "drizzle-orm";
-import { db } from "~/server/db";
-import { regions } from "~/server/db/schema";
 import { requireRole } from "~/server/utils/authorize";
 import { successResponse } from "~/server/utils/response";
 import { regionTypeEnum } from "~/server/validation/regions.schema";
+import { listRegionOptions } from "~/server/utils/regionStore";
 
 const PARENT_TYPES = ["region", "sub_region"] as const;
 
@@ -22,16 +20,10 @@ export default defineEventHandler(async (event) => {
     return successResponse(event, "Parent options loaded", { items: [] });
   }
 
-  const items = await db
-    .select({
-      id: regions.id,
-      name: regions.name,
-      type: regions.type,
-    })
-    .from(regions)
-    .where(eq(regions.type, parsed.data))
-    .orderBy(asc(regions.name))
-    .limit(1000);
+  const items = await listRegionOptions({
+    type: parsed.data,
+    limit: 1000,
+  });
 
   return successResponse(event, "Parent options loaded", { items });
 });

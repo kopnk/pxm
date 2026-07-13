@@ -1,18 +1,21 @@
 import { defineEventHandler, readBody, createError } from "h3";
-import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
-import { eq } from "drizzle-orm";
-import argon2 from "argon2";
+import { crudActionMessage } from "~/lib/entityMessages";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { userSignupSchema } from "~/server/validation/users.schema";
 import { parseBody } from "~/server/utils/zod";
-import { dbTime } from "~/server/utils/dbTime";
-import { requireFirstRow } from "~/server/utils/requireFirstRow";
-import { ensureUserPermissionsForRole } from "~/server/utils/rlsPermissions";
-import { DEFAULT_USER_PASSWORD } from "~/lib/authDefaults";
 import { assertCreatableUserRole } from "~/server/utils/userRolePolicy";
+import { getDefaultUserPassword } from "~/server/utils/defaultUserPassword";
+import {
+  createCognitoUser,
+  deleteCognitoUser,
+  isCognitoAuthEnabled,
+} from "~/server/utils/cognitoAuth";
+import {
+  createAppUserRecord,
+  getAppUserRecordByEmail,
+} from "~/server/utils/appUserStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -31,25 +34,24 @@ export default defineEventHandler(async (event) => {
 
   assertCreatableUserRole(actor.role, body.role ?? "staff");
 
-  const created = await db.transaction(async (tx) => {
+  const existing = await getAppUserRecordByEmail(body.email);
+  if (existing) {
+    throw createError({ statusCode: 409, statusMessage: "Email already exists" });
+  }
 
-    const existing = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, body.email))
-      .limit(1);
+  if (isCognitoAuthEnabled()) {
+    const temporaryPassword = getDefaultUserPassword();
 
-    if (existing.length) {
-      throw createError({ statusCode: 409, statusMessage: "Email already exists" });
-    }
+    await createCognitoUser({
+      email: body.email,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      temporaryPassword,
+    });
 
-    const passwordHash = await argon2.hash(DEFAULT_USER_PASSWORD);
-
-    const rows = await tx
-      .insert(users)
-      .values({
+    try {
+      const created = await createAppUserRecord({
         email: body.email,
-        passwordHash,
         firstName: body.firstName,
         lastName: body.lastName,
         phone: body.phone,
@@ -61,33 +63,38 @@ export default defineEventHandler(async (event) => {
         mustChangePassword: true,
         createdUser: actor.id,
         updatedUser: actor.id,
+        createdBy: actor.email,
+        updatedBy: actor.email,
+      });
 
-        createdAt: dbTime(),
-        updatedAt: dbTime(),
-      })
-      .returning({ id: users.id });
+      await logAudit({
+        event,
+        actorId: actor.id,
+        action: "CREATE",
+        targetTable: "users",
+        targetId: created.user.id,
+        newData: { email: body.email, role: body.role },
+      });
 
-    const userId = requireFirstRow(rows, "User not created").id;
-    const role = body.role ?? "staff";
+      return successResponse(
+        event,
+        crudActionMessage("user", "created"),
+        { id: created.user.id },
+        201
+      );
+    } catch (error) {
+      try {
+        await deleteCognitoUser(body.email);
+      } catch {
+        // Best-effort cleanup if the local transaction fails after Cognito user creation.
+      }
 
-    await ensureUserPermissionsForRole(userId, role, tx);
+      throw error;
+    }
+  }
 
-    await logAudit({
-      event,
-      actorId: actor.id,
-      action: "CREATE",
-      targetTable: "users",
-      targetId: userId,
-      newData: { email: body.email, role: body.role },
-    });
-
-    return userId;
+  throw createError({
+    statusCode: 500,
+    statusMessage: "Cognito auth configuration is required",
   });
-
-  return successResponse(
-    event,
-    "User created successfully",
-    { id: created },
-    201
-  );
 });

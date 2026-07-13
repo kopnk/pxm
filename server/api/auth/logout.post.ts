@@ -1,56 +1,47 @@
-import { defineEventHandler, getCookie, setCookie } from "h3";
-import { lucia } from "~/server/auth/lucia";
+import { defineEventHandler } from "h3";
 import { successResponse } from "~/server/utils/response";
 import { logAudit } from "~/server/utils/audit";
+import {
+  clearAuthState,
+  resolveAuthSession,
+  signOutActiveSession,
+} from "~/server/utils/cognitoAuth";
 
 export default defineEventHandler(async (event) => {
-  const sessionId = getCookie(event, lucia.sessionCookieName);
+  let authSession: Awaited<ReturnType<typeof resolveAuthSession>> = null;
 
-  let actorId: string | null = null;
+  try {
+    authSession = await resolveAuthSession(event);
+  } catch {
+    authSession = null;
+  }
 
-  if (sessionId) {
-    /**
-     * 1. Validasi session untuk ambil user (JANGAN pakai middleware)
-     */
-    const { session, user } = await lucia.validateSession(sessionId);
-
-    if (session && user) {
-      actorId = user.id;
-
-      /**
-       * 2. Invalidate session
-       */
-      await lucia.invalidateSession(sessionId);
-      /**
-       * 3. Audit logout (AMAN)
-       */
-      await logAudit({
-        event,
-        actorId,
-        action: "LOGOUT",
-        targetTable: "users",
-        targetId: actorId,
-      });
+  if (authSession?.kind === "active") {
+    try {
+      await signOutActiveSession(authSession.state);
+    } catch {
+      // Clear the local cookie even if Cognito sign-out cannot complete.
     }
+  }
 
-    /**
-     * 4. Hapus cookie (selalu)
-     */
-    const blankCookie = lucia.createBlankSessionCookie();
-    setCookie(
+  clearAuthState(event);
+
+  if (authSession?.appUser.user.id) {
+    await logAudit({
       event,
-      blankCookie.name,
-      blankCookie.value,
-      blankCookie.attributes
-    );
+      actorId: authSession.appUser.user.id,
+      action: "LOGOUT",
+      targetTable: "users",
+      targetId: authSession.appUser.user.id,
+    });
   }
 
   return successResponse(
     event,
-    actorId ? "Logged out successfully" : "No active session",
+    authSession ? "Logged out successfully" : "No active session",
     {
-      sessionInvalidated: !!actorId,
+      sessionInvalidated: Boolean(authSession),
     },
-    200
+    200,
   );
 });

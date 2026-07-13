@@ -1,3 +1,3 @@
-import "bootstrap/dist/js/bootstrap.bundle.min.js";
-
-export default defineNuxtPlugin(() => {});
+export default defineNuxtPlugin(async () => {
+  await import("bootstrap/dist/js/bootstrap.esm.js");
+});
