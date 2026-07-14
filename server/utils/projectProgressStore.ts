@@ -1,11 +1,10 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
-  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
-  PutCommand,
   QueryCommand,
   ScanCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 import { formatAuditUserEmail } from "~/server/utils/createdBy";
@@ -86,8 +85,24 @@ type ProjectProgressItem = ProjectProgressRecord & {
   stage: string;
 };
 
+type ProjectProgressDetailLockItem = {
+  pk: string;
+  sk: "LOCK";
+  entityType: "PROJECT_PROGRESS_DETAIL_LOCK";
+  progressId: string;
+  projectId: string;
+  projectDetailId: string;
+  createdAt: string;
+  updatedAt: string;
+  stage: string;
+};
+
 const PROJECT_PROGRESS_SK = "META";
 const PROJECT_PROGRESS_ENTITY = "PROJECT_PROGRESS";
+const PROJECT_PROGRESS_DETAIL_LOCK_SK = "LOCK";
+const PROJECT_PROGRESS_DETAIL_LOCK_ENTITY = "PROJECT_PROGRESS_DETAIL_LOCK";
+const PROJECT_PROGRESS_DETAIL_EXISTS_MESSAGE =
+  "Project progress already exists for this detail";
 
 let dynamoClient: DynamoDBDocumentClient | null = null;
 
@@ -130,6 +145,10 @@ function getDynamoDocumentClient() {
 
 function buildProjectProgressPk(progressId: string) {
   return `PROJECT_PROGRESS#${progressId}`;
+}
+
+function buildProjectProgressDetailLockPk(projectDetailId: string) {
+  return `PROJECT_PROGRESS_DETAIL_LOCK#${projectDetailId}`;
 }
 
 function normalizeNullableText(value: unknown) {
@@ -218,6 +237,26 @@ function toProjectProgressItem(record: ProjectProgressRecord): ProjectProgressIt
     entityType: PROJECT_PROGRESS_ENTITY,
     stage: getStageName(),
     ...normalized,
+  };
+}
+
+function toProjectProgressDetailLockItem(input: {
+  progressId: string;
+  projectId: string;
+  projectDetailId: string;
+  createdAt: string;
+  updatedAt: string;
+}): ProjectProgressDetailLockItem {
+  return {
+    pk: buildProjectProgressDetailLockPk(input.projectDetailId),
+    sk: PROJECT_PROGRESS_DETAIL_LOCK_SK,
+    entityType: PROJECT_PROGRESS_DETAIL_LOCK_ENTITY,
+    progressId: input.progressId,
+    projectId: input.projectId,
+    projectDetailId: input.projectDetailId,
+    createdAt: input.createdAt,
+    updatedAt: input.updatedAt,
+    stage: getStageName(),
   };
 }
 
@@ -330,6 +369,18 @@ function createValidationError(message: string) {
   return error;
 }
 
+function throwProjectProgressDetailConflict() {
+  throw createValidationError(PROJECT_PROGRESS_DETAIL_EXISTS_MESSAGE);
+}
+
+function rethrowTransactionConflict(error: unknown) {
+  if ((error as { name?: string } | null)?.name === "TransactionCanceledException") {
+    throwProjectProgressDetailConflict();
+  }
+
+  throw error;
+}
+
 async function ensureProjectProgressRelations(input: {
   projectId: string;
   projectDetailId: string;
@@ -371,9 +422,7 @@ async function ensureUniqueProgressByDetail(
   );
 
   if (hit) {
-    throw createValidationError(
-      "Project progress already exists for this detail",
-    );
+    throwProjectProgressDetailConflict();
   }
 }
 
@@ -507,6 +556,27 @@ export async function listProjectProgressUsageByDetailIds(
     }));
 }
 
+export async function listProjectProgressUsage(filters?: {
+  projectId?: string;
+  excludeProgressId?: string;
+}) {
+  const projectId = String(filters?.projectId ?? "").trim();
+  const excludeProgressId = String(filters?.excludeProgressId ?? "").trim();
+
+  return (await scanAllProjectProgressItems())
+    .map(mapProjectProgressItem)
+    .filter((progress) => {
+      if (projectId && progress.projectId !== projectId) return false;
+      if (excludeProgressId && progress.id === excludeProgressId) return false;
+      return true;
+    })
+    .map((progress) => ({
+      id: progress.id,
+      projectId: progress.projectId,
+      projectDetailId: progress.projectDetailId,
+    }));
+}
+
 export async function createProjectProgressRecord(params: {
   projectId: string;
   projectDetailId: string;
@@ -564,12 +634,36 @@ export async function createProjectProgressRecord(params: {
     updatedAt: createdAt,
   });
 
-  await getDynamoDocumentClient().send(
-    new PutCommand({
-      TableName: getTableName(),
-      Item: toProjectProgressItem(record),
-    }),
-  );
+  try {
+    await getDynamoDocumentClient().send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: getTableName(),
+              Item: toProjectProgressDetailLockItem({
+                progressId: record.id,
+                projectId: record.projectId,
+                projectDetailId: record.projectDetailId,
+                createdAt,
+                updatedAt: createdAt,
+              }),
+              ConditionExpression: "attribute_not_exists(pk)",
+            },
+          },
+          {
+            Put: {
+              TableName: getTableName(),
+              Item: toProjectProgressItem(record),
+              ConditionExpression: "attribute_not_exists(pk)",
+            },
+          },
+        ],
+      }),
+    );
+  } catch (error) {
+    rethrowTransactionConflict(error);
+  }
 
   return record;
 }
@@ -643,12 +737,58 @@ export async function updateProjectProgressRecord(
     updatedAt: nowIso(),
   });
 
-  await getDynamoDocumentClient().send(
-    new PutCommand({
-      TableName: getTableName(),
-      Item: toProjectProgressItem(nextRecord),
-    }),
-  );
+  try {
+    await getDynamoDocumentClient().send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: getTableName(),
+              Item: toProjectProgressDetailLockItem({
+                progressId: nextRecord.id,
+                projectId: nextRecord.projectId,
+                projectDetailId: nextRecord.projectDetailId,
+                createdAt: current.createdAt,
+                updatedAt: nextRecord.updatedAt,
+              }),
+              ConditionExpression:
+                "attribute_not_exists(pk) OR progressId = :progressId",
+              ExpressionAttributeValues: {
+                ":progressId": nextRecord.id,
+              },
+            },
+          },
+          {
+            Put: {
+              TableName: getTableName(),
+              Item: toProjectProgressItem(nextRecord),
+              ConditionExpression: "attribute_exists(pk)",
+            },
+          },
+          ...(current.projectDetailId === nextProjectDetailId
+            ? []
+            : [
+                {
+                  Delete: {
+                    TableName: getTableName(),
+                    Key: {
+                      pk: buildProjectProgressDetailLockPk(current.projectDetailId),
+                      sk: PROJECT_PROGRESS_DETAIL_LOCK_SK,
+                    },
+                    ConditionExpression:
+                      "attribute_not_exists(pk) OR progressId = :progressId",
+                    ExpressionAttributeValues: {
+                      ":progressId": current.id,
+                    },
+                  },
+                },
+              ]),
+        ],
+      }),
+    );
+  } catch (error) {
+    rethrowTransactionConflict(error);
+  }
 
   return nextRecord;
 }
@@ -658,12 +798,32 @@ export async function deleteProjectProgressRecord(progressId: string) {
   if (!current) return null;
 
   await getDynamoDocumentClient().send(
-    new DeleteCommand({
-      TableName: getTableName(),
-      Key: {
-        pk: buildProjectProgressPk(progressId),
-        sk: PROJECT_PROGRESS_SK,
-      },
+    new TransactWriteCommand({
+      TransactItems: [
+        {
+          Delete: {
+            TableName: getTableName(),
+            Key: {
+              pk: buildProjectProgressPk(progressId),
+              sk: PROJECT_PROGRESS_SK,
+            },
+          },
+        },
+        {
+          Delete: {
+            TableName: getTableName(),
+            Key: {
+              pk: buildProjectProgressDetailLockPk(current.projectDetailId),
+              sk: PROJECT_PROGRESS_DETAIL_LOCK_SK,
+            },
+            ConditionExpression:
+              "attribute_not_exists(pk) OR progressId = :progressId",
+            ExpressionAttributeValues: {
+              ":progressId": current.id,
+            },
+          },
+        },
+      ],
     }),
   );
 

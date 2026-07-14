@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import {
+  ref,
+  reactive,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+} from "vue";
 import { useRouter } from "vue-router";
 
 import { useProjectProgressApi } from "@/composables/useProjectProgressApi";
 import { useProjectFilesApi } from "@/composables/useProjectFilesApi";
 import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useProgressStageStore } from "@/stores/progressStage";
+import { useProjectProgressDetailOptions } from "@/composables/useProjectProgressDetailOptions";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessCreated } from "@/composables/useToastMessages";
 import { useNotify } from "@/composables/useNotify";
@@ -46,6 +54,7 @@ const {
 const projects = ref<any[]>([]);
 const projectSearch = ref("");
 const showProjectDropdown = ref(false);
+const projectPickerRef = ref<HTMLElement | null>(null);
 
 const loadProjects = async () => {
   const res: any = await apiFetch("/api/projects", {
@@ -64,24 +73,50 @@ const filteredProjects = computed(() => {
   );
 });
 
-const projectDetails = ref<any[]>([]);
+const form = reactive({
+  projectId: "" as string,
+  projectDetailId: "" as string,
 
-const loadProjectDetails = async (projectId: string) => {
-  const res: any = await apiFetch("/api/project_details", {
-    query: { projectId, limit: 1000 },
-  });
+  stageData: {} as Record<string, StageForm>,
 
-  projectDetails.value = res.data.items;
-};
+  remarksProjectsDetails: null as string | null,
+  remarksDelay: null as string | null,
+  remarksCancel: null as string | null,
+});
+
+const {
+  usedProjectDetailIdSet,
+  availableProjectDetails,
+  refreshForProject,
+} = useProjectProgressDetailOptions({
+  currentDetailId: () => form.projectDetailId,
+});
 
 const selectProject = async (p: any) => {
+  const projectChanged = form.projectId !== p.id;
   form.projectId = p.id;
+  if (projectChanged) {
+    form.projectDetailId = "";
+  }
 
   projectSearch.value = `${p.projectName} - ${p.poNumber}`;
 
   showProjectDropdown.value = false;
 
-  await loadProjectDetails(p.id);
+  await refreshForProject(p.id);
+};
+
+const openProjectDropdown = () => {
+  showProjectDropdown.value = true;
+};
+
+const closeProjectDropdown = () => {
+  showProjectDropdown.value = false;
+};
+
+const handleDocumentPointerDown = (event: PointerEvent) => {
+  if (projectPickerRef.value?.contains(event.target as Node)) return;
+  closeProjectDropdown();
 };
 
 const loadStages = async () => {
@@ -107,17 +142,6 @@ const emptyStage = (): StageForm => ({
   plan_submit_date: null,
   actual_approve_date: null,
   status: "pending",
-});
-
-const form = reactive({
-  projectId: "" as string,
-  projectDetailId: "" as string,
-
-  stageData: {} as Record<string, StageForm>,
-
-  remarksProjectsDetails: null as string | null,
-  remarksDelay: null as string | null,
-  remarksCancel: null as string | null,
 });
 
 const row = (code: string): StageForm => {
@@ -168,10 +192,26 @@ watch(
   },
 );
 
+watch(
+  availableProjectDetails,
+  (details) => {
+    if (!form.projectDetailId) return;
+    if (details.some((detail) => detail.id === form.projectDetailId)) return;
+    form.projectDetailId = "";
+  },
+  { deep: true },
+);
+
 const handleSubmit = async () => {
   if (!form.projectId) throw new Error("Project is required");
 
   if (!form.projectDetailId) throw new Error("Project Detail is required");
+
+  if (usedProjectDetailIdSet.value.has(form.projectDetailId)) {
+    throw new Error(
+      "Project detail already has project progress. Please update the existing progress instead.",
+    );
+  }
 
   for (const s of stages.value) {
     const current = row(s.code);
@@ -222,9 +262,14 @@ const handleSubmit = async () => {
 };
 
 onMounted(async () => {
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
   await loadStages();
   initStageRows();
-  loadProjects();
+  await loadProjects();
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
 });
 </script>
 
@@ -236,13 +281,16 @@ onMounted(async () => {
     @cancel="() => router.push('/project-progress')"
   >
     <FormSection>
-      <div class="col-md-12 position-relative">
+      <div ref="projectPickerRef" class="col-md-12 position-relative">
         <label class="form-label">Project</label>
         <input
           class="form-control"
           v-model="projectSearch"
-          @focus="showProjectDropdown = true"
           placeholder="Search project..."
+          @click="openProjectDropdown"
+          @input="openProjectDropdown"
+          @keydown.down.prevent="openProjectDropdown"
+          @keydown.esc="closeProjectDropdown"
           required
         />
 
@@ -260,6 +308,12 @@ onMounted(async () => {
           >
             {{ p.projectName }} - {{ p.poNumber }}
           </button>
+          <div
+            v-if="!filteredProjects.length"
+            class="list-group-item text-body-secondary"
+          >
+            No projects found
+          </div>
         </div>
       </div>
     </FormSection>
@@ -274,10 +328,16 @@ onMounted(async () => {
           required
         >
           <option value="">-- Select Detail --</option>
-          <option v-for="d in projectDetails" :key="d.id" :value="d.id">
+          <option v-for="d in availableProjectDetails" :key="d.id" :value="d.id">
             {{ formatProjectDetailSelectLabel(d) }}
           </option>
         </select>
+        <small
+          v-if="form.projectId && !availableProjectDetails.length"
+          class="text-body-secondary"
+        >
+          All project details for this project already have progress records.
+        </small>
       </div>
     </FormSection>
 

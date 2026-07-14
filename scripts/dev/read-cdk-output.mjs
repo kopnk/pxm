@@ -4,6 +4,7 @@ import { resolveStageName, stackName } from "./dev-stage-config.mjs";
 
 const stageArg = process.argv[2];
 const outputKey = process.argv[3];
+const showAll = process.argv.includes("--all");
 
 if (stageArg !== "dev" && stageArg !== "prod") {
   console.error('Usage: node scripts/dev/read-cdk-output.mjs <dev|prod> [OutputKey]');
@@ -40,7 +41,7 @@ if (!stackOutputs || typeof stackOutputs !== "object") {
   process.exit(1);
 }
 
-if (outputKey) {
+if (outputKey && outputKey !== "--all") {
   const value = stackOutputs[outputKey];
   if (typeof value !== "string" || !value.trim()) {
     console.error(`Output "${outputKey}" was not found for stage "${stage}".`);
@@ -51,4 +52,12 @@ if (outputKey) {
   process.exit(0);
 }
 
-console.log(JSON.stringify(stackOutputs, null, 2));
+if (showAll) {
+  console.log(JSON.stringify(stackOutputs, null, 2));
+  process.exit(0);
+}
+
+console.error(
+  `Refusing to print all CDK outputs by default. Pass an output key or use "--all". Available keys: ${Object.keys(stackOutputs).join(", ")}`,
+);
+process.exit(1);

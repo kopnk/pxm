@@ -18,6 +18,33 @@ const PROXY_PORT = Number(config.apiProxyPort);
 const TARGET_HOST = config.uiHost;
 const TARGET_PORT = Number(config.uiPort);
 const ALLOW_ORIGIN = config.uiOrigin;
+const HOP_BY_HOP_HEADERS = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  return origin === ALLOW_ORIGIN;
+}
+
+function sanitizeProxyRequestHeaders(headers) {
+  const next = {};
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (value === undefined) continue;
+    if (HOP_BY_HOP_HEADERS.has(key.toLowerCase())) continue;
+    next[key] = value;
+  }
+
+  return next;
+}
 
 function writeCorsHeaders(headers) {
   headers.set("access-control-allow-origin", ALLOW_ORIGIN);
@@ -30,7 +57,7 @@ function writeCorsHeaders(headers) {
     "access-control-allow-headers",
     "authorization,content-type,x-requested-with,x-csrf-token",
   );
-  headers.set("access-control-expose-headers", "set-cookie,content-disposition");
+  headers.set("access-control-expose-headers", "content-disposition");
   headers.set("vary", "origin");
 }
 
@@ -42,10 +69,26 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === "OPTIONS") {
+    if (!isAllowedOrigin(req.headers.origin)) {
+      res.writeHead(403, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ success: false, message: "Origin not allowed" }));
+      return;
+    }
     const headers = new Headers();
     writeCorsHeaders(headers);
     res.writeHead(204, Object.fromEntries(headers.entries()));
     res.end();
+    return;
+  }
+
+  if (!isAllowedOrigin(req.headers.origin)) {
+    res.writeHead(403, {
+      "content-type": "application/json; charset=utf-8",
+      "access-control-allow-origin": ALLOW_ORIGIN,
+      "access-control-allow-credentials": "true",
+      vary: "origin",
+    });
+    res.end(JSON.stringify({ success: false, message: "Origin not allowed" }));
     return;
   }
 
@@ -57,7 +100,7 @@ const server = createServer(async (req, res) => {
         method: req.method,
         path: req.url,
         headers: {
-          ...req.headers,
+          ...sanitizeProxyRequestHeaders(req.headers),
           host: `${TARGET_HOST}:${TARGET_PORT}`,
         },
       },
@@ -87,36 +130,34 @@ const server = createServer(async (req, res) => {
     );
 
     proxyRequest.on("error", (error) => {
-      const message =
-        error instanceof Error ? error.message : "Local API proxy request failed";
       res.writeHead(502, {
         "content-type": "application/json; charset=utf-8",
         "access-control-allow-origin": ALLOW_ORIGIN,
         "access-control-allow-credentials": "true",
+        vary: "origin",
       });
       res.end(
         JSON.stringify({
           success: false,
           statusCode: 502,
-          message,
+          message: "Local API proxy request failed",
         }),
       );
     });
 
     req.pipe(proxyRequest);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Local API proxy request failed";
     res.writeHead(502, {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": ALLOW_ORIGIN,
       "access-control-allow-credentials": "true",
+      vary: "origin",
     });
     res.end(
       JSON.stringify({
         success: false,
         statusCode: 502,
-        message,
+        message: "Local API proxy request failed",
       }),
     );
   }

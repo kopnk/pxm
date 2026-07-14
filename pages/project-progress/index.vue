@@ -19,7 +19,6 @@ const {
   store,
   canEdit,
   canDelete,
-  canReadProgressStage,
   exporting,
   searchFilter,
   stageFilter,
@@ -45,18 +44,8 @@ const {
 
 <template>
   <div class="container-fluid py-4 px-3">
-    <div
-      class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
-    >
+    <div class="mb-3">
       <h4 class="text-brand mb-0" data-page-focus>Project progress</h4>
-
-      <NuxtLink
-        v-if="canReadProgressStage"
-        to="/progress-stage"
-        class="btn btn-outline-primary"
-      >
-        Progress Stages
-      </NuxtLink>
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">

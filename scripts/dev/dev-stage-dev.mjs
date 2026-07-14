@@ -15,12 +15,9 @@ if (args.has("--help")) {
 
 const env = {
   ...process.env,
-  PXM_LOCAL_SPLIT_DEV: "true",
   PXM_STAGE: config.stage,
   SESSION_COOKIE_SECURE: config.sessionCookieSecure,
   NUXT_PUBLIC_API_BASE_URL: config.apiBaseUrl,
-  NUXT_BUILD_DIR: config.buildDir,
-  VITE_CACHE_DIR: config.viteCacheDir,
   PXM_LOCAL_UI_HOST: config.uiHost,
   PXM_LOCAL_UI_PORT: config.uiPort,
   PXM_LOCAL_API_PROXY_HOST: config.apiProxyHost,

@@ -21,8 +21,8 @@
     "cdk:synth:prod": "npm run build:api:lambda && node scripts/checks/cdk-synth-stage.mjs prod",
     "cdk:deploy:dev": "npm run build:api:lambda && cdk deploy -c stage=dev --output .cdk.out-verify/dev --outputs-file .cdk-outputs/dev.json",
     "cdk:deploy:prod": "npm run build:api:lambda && cdk deploy -c stage=prod --output .cdk.out-verify/prod --outputs-file .cdk-outputs/prod.json",
-    "cdk:outputs:dev": "node scripts/dev/read-cdk-output.mjs dev",
-    "cdk:outputs:prod": "node scripts/dev/read-cdk-output.mjs prod",
+    "cdk:outputs:dev": "node scripts/dev/read-cdk-output.mjs dev --all",
+    "cdk:outputs:prod": "node scripts/dev/read-cdk-output.mjs prod --all",
     "cdk:api:dev": "node scripts/dev/read-cdk-output.mjs dev ApiUrl",
     "cdk:api:prod": "node scripts/dev/read-cdk-output.mjs prod ApiUrl"
   },
@@ -32,6 +32,7 @@
     "@aws-sdk/client-s3": "^3.1075.0",
     "@aws-sdk/lib-dynamodb": "^3.1075.0",
     "@pinia/nuxt": "^0.11.3",
+    "@popperjs/core": "^2.11.8",
     "aws-cdk-lib": "^2.260.0",
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",

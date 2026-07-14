@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from "vue";
+import {
+  ref,
+  reactive,
+  onMounted,
+  onBeforeUnmount,
+  computed,
+  watch,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useProjectProgressApi } from "@/composables/useProjectProgressApi";
 import {
@@ -10,6 +17,7 @@ import { toastSuccessUpdated } from "@/composables/useToastMessages";
 import { useNotify } from "@/composables/useNotify";
 import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useProgressStageStore } from "@/stores/progressStage";
+import { useProjectProgressDetailOptions } from "@/composables/useProjectProgressDetailOptions";
 import {
   PROJECT_FILE_REF_TABLE,
   saveRefDocuments,
@@ -40,7 +48,7 @@ const progressStageStore = useProgressStageStore();
 const projects = ref<any[]>([]);
 const projectSearch = ref("");
 const showProjectDropdown = ref(false);
-const projectDetails = ref<any[]>([]);
+const projectPickerRef = ref<HTMLElement | null>(null);
 
 const stageCodes = () => stages.value.map((s) => s.code);
 const {
@@ -73,6 +81,16 @@ const loadProjects = async () => {
   projects.value = res.data.items;
 };
 
+const filteredProjects = computed(() => {
+  if (!projectSearch.value) return projects.value;
+
+  const keyword = projectSearch.value.toLowerCase();
+
+  return projects.value.filter((p) =>
+    `${p.projectName} ${p.poNumber}`.toLowerCase().includes(keyword),
+  );
+});
+
 const loadStages = async () => {
   const res: any = await getProgressStages({
     limit: 1000,
@@ -85,18 +103,28 @@ const stages = computed(() =>
   [...progressStageStore.items].sort((a, b) => a.sequence - b.sequence),
 );
 
-const loadProjectDetails = async (projectId: string) => {
-  const res: any = await apiFetch("/api/project_details", {
-    query: { projectId, limit: 1000 },
-  });
-  projectDetails.value = res.data.items;
-};
-
 const selectProject = async (p: any) => {
+  const projectChanged = form.projectId !== p.id;
   form.projectId = p.id;
+  if (projectChanged) {
+    form.projectDetailId = "";
+  }
   projectSearch.value = `${p.projectName} - ${p.poNumber}`;
   showProjectDropdown.value = false;
-  await loadProjectDetails(p.id);
+  await refreshForProject(p.id, id);
+};
+
+const openProjectDropdown = () => {
+  showProjectDropdown.value = true;
+};
+
+const closeProjectDropdown = () => {
+  showProjectDropdown.value = false;
+};
+
+const handleDocumentPointerDown = (event: PointerEvent) => {
+  if (projectPickerRef.value?.contains(event.target as Node)) return;
+  closeProjectDropdown();
 };
 
 type StageForm = {
@@ -118,6 +146,14 @@ const form = reactive({
   remarksProjectsDetails: null as string | null,
   remarksDelay: null as string | null,
   remarksCancel: null as string | null,
+});
+
+const {
+  usedProjectDetailIdSet,
+  availableProjectDetails,
+  refreshForProject,
+} = useProjectProgressDetailOptions({
+  currentDetailId: () => form.projectDetailId,
 });
 
 const row = (code: string): StageForm => {
@@ -191,7 +227,19 @@ watch(
   },
 );
 
+watch(
+  availableProjectDetails,
+  (details) => {
+    if (!form.projectDetailId) return;
+    if (details.some((detail) => detail.id === form.projectDetailId)) return;
+    form.projectDetailId = "";
+  },
+  { deep: true },
+);
+
 onMounted(async () => {
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+
   if (!id) {
     router.push("/project-progress");
     return;
@@ -216,14 +264,24 @@ onMounted(async () => {
     const p = projects.value.find((x) => x.id === data.projectId);
     if (p) {
       projectSearch.value = `${p.projectName} - ${p.poNumber}`;
-      await loadProjectDetails(p.id);
+      await refreshForProject(p.id, id);
     }
   }
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
 });
 
 const handleSubmit = async () => {
   if (!form.projectId || !form.projectDetailId) {
     throw new Error("Project and project detail are required");
+  }
+
+  if (usedProjectDetailIdSet.value.has(form.projectDetailId)) {
+    throw new Error(
+      "Project detail already has project progress. Please update the existing progress instead.",
+    );
   }
 
   for (const s of stages.value) {
@@ -283,12 +341,16 @@ const handleSubmit = async () => {
     @cancel="() => router.push('/project-progress')"
   >
     <FormSection>
-      <div class="col-md-12 position-relative">
+      <div ref="projectPickerRef" class="col-md-12 position-relative">
         <label class="form-label">Project</label>
         <input
           class="form-control"
           v-model="projectSearch"
-          @focus="showProjectDropdown = true"
+          placeholder="Search project..."
+          @click="openProjectDropdown"
+          @input="openProjectDropdown"
+          @keydown.down.prevent="openProjectDropdown"
+          @keydown.esc="closeProjectDropdown"
         />
 
         <div
@@ -299,12 +361,18 @@ const handleSubmit = async () => {
           <button
             type="button"
             class="list-group-item list-group-item-action"
-            v-for="p in projects"
+            v-for="p in filteredProjects"
             :key="p.id"
             @click="selectProject(p)"
           >
             {{ p.projectName }} - {{ p.poNumber }}
           </button>
+          <div
+            v-if="!filteredProjects.length"
+            class="list-group-item text-body-secondary"
+          >
+            No projects found
+          </div>
         </div>
       </div>
     </FormSection>
@@ -314,10 +382,16 @@ const handleSubmit = async () => {
         <label class="form-label">Project Detail</label>
         <select v-model="form.projectDetailId" class="form-select">
           <option value="">-- Select Detail --</option>
-          <option v-for="d in projectDetails" :key="d.id" :value="d.id">
+          <option v-for="d in availableProjectDetails" :key="d.id" :value="d.id">
             {{ formatProjectDetailSelectLabel(d) }}
           </option>
         </select>
+        <small
+          v-if="form.projectId && !availableProjectDetails.length"
+          class="text-body-secondary"
+        >
+          All other project details for this project already have progress records.
+        </small>
       </div>
     </FormSection>
 
