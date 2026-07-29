@@ -11,6 +11,8 @@ const FLOW_DIRECTIONS = ["in", "out"] as const;
 export type ProjectFinancialsListFilterInput = {
   projectId?: string;
   projectDetailId?: string;
+  poNumberPartner?: string;
+  invoiceNumberPartner?: string;
   search?: string;
   status?: string;
   flowDirection?: string;
@@ -128,6 +130,22 @@ export function matchesProjectFinancialsListFilters(
   }
 
   if (input.projectDetailId && record.projectDetailId !== input.projectDetailId) {
+    return false;
+  }
+
+  if (
+    input.poNumberPartner &&
+    String(record.poNumberPartner ?? "").trim().toLocaleLowerCase("id-ID") !==
+      input.poNumberPartner.trim().toLocaleLowerCase("id-ID")
+  ) {
+    return false;
+  }
+
+  if (
+    input.invoiceNumberPartner &&
+    String(record.invoiceNumberPartner ?? "").trim().toLocaleLowerCase("id-ID") !==
+      input.invoiceNumberPartner.trim().toLocaleLowerCase("id-ID")
+  ) {
     return false;
   }
 

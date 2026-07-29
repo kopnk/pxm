@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const KOPINDOSAT_LOGO_CANDIDATES = [
+  join(process.cwd(), "assets", "kopindosat.jpg"),
   join(process.cwd(), "public", "kopindosat.JPG"),
   join(process.cwd(), "public", "kopindosat.jpg"),
 ];

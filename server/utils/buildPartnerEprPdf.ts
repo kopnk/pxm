@@ -10,6 +10,8 @@ import { formatDateToIdText } from "~/utils/formatDateToIdText";
 export type PartnerEprPdfLine = {
   invoiceNumberPartner: string | null;
   invoiceDatePartner: string | null;
+  detailSiteId: string | null;
+  detailSiteName: string | null;
   detailMaterialName: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
@@ -25,9 +27,9 @@ export type PartnerEprPdfLine = {
 
 type GroupedInvoice = {
   invoiceNumber: string;
-  invoiceDate: string | null;
-  desc: string;
-  lineCount: number;
+  projectNames: string[];
+  materialNames: string[];
+  sites: string[];
   baseAmount: number;
   pphPercent: number | null;
   pphAmount: number;
@@ -46,13 +48,13 @@ const idNum = (n: number) =>
     maximumFractionDigits: 2,
   }).format(n);
 
-function terbilangSimple(value: number): string {
-  const n = Math.floor(Math.max(0, value));
-  return `Terbilang: ${idNum(n)} rupiah`;
-}
-
 function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
   const map = new Map<string, GroupedInvoice>();
+  const appendUnique = (values: string[], value: string | null | undefined) => {
+    const normalized = value?.trim();
+    if (normalized && !values.includes(normalized)) values.push(normalized);
+  };
+
   for (const row of lines) {
     const invoiceNumber = row.invoiceNumberPartner?.trim() || "Tanpa Invoice";
     const base = pfListLineBase(row.qtyPartner, row.unitPricePartner) ?? 0;
@@ -63,10 +65,14 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
     const existing = map.get(invoiceNumber);
     const rawPph = pfParseNum(row.pph);
     const rawTax = pfParseNum(row.taxIn);
-    const desc = row.projectName?.trim() || row.detailMaterialName?.trim() || "Pekerjaan";
+    const site = [row.detailSiteId?.trim(), row.detailSiteName?.trim()]
+      .filter(Boolean)
+      .join(" - ");
 
     if (existing) {
-      existing.lineCount += 1;
+      appendUnique(existing.projectNames, row.projectName);
+      appendUnique(existing.materialNames, row.detailMaterialName);
+      appendUnique(existing.sites, site);
       existing.baseAmount += base;
       existing.pphAmount += pph;
       existing.taxAmount += tax;
@@ -76,9 +82,11 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
 
     map.set(invoiceNumber, {
       invoiceNumber,
-      invoiceDate: row.invoiceDatePartner,
-      desc,
-      lineCount: 1,
+      projectNames: row.projectName?.trim() ? [row.projectName.trim()] : [],
+      materialNames: row.detailMaterialName?.trim()
+        ? [row.detailMaterialName.trim()]
+        : [],
+      sites: site ? [site] : [],
       baseAmount: base,
       pphPercent: rawPph != null && rawPph <= 100 ? rawPph : null,
       pphAmount: pph,
@@ -179,8 +187,13 @@ export async function buildPartnerEprPdfBuffer(
   const cDesc = ml + 24;
   const cCur = mr - 140;
   const cAmt = mr - 74;
-  const drawAmountRow = (label: string, amount: number, bold = false) => {
-    doc.font(bold ? FONT_BOLD : FONT).fontSize(9);
+  const drawAmountRow = (
+    label: string,
+    amount: number,
+    bold = false,
+    fontSize = 9,
+  ) => {
+    doc.font(bold ? FONT_BOLD : FONT).fontSize(fontSize);
     const textHeight = doc.heightOfString(label, { width: cCur - cDesc - 8 });
     const rowH = Math.max(20, Math.ceil(textHeight + 10));
     if (y + rowH > mb - 250) {
@@ -190,7 +203,7 @@ export async function buildPartnerEprPdfBuffer(
     doc.rect(ml, y, mw, rowH).stroke();
     doc.moveTo(cCur, y).lineTo(cCur, y + rowH).stroke();
     doc.moveTo(cAmt, y).lineTo(cAmt, y + rowH).stroke();
-    doc.font(bold ? FONT_BOLD : FONT).fontSize(9);
+    doc.font(bold ? FONT_BOLD : FONT).fontSize(fontSize);
     doc.text(label, cDesc + 4, y + 6, { width: cCur - cDesc - 8 });
     doc.text("Rp.", cCur + 4, y + 6, { width: cAmt - cCur - 8, align: "center" });
     doc.text(idNum(amount), cAmt + 4, y + 6, { width: mr - cAmt - 8, align: "right" });
@@ -213,9 +226,14 @@ export async function buildPartnerEprPdfBuffer(
   let grandPph = 0;
   let grandTax = 0;
 
-  groups.forEach((g, idx) => {
-    const siteLabel = g.lineCount > 1 ? "sites" : "site";
-    drawAmountRow(`${idx + 1}. ${g.desc} (${g.lineCount} ${siteLabel})`, g.baseAmount, true);
+  groups.forEach((g) => {
+    const description = [
+      `Project: ${g.projectNames.join("; ") || "-"} | Material: ${
+        g.materialNames.join("; ") || "-"
+      }`,
+      g.sites.join("; ") || "-",
+    ].join("\n");
+    drawAmountRow(description, g.baseAmount, false, 8.5);
     grandBase += g.baseAmount;
     grandPph += g.pphAmount;
     grandTax += g.taxAmount;
@@ -251,7 +269,7 @@ export async function buildPartnerEprPdfBuffer(
     .text(`Bank: ${first?.partnerBankName || "—"}`, ml + 8, y + 19, {
       width: payColW - 16,
     })
-    .text(`Rekening: ${first?.partnerBankAccount || "—"}`, ml + 8, y + 31, {
+    .text(`Account: ${first?.partnerBankAccount || "—"}`, ml + 8, y + 31, {
       width: payColW - 16,
     })
     .text("Giro Bilyet", payColX1 + 8, y + 6, { width: payColW - 16, align: "center" })

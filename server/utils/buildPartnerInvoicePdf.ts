@@ -1,6 +1,5 @@
 import PDFDocument from "pdfkit";
-import { pfListLineBase } from "~/lib/projectFinancialsMath";
-import { formatDateToIdText } from "~/utils/formatDateToIdText";
+import { pfListLineBase } from "../../lib/projectFinancialsMath";
 
 export type PartnerInvoicePdfLine = {
   detailSiteId: string | null;
@@ -26,12 +25,28 @@ export type PartnerInvoicePdfMeta = {
 const MARGIN = 44;
 
 const idr = (n: number | null) =>
-  new Intl.NumberFormat("id-ID", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(n ?? 0);
+
+function formatEnglishDate(value: string | null): string {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "-";
+
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
 
 function pageBounds(doc: InstanceType<typeof PDFDocument>) {
   const ml = doc.page.margins.left;
@@ -67,22 +82,22 @@ export async function buildPartnerInvoicePdfBuffer(
   });
   y = doc.y + 14;
 
-  const labelW = 74;
+  const labelW = 84;
   const valueX = ml + labelW;
   doc.font("Helvetica").fontSize(10);
   doc.text("PO Date", ml, y, { width: labelW });
-  doc.text(`: ${formatDateToIdText(meta.poDatePartner)}`, valueX, y, {
+  doc.text(`: ${formatEnglishDate(meta.poDatePartner)}`, valueX, y, {
     width: mw - labelW,
   });
   y = doc.y + 2;
-  doc.text("No PO", ml, y, { width: labelW });
+  doc.text("PO Number", ml, y, { width: labelW });
   doc.text(`: ${meta.poNumberPartner || "—"}`, valueX, y, { width: mw - labelW });
   y = doc.y + 2;
-  doc.text("No Invoice", ml, y, { width: labelW });
+  doc.text("Invoice Number", ml, y, { width: labelW });
   doc.text(`: ${meta.invoiceNumber || "—"}`, valueX, y, { width: mw - labelW });
   y = doc.y + 2;
-  doc.text("Tanggal Invoice", ml, y, { width: labelW });
-  doc.text(`: ${formatDateToIdText(meta.invoiceDate)}`, valueX, y, {
+  doc.text("Invoice Date", ml, y, { width: labelW });
+  doc.text(`: ${formatEnglishDate(meta.invoiceDate)}`, valueX, y, {
     width: mw - labelW,
   });
   y = doc.y + 2;
@@ -95,9 +110,9 @@ export async function buildPartnerInvoicePdfBuffer(
   const colAmt = mr - 150;
 
   doc.font("Helvetica-Bold").fontSize(9);
-  doc.text("No", colNo, y, { width: 28, align: "center" });
-  doc.text("Uraian Pekerjaan", colDesc, y, { width: colAmt - colDesc - 6 });
-  doc.text("Harga", colAmt, y, { width: mr - colAmt, align: "right" });
+  doc.text("#", colNo, y, { width: 28, align: "center" });
+  doc.text("Work Description", colDesc, y, { width: colAmt - colDesc - 6 });
+  doc.text("Price", colAmt, y, { width: mr - colAmt, align: "right" });
   y += 11;
   doc.moveTo(ml, y).lineTo(mr, y).stroke();
   y += 4;
@@ -111,7 +126,7 @@ export async function buildPartnerInvoicePdfBuffer(
     }
 
     const desc =
-      `${line.detailMaterialName || "Pekerjaan"} ${line.detailSiteId || "—"} ${line.detailSiteName || "—"}`.trim();
+      `${line.detailMaterialName || "Work"} ${line.detailSiteId || "—"} ${line.detailSiteName || "—"}`.trim();
     const total = pfListLineBase(line.qtyPartner, line.unitPricePartner);
     if (total != null) grandTotal += total;
 
@@ -140,21 +155,21 @@ export async function buildPartnerInvoicePdfBuffer(
     y = doc.page.margins.top;
   }
 
-  doc.moveTo(ml, y).lineTo(mr, y).stroke();
   y += 10;
 
   doc.font("Helvetica").fontSize(9);
   doc.text("Payment can be transferred to:", ml, y, { width: mw });
   y = doc.y + 1;
-  doc.text(
-    `Account: ${meta.partnerBankAccount || "—"} ${meta.partnerBankName || "—"} a.n ${meta.partnerName || "—"}`,
-    ml,
-    y,
-    { width: mw },
-  );
+  doc.text(`Bank: ${meta.partnerBankName || "—"}`, ml, y, { width: mw });
+  y = doc.y + 1;
+  doc.text(`Account Number: ${meta.partnerBankAccount || "—"}`, ml, y, {
+    width: mw,
+  });
+  y = doc.y + 1;
+  doc.text(`Account Name: ${meta.partnerName || "—"}`, ml, y, { width: mw });
   y = doc.y + 18;
 
-  doc.text(`${meta.partnerCity || "—"}, ${formatDateToIdText(meta.invoiceDate)}`, mr - 220, y, {
+  doc.text(`${meta.partnerCity || "—"}, ${formatEnglishDate(meta.invoiceDate)}`, mr - 220, y, {
     width: 220,
     align: "right",
   });

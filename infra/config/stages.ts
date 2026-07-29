@@ -14,6 +14,7 @@ export type PxmStageConfig = {
   frontendBucketName?: string;
   frontendDomainNames?: string[];
   frontendCertificateArn?: string;
+  publicAppUrl?: string;
   cloudFrontPriceClass: "PRICE_CLASS_100" | "PRICE_CLASS_200";
   userRefreshTokenDays: number;
   lambdaMemorySizeMb: number;
@@ -48,6 +49,7 @@ const STAGES: Record<PxmStageName, Omit<PxmStageConfig, "env">> = {
     frontendDomainNames: ["www.proxem.site"],
     frontendCertificateArn:
       "arn:aws:acm:us-east-1:905418212759:certificate/fa0dea8d-33de-4ee3-84e4-36a5310b446f",
+    publicAppUrl: "https://www.proxem.site",
     cloudFrontPriceClass: "PRICE_CLASS_200",
     appFilesVersioned: true,
     userRefreshTokenDays: 30,

@@ -3,8 +3,8 @@ import QRCode from "qrcode";
 import {
   pfPartnerLineTotal,
   pfParseNum,
-} from "~/lib/projectFinancialsMath";
-import { readKopindosatLogoBuffer } from "~/server/utils/pdfBranding";
+} from "../../lib/projectFinancialsMath";
+import { readKopindosatLogoBuffer } from "./pdfBranding";
 
 export type PartnerPoPdfLine = {
   detailSiteId: string | null;
@@ -163,7 +163,9 @@ export async function buildPartnerPoPdfBuffer(
 
   doc.fontSize(10);
   doc.text(`Project Name: ${meta.projectName || "—"}`, ml, y, { width: mw });
-  y = doc.y + 8;
+  y = doc.y + 3;
+  doc.lineWidth(0.75).moveTo(ml, y).lineTo(mr, y).stroke();
+  y += 6;
 
   let T = tableLayout(doc);
   const tableTop = y;
@@ -174,7 +176,7 @@ export async function buildPartnerPoPdfBuffer(
   doc.text("Material", T.c3, tableTop, { width: T.wMat });
   doc.text("Qty", T.c4, tableTop, { width: T.wQty, align: "right" });
   doc.text("Unit Price", T.c5, tableTop, { width: T.wUnit, align: "right" });
-  doc.text("Line Total", T.c6, tableTop, { width: T.wAmt, align: "right" });
+  doc.text("Total Price", T.c6, tableTop, { width: T.wAmt, align: "right" });
 
   y = tableTop + 12;
   doc.font("Helvetica").fontSize(8);
@@ -223,7 +225,7 @@ export async function buildPartnerPoPdfBuffer(
   });
 
   T = tableLayout(doc);
-  doc.moveTo(T.ml, y).lineTo(T.mr, y).stroke();
+  doc.lineWidth(0.75).moveTo(T.ml, y).lineTo(T.mr, y).stroke();
   y += 6;
   doc.font("Helvetica-Bold").fontSize(10);
   doc.text(`Total: ${idr(grand)}`, T.ml, y, { align: "right", width: T.mw });
@@ -236,11 +238,13 @@ export async function buildPartnerPoPdfBuffer(
     T = tableLayout(doc);
   }
 
-  const qrPt = Math.round((88 / 6) * 1.25);
+  // Opaque references stay compact enough for a ~19 mm scannable print size.
+  const qrPt = 54;
   const qrBuf = await QRCode.toBuffer(meta.qrTargetUrl, {
     type: "png",
-    width: 160,
-    margin: 0,
+    width: 320,
+    margin: 2,
+    errorCorrectionLevel: "M",
   });
 
   const footY = y;
@@ -253,12 +257,11 @@ export async function buildPartnerPoPdfBuffer(
   const phw = doc.widthOfString(partnerHead);
   doc.text(partnerHead, T.mr - phw, footY, { lineBreak: false });
 
-  y = footY + Math.max(qrPt + 24, doc.currentLineHeight()) + 8;
-
   doc.font("Helvetica").fontSize(8.5);
   const rightColW = T.mw * 0.48;
   const rightX = T.mr - rightColW;
-  y += 32;
+  // Keep the signature specimen independent from QR height.
+  y = footY + 78;
   doc.text(meta.signatoryName?.trim() || "………………", rightX, y, {
     width: rightColW,
     align: "right",

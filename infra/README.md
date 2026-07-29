@@ -2,6 +2,11 @@
 
 Folder ini berisi infrastruktur AWS CDK untuk backend aktif PXM: auth Cognito, storage DynamoDB single-table, file app di S3, distribusi lewat CloudFront, dan identity SES bila diperlukan.
 
+Kode handler Lambda tidak disimpan ulang di dalam `infra`. Endpoint aktif berada
+di `server/api`, lalu `npm run build:api:lambda` menghasilkan artefak deploy ke
+`.output-lambda/server`. Dengan demikian `infra` hanya berisi definisi resource
+CDK dan tidak menduplikasi source API.
+
 ## Prioritas Dev
 
 Untuk implementasi saat ini, selesaikan `dev` lebih dulu.

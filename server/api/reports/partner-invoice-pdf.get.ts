@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getQuery } from "h3";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPartnerInvoicePdfBuffer } from "~/server/utils/buildPartnerInvoicePdf";
 import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
+import { matchesReportDocumentNumber } from "~/server/utils/reportDocumentNumber";
 
 function safeFilename(value: string) {
   return value.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "KWITANSI";
@@ -23,7 +24,11 @@ export default defineEventHandler(async (event) => {
   const rows = (await listProjectFinancialRecords({
     flowDirection: "in",
   }))
-    .filter((row) => row.invoiceNumberPartner === invoice && row.status !== "cancelled")
+    .filter(
+      (row) =>
+        matchesReportDocumentNumber(row.invoiceNumberPartner, invoice) &&
+        row.status !== "cancelled",
+    )
     .sort((a, b) => {
       const siteNameCompare = String(a.detailSiteName ?? "").localeCompare(
         String(b.detailSiteName ?? ""),

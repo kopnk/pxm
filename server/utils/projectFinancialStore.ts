@@ -152,6 +152,12 @@ export type ProjectFinancialsListTotals = {
   pphSection: { dppIdr: number; taxIdr: number };
 };
 
+type ProjectFinancialListOptions = {
+  includeAuditUsers?: boolean;
+  includeClients?: boolean;
+  includePartners?: boolean;
+};
+
 type ProjectFinancialItem = ProjectFinancialRecord & {
   pk: string;
   sk: "META";
@@ -502,17 +508,36 @@ async function syncOutFlowPaidDateToProgress(input: {
 
 async function enrichProjectFinancialList(
   records: ProjectFinancialRecord[],
+  options: ProjectFinancialListOptions = {},
 ): Promise<ProjectFinancialListItem[]> {
+  const {
+    includeAuditUsers = true,
+    includeClients = true,
+    includePartners = true,
+  } = options;
   const clientIds = [
-    ...new Set(records.map((record) => record.clientId).filter(Boolean) as string[]),
+    ...new Set(
+      includeClients
+        ? (records.map((record) => record.clientId).filter(Boolean) as string[])
+        : [],
+    ),
   ];
   const partnerIds = [
-    ...new Set(records.map((record) => record.partnerId).filter(Boolean) as string[]),
+    ...new Set(
+      includePartners
+        ? (records.map((record) => record.partnerId).filter(Boolean) as string[])
+        : [],
+    ),
   ];
   const [auditEmailMap, details, clients, partners] = await Promise.all([
-    buildAuditEmailMap(
-      records.flatMap((record) => [record.createdUser ?? "", record.updatedUser ?? ""]),
-    ),
+    includeAuditUsers
+      ? buildAuditEmailMap(
+          records.flatMap((record) => [
+            record.createdUser ?? "",
+            record.updatedUser ?? "",
+          ]),
+        )
+      : Promise.resolve(new Map<string, string>()),
     getProjectDetailListItemsByIds(records.map((record) => record.projectDetailId)),
     Promise.all(clientIds.map(async (id) => [id, await getClientRecordById(id)] as const)),
     Promise.all(partnerIds.map(async (id) => [id, await getPartnerRecordById(id)] as const)),
@@ -754,11 +779,25 @@ export async function getProjectFinancialListItemById(financialId: string) {
 
 export async function listProjectFinancialRecords(
   filters?: ProjectFinancialsListFilterInput,
+  options?: ProjectFinancialListOptions,
 ) {
-  const records = (await listProjectFinancialItemsForFilters(filters)).map(
-    mapProjectFinancialItem,
-  );
-  const enriched = await enrichProjectFinancialList(records);
+  const rawFilters = filters
+    ? {
+        projectId: filters.projectId,
+        projectDetailId: filters.projectDetailId,
+        poNumberPartner: filters.poNumberPartner,
+        invoiceNumberPartner: filters.invoiceNumberPartner,
+        status: filters.status,
+        flowDirection: filters.flowDirection,
+        taxSection: filters.taxSection,
+      }
+    : {};
+  const records = (await listProjectFinancialItemsForFilters(filters))
+    .map(mapProjectFinancialItem)
+    .filter((record) =>
+      matchesProjectFinancialsListFilters(record, rawFilters),
+    );
+  const enriched = await enrichProjectFinancialList(records, options);
 
   return enriched
     .filter((record) =>

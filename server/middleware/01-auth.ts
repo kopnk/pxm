@@ -1,5 +1,6 @@
 import { defineEventHandler, createError } from "h3";
-import { verifyPartnerPoAccess } from "~/server/utils/partnerPoPdfAccess";
+import { resolvePartnerPoPdfReference } from "~/server/utils/partnerPoPdfAccess";
+import { resolvePartnerPoPdfSecret } from "~/server/utils/partnerPoPdfSecret";
 import {
   isCognitoAuthEnabled,
   resolveAuthSession,
@@ -23,19 +24,20 @@ export default defineEventHandler(async (event) => {
 
   const queryString = url.includes("?") ? url.slice(url.indexOf("?") + 1) : "";
   const pdfParams = new URLSearchParams(queryString);
-  if (
-    pathOnly === "/api/reports/partner-po-pdf" &&
-    pdfParams.get("access")?.trim()
-  ) {
+  if (pathOnly === "/api/reports/partner-po-pdf") {
     const config = useRuntimeConfig(event);
-    const secret = String(config.partnerPoPdfSecret || "");
-    const po = pdfParams.get("po")?.trim() ?? "";
-    const access = pdfParams.get("access")?.trim() ?? "";
-    const verified = secret ? verifyPartnerPoAccess(access, secret) : null;
+    const secret = await resolvePartnerPoPdfSecret(config.partnerPoPdfSecret);
+    const reference = resolvePartnerPoPdfReference(
+      {
+        po: pdfParams.get("po"),
+        ref: pdfParams.get("ref"),
+        access: pdfParams.get("access"),
+      },
+      secret,
+    );
 
-    if (verified?.po === po) {
-      event.context.signedPartnerPoPdfAccess = { po };
-      return;
+    if (reference.verifiedPo) {
+      event.context.signedPartnerPoPdfAccess = { po: reference.verifiedPo };
     }
   }
 

@@ -1,3 +1,6 @@
 export default defineNuxtPlugin(async () => {
-  await import("bootstrap/dist/js/bootstrap.esm.js");
+  await Promise.all([
+    import("bootstrap/js/dist/collapse.js"),
+    import("bootstrap/js/dist/dropdown.js"),
+  ]);
 });

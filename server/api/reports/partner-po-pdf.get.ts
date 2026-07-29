@@ -1,12 +1,20 @@
-import { defineEventHandler, getQuery, getRequestURL, createError } from "h3";
+import {
+  defineEventHandler,
+  getQuery,
+  getRequestURL,
+  createError,
+  sendRedirect,
+} from "h3";
 import { requireRole } from "~/server/utils/authorize";
 import { buildPartnerPoPdfBuffer } from "~/server/utils/buildPartnerPoPdf";
 import {
+  resolvePartnerPoPdfReference,
   signPartnerPoAccess,
-  verifyPartnerPoAccess,
 } from "~/server/utils/partnerPoPdfAccess";
 import { pfFormatIdDate } from "~/lib/projectFinancialsMath";
 import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
+import { matchesReportDocumentNumber } from "~/server/utils/reportDocumentNumber";
+import { resolvePartnerPoPdfSecret } from "~/server/utils/partnerPoPdfSecret";
 
 function safeFilename(po: string) {
   return po.replace(/[^\w.\-]+/g, "_").slice(0, 80) || "PO";
@@ -14,29 +22,42 @@ function safeFilename(po: string) {
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  const po = String(query.po ?? "").trim();
-  if (!po) {
-    throw createError({ statusCode: 400, statusMessage: "Query po is required" });
-  }
-
   const config = useRuntimeConfig(event);
-  const secret = String(config.partnerPoPdfSecret || "");
+  const secret = await resolvePartnerPoPdfSecret(config.partnerPoPdfSecret);
 
-  const access = String(query.access ?? "").trim();
-  let allowed = false;
-  if (secret && access) {
-    const v = verifyPartnerPoAccess(access, secret);
-    allowed = v?.po === po;
+  const reference = resolvePartnerPoPdfReference(query, secret);
+  const { po, requestedPo } = reference;
+  const allowed = Boolean(reference.verifiedPo);
+
+  if (!po) {
+    throw createError({ statusCode: 400, statusMessage: "PO reference is required" });
   }
   if (!allowed) {
     const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
     if (forbidden) return forbidden;
+
+    if (secret && requestedPo) {
+      const opaquePo = signPartnerPoAccess(requestedPo, secret);
+      return sendRedirect(
+        event,
+        `/api/reports/partner-po-pdf?po=${encodeURIComponent(opaquePo)}`,
+        302,
+      );
+    }
   }
 
   const rows = (await listProjectFinancialRecords({
     flowDirection: "in",
+    poNumberPartner: po,
+  }, {
+    includeAuditUsers: false,
+    includeClients: false,
   }))
-    .filter((row) => row.poNumberPartner === po && row.status !== "cancelled")
+    .filter(
+      (row) =>
+        matchesReportDocumentNumber(row.poNumberPartner, po) &&
+        row.status !== "cancelled",
+    )
     .sort((a, b) => {
       const siteNameCompare = String(a.detailSiteName ?? "").localeCompare(
         String(b.detailSiteName ?? ""),
@@ -61,11 +82,16 @@ export default defineEventHandler(async (event) => {
     poDates.length > 0 ? pfFormatIdDate(poDates.sort()[0]) : "—";
 
   const reqUrl = getRequestURL(event);
-  const origin = `${reqUrl.protocol}//${reqUrl.host}`;
+  const configuredOrigin = String(
+    process.env.PXM_PUBLIC_APP_URL || config.appBaseUrl || "",
+  )
+    .trim()
+    .replace(/\/+$/, "");
+  const origin = configuredOrigin || `${reqUrl.protocol}//${reqUrl.host}`;
   const accessToken = secret ? signPartnerPoAccess(po, secret) : "";
-  const qrTargetUrl = `${origin}/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}${
-    accessToken ? `&access=${encodeURIComponent(accessToken)}` : ""
-  }`;
+  const qrTargetUrl = accessToken
+    ? `${origin}/reports/partner-po?po=${encodeURIComponent(accessToken)}`
+    : `${origin}/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}`;
 
   const pdfBuffer = await buildPartnerPoPdfBuffer(rows, {
     poNumber: po,

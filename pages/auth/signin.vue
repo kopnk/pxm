@@ -4,12 +4,13 @@ definePageMeta({
 });
 
 import { ref } from "vue";
-import { useRouter } from "#imports";
+import { useRoute, useRouter } from "#imports";
 import { apiFetch } from "~/utils/apiFetch";
 import type { AuthSessionUser } from "~/stores/auth";
 import type { RlsMatrix } from "~/lib/rls";
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
 
 const email = ref("");
@@ -17,6 +18,18 @@ const password = ref("");
 const showPassword = ref(false);
 const error = ref("");
 const loading = ref(false);
+
+const safeRedirectTarget = () => {
+  const target = typeof route.query.redirect === "string"
+    ? route.query.redirect
+    : "";
+  const safePath =
+    target.startsWith("/") &&
+    !target.startsWith("//") &&
+    !target.includes("\\") &&
+    !/[\r\n]/.test(target);
+  return safePath ? target : "/";
+};
 
 const submit = async () => {
   error.value = "";
@@ -42,7 +55,7 @@ const submit = async () => {
       return;
     }
 
-    await router.push("/");
+    await router.push(safeRedirectTarget());
   } catch (e: any) {
     error.value = e?.data?.message || "Login failed";
   } finally {

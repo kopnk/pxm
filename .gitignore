@@ -6,13 +6,17 @@
 .nuxt-prod-generate
 .nuxt-lambda-build
 .nuxt-verify-build
+.nuxt-build-verify
 .nitro
 .output-lambda
+.output-build-verify
+.output-prod-generate
 .cache
 dist
 cdk.out
 .cdk-outputs
 .cdk.out-verify
+.cdk.out-*
 
 # Node dependencies
 node_modules

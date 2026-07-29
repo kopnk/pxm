@@ -48,6 +48,7 @@ import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 import { Code, Function as LambdaFunction, Runtime } from "aws-cdk-lib/aws-lambda";
 import { EmailIdentity, Identity } from "aws-cdk-lib/aws-ses";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -180,6 +181,15 @@ export class PxmStack extends Stack {
       priceClass,
     });
 
+    const partnerPoPdfSecret = new Secret(this, "PartnerPoPdfSecret", {
+      description: `Encryption secret for ${resourcePrefix} authenticated PO PDF QR links`,
+      generateSecretString: {
+        passwordLength: 48,
+        excludePunctuation: true,
+      },
+      removalPolicy: config.removalPolicy,
+    });
+
     const apiHandler = new LambdaFunction(this, "ApiHandler", {
       functionName: `${resourcePrefix}-api`,
       code: Code.fromAsset(join(STACK_FILE_DIR, "../../.output-lambda/server")),
@@ -194,6 +204,8 @@ export class PxmStack extends Stack {
         AWS_COGNITO_USER_POOL_ID: userPool.userPoolId,
         AWS_COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
         AWS_AUTH_COOKIE_SECRET: this.stackId,
+        PARTNER_PO_PDF_SECRET_ARN: partnerPoPdfSecret.secretArn,
+        PXM_PUBLIC_APP_URL: config.publicAppUrl ?? "",
         SESSION_COOKIE_SECURE: config.frontendHostingEnabled ? "true" : "false",
         AWS_APP_FILES_BUCKET: appFilesBucket.bucketName,
         AWS_APP_FILES_CLOUDFRONT_DOMAIN: `https://${filesDistribution.distributionDomainName}`,
@@ -207,6 +219,7 @@ export class PxmStack extends Stack {
 
     dataTable.grantReadWriteData(apiHandler);
     appFilesBucket.grantReadWrite(apiHandler);
+    partnerPoPdfSecret.grantRead(apiHandler);
     apiHandler.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -236,6 +249,12 @@ export class PxmStack extends Stack {
     const api = new RestApi(this, "RestApi", {
       restApiName: `${resourcePrefix}-api`,
       description: `PXM ${config.stage} migration API`,
+      // Browser document navigation usually sends `text/html` as the first
+      // Accept value, even when the response is a PDF. API Gateway only checks
+      // that first value when deciding whether to decode a base64 proxy
+      // response, so `application/pdf` alone corrupts PDFs opened in-browser.
+      // Nitro already sets `isBase64Encoded` only for binary responses.
+      binaryMediaTypes: ["*/*"],
       deployOptions: {
         stageName: config.stage,
         throttlingBurstLimit: config.apiThrottleBurstLimit,

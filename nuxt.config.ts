@@ -34,9 +34,10 @@ export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   buildDir: resolveNuxtBuildDir(),
 
-  /** Server secret for signed PDF URLs (QR works without session). Empty = session cookie only. */
+  /** Server secret for opaque PDF references. A valid session is still required. */
   runtimeConfig: {
     partnerPoPdfSecret: process.env.PARTNER_PO_PDF_SECRET || "",
+    appBaseUrl: process.env.PXM_PUBLIC_APP_URL || "",
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || "",
     },

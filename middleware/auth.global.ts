@@ -10,7 +10,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (!auth.user) {
-    return navigateTo("/auth/signin");
+    return navigateTo({
+      path: "/auth/signin",
+      query: { redirect: to.fullPath },
+    });
   }
 
   if (auth.user.mustChangePassword) {

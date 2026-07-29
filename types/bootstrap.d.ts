@@ -1,1 +1,2 @@
-declare module "bootstrap/dist/js/bootstrap.esm.js";
+declare module "bootstrap/js/dist/collapse.js";
+declare module "bootstrap/js/dist/dropdown.js";

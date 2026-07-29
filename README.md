@@ -2,6 +2,19 @@
 
 PXM adalah aplikasi fullstack Nuxt 4 untuk manajemen project, progress, financial, dokumen, user, RLS, dan audit di atas layanan backend AWS.
 
+## Struktur Source
+
+- `pages`, `components`, `composables`, `stores`: UI dan state aplikasi.
+- `server/api`, `server/middleware`, `server/utils`: API dan domain backend.
+- `lib`, `utils`, `types`: kode bersama dan deklarasi tipe.
+- `infra`: definisi AWS CDK; source Lambda tetap berasal dari `server/api`.
+- `scripts/checks`, `scripts/dev`: build, validasi, dan tooling lokal.
+
+Folder `.nuxt*`, `.output*`, `cdk.out`, `.cdk.out-verify`, dan `dist` adalah
+artefak generated yang dapat dihapus dan akan dibuat kembali oleh perintah
+build/deploy. `node_modules` adalah dependency lokal dan dapat dibuat ulang
+dengan `npm install`.
+
 ## Dev Lokal
 
 Jalankan mode lokal biasa:
