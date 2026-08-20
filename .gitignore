@@ -1,4 +1,4 @@
-# Nuxt dev/build outputs
+# Generated outputs (patterns apply inside frontend/ and infrastructure/)
 .output
 .data
 .nuxt
@@ -18,7 +18,7 @@ cdk.out
 .cdk.out-verify
 .cdk.out-*
 
-# Node dependencies
+# Each package owns its own dependencies
 node_modules
 
 # Logs

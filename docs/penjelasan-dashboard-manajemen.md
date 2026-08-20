@@ -1,6 +1,6 @@
 # Penjelasan Dashboard PXM untuk Manajemen
 
-Dokumen ini menjelaskan dashboard di halaman `pages/index.vue` dengan bahasa non-teknis tetapi tetap akurat terhadap implementasi saat ini.
+Dokumen ini menjelaskan dashboard di halaman `frontend/pages/index.vue` dengan bahasa non-teknis tetapi tetap akurat terhadap implementasi saat ini.
 
 Tujuan utamanya: **membantu manajemen membaca kesehatan proyek secara cepat** dari sisi biaya, jadwal, dan momentum eksekusi.
 

@@ -1,0 +1,27 @@
+{
+  "name": "@pxm/infrastructure",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:lambda": "npm --prefix ../frontend run build:api:lambda",
+    "synth:dev": "npm run build:lambda && node scripts/cdk-stage.mjs synth dev",
+    "synth:prod": "npm run build:lambda && node scripts/cdk-stage.mjs synth prod",
+    "deploy:dev": "npm run build:lambda && node scripts/cdk-stage.mjs deploy dev",
+    "deploy:prod": "npm run build:lambda && node scripts/cdk-stage.mjs deploy prod",
+    "outputs:dev": "node scripts/read-cdk-output.mjs dev --all",
+    "outputs:prod": "node scripts/read-cdk-output.mjs prod --all",
+    "api:dev": "node scripts/read-cdk-output.mjs dev ApiUrl",
+    "api:prod": "node scripts/read-cdk-output.mjs prod ApiUrl"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.265.0",
+    "constructs": "10.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "aws-cdk": "2.1136.0",
+    "tsx": "4.22.4",
+    "typescript": "6.0.3"
+  }
+}
