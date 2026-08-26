@@ -1,4 +1,4 @@
-const CACHE_NAME = "pxm-cache-v2";
+const CACHE_NAME = "pxm-cache-__PXM_BUILD_ID__";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",

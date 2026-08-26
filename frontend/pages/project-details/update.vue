@@ -9,6 +9,7 @@ import { toastSuccessUpdated } from "@/composables/useToastMessages";
 import { useProjectDetailForm } from "@/composables/useProjectDetailForm";
 import { useNotify } from "@/composables/useNotify";
 import DecimalInput from "@/components/form/DecimalInput.vue";
+import { toProjectSelectOptions } from "~/utils/projectSelectOptions";
 
 /* ================= ROUTER ================= */
 const route = useRoute();
@@ -41,6 +42,7 @@ const {
 } = useProjectDetailForm();
 
 const pageLoading = ref(false);
+const projectSelectOptions = computed(() => toProjectSelectOptions(projects.value));
 const formLoading = computed(
   () => pageLoading.value || loading.value || optionsLoading.value,
 );
@@ -96,12 +98,13 @@ const handleSubmit = async () => {
     <FormSection>
       <div class="col-md-12">
         <label class="form-label">Project</label>
-        <select v-model="form.projectId" class="form-select" required>
-          <option value="">-- Select Project --</option>
-          <option v-for="p in projects" :key="p.id" :value="p.id">
-            {{ p.projectName }} - {{ p.poNumber }}
-          </option>
-        </select>
+        <FormScrollableSelect
+          v-model="form.projectId"
+          :options="projectSelectOptions"
+          placeholder="-- Select Project --"
+          name="projectId"
+          required
+        />
       </div>
     </FormSection>
 

@@ -3,7 +3,6 @@ import {
   ref,
   reactive,
   onMounted,
-  onBeforeUnmount,
   computed,
   watch,
 } from "vue";
@@ -27,6 +26,10 @@ import { useProjectRefFilesList } from "@/composables/useProjectRefFilesList";
 import { apiFetch } from "~/utils/apiFetch";
 import ProgressStageDocCells from "@/components/form/ProgressStageDocCells.vue";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import {
+  toProjectSelectOptions,
+  type ProjectSelectSource,
+} from "~/utils/projectSelectOptions";
 import type {
   ProjectProgressStageData,
   ProjectProgressStatus,
@@ -45,10 +48,7 @@ const notify = useNotify();
 const { getProgressStages } = useProgressStageApi();
 const progressStageStore = useProgressStageStore();
 
-const projects = ref<any[]>([]);
-const projectSearch = ref("");
-const showProjectDropdown = ref(false);
-const projectPickerRef = ref<HTMLElement | null>(null);
+const projects = ref<ProjectSelectSource[]>([]);
 
 const stageCodes = () => stages.value.map((s) => s.code);
 const {
@@ -81,15 +81,7 @@ const loadProjects = async () => {
   projects.value = res.data.items;
 };
 
-const filteredProjects = computed(() => {
-  if (!projectSearch.value) return projects.value;
-
-  const keyword = projectSearch.value.toLowerCase();
-
-  return projects.value.filter((p) =>
-    `${p.projectName} ${p.poNumber}`.toLowerCase().includes(keyword),
-  );
-});
+const projectSelectOptions = computed(() => toProjectSelectOptions(projects.value));
 
 const loadStages = async () => {
   const res: any = await getProgressStages({
@@ -103,28 +95,15 @@ const stages = computed(() =>
   [...progressStageStore.items].sort((a, b) => a.sequence - b.sequence),
 );
 
-const selectProject = async (p: any) => {
+const selectProject = async (option: { value: string }) => {
+  const p = projects.value.find((project) => project.id === option.value);
+  if (!p) return;
   const projectChanged = form.projectId !== p.id;
   form.projectId = p.id;
   if (projectChanged) {
     form.projectDetailId = "";
   }
-  projectSearch.value = `${p.projectName} - ${p.poNumber}`;
-  showProjectDropdown.value = false;
   await refreshForProject(p.id, id);
-};
-
-const openProjectDropdown = () => {
-  showProjectDropdown.value = true;
-};
-
-const closeProjectDropdown = () => {
-  showProjectDropdown.value = false;
-};
-
-const handleDocumentPointerDown = (event: PointerEvent) => {
-  if (projectPickerRef.value?.contains(event.target as Node)) return;
-  closeProjectDropdown();
 };
 
 type StageForm = {
@@ -151,12 +130,21 @@ const form = reactive({
 });
 
 const {
+  projectDetails,
   usedProjectDetailIdSet,
   availableProjectDetails,
   refreshForProject,
 } = useProjectProgressDetailOptions({
   currentDetailId: () => form.projectDetailId,
 });
+const detailSelectOptions = computed(() =>
+  projectDetails.value.map((d) => ({
+    value: d.id,
+    label: formatProjectDetailSelectLabel(d),
+    disabled: usedProjectDetailIdSet.value.has(d.id),
+    remark: usedProjectDetailIdSet.value.has(d.id) ? "Already has progress" : undefined,
+  })),
+);
 
 const row = (code: string): StageForm => {
   if (!form.stageData[code]) {
@@ -243,8 +231,6 @@ watch(
 );
 
 onMounted(async () => {
-  document.addEventListener("pointerdown", handleDocumentPointerDown);
-
   if (!id) {
     router.push("/project-progress");
     return;
@@ -268,14 +254,9 @@ onMounted(async () => {
   if (data.projectId) {
     const p = projects.value.find((x) => x.id === data.projectId);
     if (p) {
-      projectSearch.value = `${p.projectName} - ${p.poNumber}`;
       await refreshForProject(p.id, id);
     }
   }
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("pointerdown", handleDocumentPointerDown);
 });
 
 const handleSubmit = async () => {
@@ -346,51 +327,25 @@ const handleSubmit = async () => {
     @cancel="() => router.push('/project-progress')"
   >
     <FormSection>
-      <div ref="projectPickerRef" class="col-md-12 position-relative">
+      <div class="col-md-12">
         <label class="form-label">Project</label>
-        <input
-          class="form-control"
-          v-model="projectSearch"
-          placeholder="Search project..."
-          @click="openProjectDropdown"
-          @input="openProjectDropdown"
-          @keydown.down.prevent="openProjectDropdown"
-          @keydown.esc="closeProjectDropdown"
+        <FormScrollableSelect
+          :model-value="form.projectId"
+          :options="projectSelectOptions"
+          placeholder="Select Project"
+          search-placeholder="Search project..."
+          searchable
+          name="projectId"
+          required
+          @select="selectProject"
         />
-
-        <div
-          v-if="showProjectDropdown"
-          class="list-group position-absolute w-100 shadow"
-          style="z-index: 1000; max-height: 250px; overflow: auto"
-        >
-          <button
-            type="button"
-            class="list-group-item list-group-item-action"
-            v-for="p in filteredProjects"
-            :key="p.id"
-            @click="selectProject(p)"
-          >
-            {{ p.projectName }} - {{ p.poNumber }}
-          </button>
-          <div
-            v-if="!filteredProjects.length"
-            class="list-group-item text-body-secondary"
-          >
-            No projects found
-          </div>
-        </div>
       </div>
     </FormSection>
 
     <FormSection>
       <div class="col-md-12">
         <label class="form-label">Project Detail</label>
-        <select v-model="form.projectDetailId" class="form-select">
-          <option value="">-- Select Detail --</option>
-          <option v-for="d in availableProjectDetails" :key="d.id" :value="d.id">
-            {{ formatProjectDetailSelectLabel(d) }}
-          </option>
-        </select>
+        <FormScrollableSelect v-model="form.projectDetailId" :options="detailSelectOptions" placeholder="-- Select Detail --" name="projectDetailId" />
         <small
           v-if="form.projectId && !availableProjectDetails.length"
           class="text-body-secondary"

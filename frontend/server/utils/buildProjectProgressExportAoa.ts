@@ -8,6 +8,7 @@ import { cellDate, cellNum, cellStr } from "~/server/utils/exportCellHelpers";
 export type ProgressExportStageCell = {
   plan_submit_date?: string | null;
   actual_approve_date?: string | null;
+  remarks?: string | null;
 };
 
 export type ProjectProgressExportRow = {
@@ -35,7 +36,7 @@ export type ProjectProgressExportRow = {
   stageData?: Record<string, ProgressExportStageCell> | null;
 };
 
-export const PROJECT_PROGRESS_EXPORT_HEADERS: string[] = [
+const BASE_HEADERS = [
   "No",
   "Contract number",
   "Po number(client)",
@@ -56,30 +57,40 @@ export const PROJECT_PROGRESS_EXPORT_HEADERS: string[] = [
   "pic",
   "remaks project",
   "partner name",
-  "CAF Plan",
-  "CAF Actual",
-  "Permit Plan",
-  "Permit Actual",
-  "RFI Plan",
-  "RFI Actual",
-  "ATP Plan",
-  "ATP Actual",
-  "Endorse Plan",
-  "Endorse Actual",
-  "Delay",
-  "Delay remaks/note",
-  "Balap/Baut Plan",
-  "Balap/Baut Actual",
-  "BAST plan",
-  "BAST Actual",
-  "So Delivery plan",
-  "So delivery Actual",
-  "Invoice Plan",
-  "Invoice Actual",
-  "Paid Plan",
-  "Paid Actual",
-  "Accrued Plan",
-  "Accrued Actual",
+] as const;
+
+type StageExportDefinition = {
+  label: string;
+  matchers: RegExp[];
+  mergeDetailDelayRemarks?: boolean;
+};
+
+const STAGE_EXPORT_DEFINITIONS: StageExportDefinition[] = [
+  { label: "CAF", matchers: [/^caf$/i] },
+  { label: "Permit", matchers: [/^permit$/i] },
+  { label: "RFI", matchers: [/^rfi$/i] },
+  { label: "ATP", matchers: [/^atp$/i] },
+  { label: "Endorse", matchers: [/^endorse/i] },
+  {
+    label: "Delay",
+    matchers: [/^delay$/i],
+    mergeDetailDelayRemarks: true,
+  },
+  { label: "Balap/Baut", matchers: [/balap|baut|balap_baut/i] },
+  { label: "BAST", matchers: [/^bast$/i] },
+  { label: "So Delivery", matchers: [/so[_\s-]*delivery/i] },
+  { label: "Invoice", matchers: [/^invoice$/i] },
+  { label: "Paid", matchers: [/^paid$/i] },
+  { label: "Accrued", matchers: [/^accru/i] },
+];
+
+export const PROJECT_PROGRESS_EXPORT_HEADERS = [
+  ...BASE_HEADERS,
+  ...STAGE_EXPORT_DEFINITIONS.flatMap(({ label }) => [
+    `${label} Plan`,
+    `${label} Actual`,
+    `${label} Remarks`,
+  ]),
 ];
 
 function pickStage(
@@ -92,57 +103,26 @@ function pickStage(
   return undefined;
 }
 
-function planActual(
-  sd: Record<string, ProgressExportStageCell>,
-  matchers: RegExp[],
-): [string, string] {
-  const s = pickStage(sd, matchers);
-  return [cellDate(s?.plan_submit_date), cellDate(s?.actual_approve_date)];
-}
-
 function buildStageFlatCells(
   sd: Record<string, ProgressExportStageCell>,
   remarksDelay: string | null | undefined,
   detailStatus: string | null | undefined,
 ): string[] {
-  const out: string[] = [];
+  return STAGE_EXPORT_DEFINITIONS.flatMap((definition) => {
+    const stage = pickStage(sd, definition.matchers);
+    const isDelay = definition.mergeDetailDelayRemarks;
+    const plan =
+      cellDate(stage?.plan_submit_date) ||
+      (isDelay && String(detailStatus ?? "").toLowerCase() === "delay"
+        ? "delay"
+        : "");
+    const remarks = [
+      stage?.remarks?.trim() || "",
+      isDelay ? remarksDelay?.trim() || "" : "",
+    ].filter(Boolean);
 
-  const pairs: RegExp[][] = [
-    [/^caf$/i],
-    [/^permit$/i],
-    [/^rfi$/i],
-    [/^atp$/i],
-    [/^endorse/i],
-  ];
-  for (const m of pairs) {
-    const [p, a] = planActual(sd, m);
-    out.push(p, a);
-  }
-
-  const delaySt = pickStage(sd, [/^delay$/i]);
-  const delayCol =
-    cellDate(delaySt?.plan_submit_date) ||
-    (String(detailStatus ?? "").toLowerCase() === "delay" ? "delay" : "");
-  const delayNoteParts = [
-    cellDate(delaySt?.actual_approve_date),
-    remarksDelay?.trim() || "",
-  ].filter(Boolean);
-  out.push(delayCol, delayNoteParts.join(" | "));
-
-  const tailPairs: RegExp[][] = [
-    [/balap|baut|balap_baut/i],
-    [/^bast$/i],
-    [/so[_\s-]*delivery/i],
-    [/^invoice$/i],
-    [/^paid$/i],
-    [/^accru/i],
-  ];
-  for (const m of tailPairs) {
-    const [p, a] = planActual(sd, m);
-    out.push(p, a);
-  }
-
-  return out;
+    return [plan, cellDate(stage?.actual_approve_date), remarks.join(" | ")];
+  });
 }
 
 export function buildProjectProgressExportAoa(

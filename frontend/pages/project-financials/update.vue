@@ -25,6 +25,7 @@ import {
   pfAmountFromPercent,
 } from "@/composables/useProjectFinancialForm";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import { toProjectSelectOptions } from "~/utils/projectSelectOptions";
 import DecimalInput from "@/components/form/DecimalInput.vue";
 import FinancialDocumentUrlFile from "@/components/form/FinancialDocumentUrlFile.vue";
 import FinancialDocumentExistingList from "@/components/form/FinancialDocumentExistingList.vue";
@@ -88,6 +89,10 @@ const selectedProject = computed(() =>
 
 const selectedDetail = computed(() =>
   details.value.find((d) => d.id === form.projectDetailId),
+);
+const projectSelectOptions = computed(() => toProjectSelectOptions(projects.value));
+const detailSelectOptions = computed(() =>
+  details.value.map((d) => ({ value: d.id, label: formatProjectDetailSelectLabel(d) })),
 );
 const isInFlow = computed(() => form.flowDirection === "in");
 const isOutFlow = computed(() => form.flowDirection === "out");
@@ -287,26 +292,11 @@ const handleSubmit = async () => {
     <FormSection title="Project &amp; Detail">
       <div class="col-md-6">
         <label class="form-label">Project</label>
-        <select v-model="form.projectId" class="form-select" required>
-          <option value="">Select Project</option>
-          <option v-for="p in projects" :key="p.id" :value="p.id">
-            {{ p.projectName }} — {{ p.poNumber }}
-          </option>
-        </select>
+        <FormScrollableSelect v-model="form.projectId" :options="projectSelectOptions" placeholder="Select Project" name="projectId" required />
       </div>
       <div class="col-md-6">
         <label class="form-label">Project Detail</label>
-        <select
-          v-model="form.projectDetailId"
-          class="form-select"
-          required
-          :disabled="!form.projectId"
-        >
-          <option value="">Select Project Detail</option>
-          <option v-for="d in details" :key="d.id" :value="d.id">
-            {{ formatProjectDetailSelectLabel(d) }}
-          </option>
-        </select>
+        <FormScrollableSelect v-model="form.projectDetailId" :options="detailSelectOptions" placeholder="Select Project Detail" :disabled="!form.projectId" name="projectDetailId" required />
       </div>
 
       <div class="col-12">

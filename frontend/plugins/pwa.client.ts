@@ -1,4 +1,5 @@
 export default defineNuxtPlugin(() => {
+  if (import.meta.dev) return;
   if (!import.meta.client) return;
   if (!("serviceWorker" in navigator)) return;
 

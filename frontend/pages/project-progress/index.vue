@@ -17,6 +17,7 @@ const formatDateDMY = (val?: string | null) => {
 
 const {
   store,
+  canCreate,
   canEdit,
   canDelete,
   exporting,
@@ -44,8 +45,17 @@ const {
 
 <template>
   <div class="container-fluid py-4 px-3">
-    <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
       <h4 class="text-brand mb-0" data-page-focus>Project progress</h4>
+      <div class="d-flex gap-2">
+        <NuxtLink
+          v-if="canCreate"
+          to="/project-progress/create"
+          class="btn btn-primary"
+        >
+          + New Project Progress
+        </NuxtLink>
+      </div>
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
@@ -203,6 +213,12 @@ const {
                     <span class="progress-stage-date-label">Actual</span>
                     <span class="progress-stage-date-value">
                       {{ formatDateDMY(item.stageData?.[s.code]?.actual_approve_date) }}
+                    </span>
+                  </div>
+                  <div class="progress-stage-date-row align-items-start">
+                    <span class="progress-stage-date-label">Remaks</span>
+                    <span class="progress-stage-date-value text-wrap">
+                      {{ item.stageData?.[s.code]?.remarks?.trim() || "-" }}
                     </span>
                   </div>
                 </div>

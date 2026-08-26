@@ -26,6 +26,11 @@ body {
   font-family: var(--bs-body-font-family);
 }
 
+/* Headings receive programmatic focus after navigation for screen readers. */
+main :is(h1, h2, h3, h4)[tabindex="-1"]:focus {
+  outline: none;
+}
+
 .navbar {
   position: sticky;
   top: 0;
@@ -225,6 +230,41 @@ input[type="number"] {
 
 .table-wrapper {
   width: 100%;
+}
+
+/* Consistent active marker for native selects and Bootstrap dropdowns. */
+select.form-select:has(option:checked:not([value=""])) {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Ccircle cx='4' cy='4' r='4' fill='%23198754'/%3E%3C/svg%3E"),
+    var(--bs-form-select-bg-img);
+  background-position:
+    right 2.25rem center,
+    right 0.75rem center;
+  background-size:
+    0.5rem 0.5rem,
+    16px 12px;
+}
+
+select.form-select option:checked {
+  color: var(--bs-success-text-emphasis);
+  font-weight: 600;
+}
+
+.dropdown-item.active::after,
+.dropdown-item[aria-current="page"]::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--bs-success);
+}
+
+.dropdown-item.active,
+.dropdown-item[aria-current="page"] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Optional: sticky table header */

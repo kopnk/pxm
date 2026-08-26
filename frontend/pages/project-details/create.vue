@@ -9,6 +9,7 @@ import { useNotify } from "@/composables/useNotify";
 import { useAuthStore } from "@/stores/auth";
 import DecimalInput from "@/components/form/DecimalInput.vue";
 import { apiFetch } from "~/utils/apiFetch";
+import { toProjectSelectOptions } from "~/utils/projectSelectOptions";
 
 /* ================= ROUTER ================= */
 const router = useRouter();
@@ -64,6 +65,7 @@ const {
 } = useProjectDetailForm();
 
 const formLoading = computed(() => loading.value || optionsLoading.value);
+const projectSelectOptions = computed(() => toProjectSelectOptions(projects.value));
 const canBulkUpload = computed(
   () => authStore.user?.role?.toLowerCase() === "superadmin",
 );
@@ -443,12 +445,13 @@ onMounted(async () => {
     <FormSection>
       <div class="col-md-12">
         <label class="form-label">Project</label>
-        <select v-model="form.projectId" class="form-select" required>
-          <option value="">-- Select Project --</option>
-          <option v-for="p in projects" :key="p.id" :value="p.id">
-            {{ p.projectName }} - {{ p.poNumber }}
-          </option>
-        </select>
+        <FormScrollableSelect
+          v-model="form.projectId"
+          :options="projectSelectOptions"
+          placeholder="-- Select Project --"
+          name="projectId"
+          required
+        />
       </div>
     </FormSection>
 

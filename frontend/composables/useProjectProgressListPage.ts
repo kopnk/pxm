@@ -21,6 +21,8 @@ export const useProjectProgressListPage = () => {
   const progressStageStore = useProgressStageStore();
   const { canCreate, canEdit, canDelete } =
     useListPagePermissions("project_progress");
+  const { canRead: canReadProgressStage } =
+    useListPagePermissions("progress_stage");
   const { handle } = useFormHandler();
 
   const { exporting, downloadExcel } = useProjectProgressExport();
@@ -166,6 +168,7 @@ export const useProjectProgressListPage = () => {
     canCreate,
     canEdit,
     canDelete,
+    canReadProgressStage,
     exporting,
     searchFilter,
     stageFilter,
