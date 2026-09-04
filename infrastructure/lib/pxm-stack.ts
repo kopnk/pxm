@@ -49,6 +49,7 @@ import { Code, Function as LambdaFunction, Runtime } from "aws-cdk-lib/aws-lambd
 import { EmailIdentity, Identity } from "aws-cdk-lib/aws-ses";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -181,14 +182,17 @@ export class PxmStack extends Stack {
       priceClass,
     });
 
-    const partnerPoPdfSecret = new Secret(this, "PartnerPoPdfSecret", {
-      description: `Encryption secret for ${resourcePrefix} authenticated PO PDF QR links`,
-      generateSecretString: {
-        passwordLength: 48,
-        excludePunctuation: true,
+    // The pre-deploy migration copies the existing Secrets Manager value into
+    // this SecureString name before CloudFormation removes the legacy resource.
+    const partnerPoPdfSecretParameterName =
+      `/${APP_NAME}/${config.stage}/partner-po-pdf-secret`;
+    const partnerPoPdfSecret = StringParameter.fromSecureStringParameterAttributes(
+      this,
+      "PartnerPoPdfSecret",
+      {
+        parameterName: partnerPoPdfSecretParameterName,
       },
-      removalPolicy: config.removalPolicy,
-    });
+    );
 
     const authCookieSecret = new Secret(this, "AuthCookieSecret", {
       description: `HMAC secret for ${resourcePrefix} authentication cookies`,
@@ -221,7 +225,7 @@ export class PxmStack extends Stack {
         AWS_COGNITO_USER_POOL_ID: userPool.userPoolId,
         AWS_COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
         AWS_AUTH_COOKIE_SECRET: authCookieSecret.secretValue.unsafeUnwrap(),
-        PARTNER_PO_PDF_SECRET_ARN: partnerPoPdfSecret.secretArn,
+        PARTNER_PO_PDF_SECRET_PARAM: partnerPoPdfSecretParameterName,
         PXM_PUBLIC_APP_URL: config.publicAppUrl ?? "",
         SESSION_COOKIE_SECURE: config.frontendHostingEnabled ? "true" : "false",
         AWS_APP_FILES_BUCKET: appFilesBucket.bucketName,
@@ -393,6 +397,10 @@ export class PxmStack extends Stack {
     this.addOutput("FilesCloudFrontUrl", `https://${filesDistribution.distributionDomainName}`);
     this.addOutput("ApiUrl", api.url);
     this.addOutput("ApiHandlerName", apiHandler.functionName);
+    this.addOutput(
+      "PartnerPoPdfSecretParameterName",
+      partnerPoPdfSecretParameterName,
+    );
     if (emailIdentity) {
       this.addOutput("SesIdentityName", config.sesIdentityEmail ?? "");
     }

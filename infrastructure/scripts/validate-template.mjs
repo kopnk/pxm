@@ -21,6 +21,15 @@ export async function validateTemplate(stage, outputDir) {
     failures.push("API auth cookie must use a Secrets Manager dynamic reference");
   }
 
+  const partnerSecretParameter =
+    apiHandler?.Properties?.Environment?.Variables?.PARTNER_PO_PDF_SECRET_PARAM;
+  if (partnerSecretParameter !== `/pxm/${stage}/partner-po-pdf-secret`) {
+    failures.push("Partner PO PDF secret must use the stage-specific SSM parameter");
+  }
+  if (apiHandler?.Properties?.Environment?.Variables?.PARTNER_PO_PDF_SECRET_ARN) {
+    failures.push("Legacy Partner PO PDF Secrets Manager ARN is forbidden");
+  }
+
   for (const resource of resources) {
     const serialized = JSON.stringify(resource.Properties ?? {});
     if (serialized.includes('"AllowedOrigins":["*"]')) {

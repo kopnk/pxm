@@ -26,6 +26,10 @@ import {
 } from "@/composables/useProjectFinancialForm";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
 import { toProjectSelectOptions } from "~/utils/projectSelectOptions";
+import {
+  paidPartnerDateLabel,
+  paidPartnerIdLabel,
+} from "~/lib/projectFinancialLabels";
 import DecimalInput from "@/components/form/DecimalInput.vue";
 import FinancialDocumentUrlFile from "@/components/form/FinancialDocumentUrlFile.vue";
 import FinancialDocumentExistingList from "@/components/form/FinancialDocumentExistingList.vue";
@@ -559,11 +563,11 @@ const handleSubmit = async () => {
         <input v-model="form.vbDate" type="date" class="form-control" />
       </div>
       <div class="col-md-4">
-        <label class="form-label">MCM Number</label>
+        <label class="form-label">{{ paidPartnerIdLabel }}</label>
         <input v-model="form.mcmNumber" class="form-control" />
       </div>
       <div class="col-md-4">
-        <label class="form-label">MCM Date</label>
+        <label class="form-label">{{ paidPartnerDateLabel }}</label>
         <input v-model="form.mcmDate" type="date" class="form-control" />
       </div>
 

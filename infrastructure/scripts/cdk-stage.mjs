@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { validateTemplate } from "./validate-template.mjs";
+import { migratePartnerPoPdfSecret } from "./migrate-partner-po-pdf-secret.mjs";
 
 const [action, stage, ...extraArgs] = process.argv.slice(2);
 if (!["synth", "deploy"].includes(action) || !["dev", "prod"].includes(stage)) {
@@ -41,6 +42,7 @@ try {
   console.log(`[cdk] ${stage} template validation passed`);
 
   if (action === "deploy") {
+    await migratePartnerPoPdfSecret(stage, validationOutput, extraArgs);
     const deployCode = await runCdk([
       "deploy",
       "-c",

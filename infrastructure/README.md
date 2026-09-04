@@ -88,6 +88,11 @@ Script synth/deploy melakukan validasi template sebelum melanjutkan dan menolak
 wildcard CORS, cookie secret non-Secrets Manager, method health/ready yang terlalu
 luas, bucket frontend prod tanpa retention, dan permission SES wildcard.
 
+Saat deploy pertama setelah migrasi Partner PO PDF, script deploy menyalin nilai
+Secrets Manager lama ke SSM SecureString `/pxm/<stage>/partner-po-pdf-secret`
+sebelum CloudFormation diperbarui. Deploy dihentikan jika parameter yang sudah ada
+memiliki nilai berbeda, sehingga QR/link PO lama tidak kehilangan validitas.
+
 Context opsional:
 
 ```bash

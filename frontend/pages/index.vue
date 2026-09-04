@@ -84,7 +84,7 @@
     </div>
 
     <DashboardProjectHealthDonuts
-      :stages="pipelineStages"
+      :stages="allStages"
       :details="filteredDetails"
       :progress-rows="filteredProgressRows"
       :financial-rows="filteredFinancialRows"
@@ -422,6 +422,7 @@ const detailCount = computed(() => filteredDetails.value.length);
 
 const {
   loadProgressStages,
+  allStages,
   stagePipelineChart,
   pipelineStages,
   hasPipelineStages,

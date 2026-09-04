@@ -11,6 +11,7 @@ import {
   pfClientTaxRupiahForDisplay,
 } from "@/lib/projectFinancialsMath";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
+import { paidPartnerIdLabel } from "~/lib/projectFinancialLabels";
 
 const {
   store,
@@ -154,7 +155,7 @@ const rowPaidBlocks = (item: ProjectFinancialItem) => {
   if (isRowIn(item)) {
     return [
       paidDocBlock("VB", item.vbNumber, item.vbDate),
-      paidDocBlock("MCM", item.mcmNumber, item.mcmDate),
+      paidDocBlock(paidPartnerIdLabel, item.mcmNumber, item.mcmDate),
     ];
   }
   return [paidDocBlock("Paid", item.paidNumber, item.paidDate)];

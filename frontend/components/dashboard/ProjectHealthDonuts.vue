@@ -72,24 +72,42 @@ const safeNumber = (value: unknown) => {
   return Number.isFinite(number) ? number : 0;
 };
 
-const stageIndex = computed(
-  () => new Map(props.stages.map((stage, index) => [stage.code, index])),
+const stageSequence = computed(
+  () => new Map(props.stages.map((stage) => [stage.code, stage.sequence])),
 );
 
-const currentStageByDetail = computed(() => {
-  const result = new Map<string, string>();
+/** Semua stage yang sudah memiliki actual per detail, untuk donut progress. */
+const actualStageCodesByDetail = computed(() => {
+  const result = new Map<string, Set<string>>();
   for (const row of props.progressRows) {
-    let currentCode = "";
-    let currentIndex = -1;
+    const codes = result.get(row.projectDetailId) ?? new Set<string>();
     for (const [code, stage] of Object.entries(row.stageData ?? {})) {
-      if (!String(stage.actual_approve_date ?? "").trim()) continue;
-      const index = stageIndex.value.get(code) ?? -1;
-      if (index > currentIndex) {
-        currentCode = code;
-        currentIndex = index;
+      if (
+        String(stage.actual_approve_date ?? "").trim() &&
+        stageSequence.value.has(code)
+      ) {
+        codes.add(code);
       }
     }
-    if (currentCode) result.set(row.projectDetailId, currentCode);
+    if (codes.size > 0) result.set(row.projectDetailId, codes);
+  }
+  return result;
+});
+
+/** Stage aktual terakhir dipakai untuk alokasi HPP agar nilai tidak terduplikasi. */
+const currentStageByDetail = computed(() => {
+  const result = new Map<string, string>();
+  for (const [detailId, codes] of actualStageCodesByDetail.value) {
+    let currentCode = "";
+    let currentSequence = -1;
+    for (const code of codes) {
+      const sequence = stageSequence.value.get(code) ?? -1;
+      if (sequence > currentSequence) {
+        currentCode = code;
+        currentSequence = sequence;
+      }
+    }
+    if (currentCode) result.set(detailId, currentCode);
   }
   return result;
 });
@@ -101,9 +119,11 @@ const distribution = computed(() => {
   let unallocatedHpp = 0;
 
   for (const detail of props.details) {
-    const code = currentStageByDetail.value.get(detail.id);
-    if (code && siteCounts.has(code)) {
-      siteCounts.set(code, (siteCounts.get(code) ?? 0) + 1);
+    const codes = actualStageCodesByDetail.value.get(detail.id);
+    if (codes?.size) {
+      for (const code of codes) {
+        siteCounts.set(code, (siteCounts.get(code) ?? 0) + 1);
+      }
     } else {
       notStarted += 1;
     }
@@ -145,7 +165,6 @@ const siteValues = computed(() => [
   ),
   distribution.value.notStarted,
 ]);
-
 const hppValues = computed(() => [
   ...distribution.value.activeStages.map(
     (stage) => distribution.value.hppValues.get(stage.code) ?? 0,
@@ -173,7 +192,7 @@ const siteLabels = computed(() =>
 const valueLabels = computed(() =>
   [...activeStageLabels.value, "Unallocated"].map((label, index) => {
     const value = hppValues.value[index] ?? 0;
-    return `${label} · ${formatCompactCurrency(value)} · ${percent(value, hpp.value)}`;
+    return `${label} · ${formatCompactCurrency(value)} · ${percent(value, dpp.value)}`;
   }),
 );
 
@@ -211,7 +230,7 @@ const siteChartOptions = computed(() => ({
         label: (context: { dataIndex: number; raw?: unknown }) => {
           const value = safeNumber(context.raw);
           const label = siteLabels.value[context.dataIndex]?.split(" · ")[0] ?? "Stage";
-          return `${label}: ${value} site/detail (${percent(value, props.details.length)})`;
+          return `${label}: ${value} actual stage update (${percent(value, props.details.length)})`;
         },
       },
     },
@@ -227,7 +246,7 @@ const valueChartOptions = computed(() => ({
         label: (context: { dataIndex: number; raw?: unknown }) => {
           const value = safeNumber(context.raw);
           const label = valueLabels.value[context.dataIndex]?.split(" · ")[0] ?? "Stage";
-          return `${label}: ${formatCurrency(value)} (${percent(value, hpp.value)})`;
+          return `${label}: ${formatCurrency(value)} (${percent(value, dpp.value)})`;
         },
       },
     },

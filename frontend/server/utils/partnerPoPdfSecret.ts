@@ -1,17 +1,21 @@
 import {
-  GetSecretValueCommand,
-  SecretsManagerClient,
-} from "@aws-sdk/client-secrets-manager";
+  GetParameterCommand,
+  SSMClient,
+} from "@aws-sdk/client-ssm";
+
+const ssmClient = new SSMClient({});
 
 let cachedSecret: string | undefined;
 let pendingSecret: Promise<string> | undefined;
 
-async function loadAwsSecret(secretArn: string): Promise<string> {
-  const client = new SecretsManagerClient({});
-  const result = await client.send(
-    new GetSecretValueCommand({ SecretId: secretArn }),
+async function loadAwsParameter(parameterName: string): Promise<string> {
+  const result = await ssmClient.send(
+    new GetParameterCommand({
+      Name: parameterName,
+      WithDecryption: true,
+    }),
   );
-  const secret = result.SecretString?.trim();
+  const secret = result.Parameter?.Value?.trim();
   if (!secret) {
     throw new Error("Partner PO PDF signing secret is empty.");
   }
@@ -19,8 +23,8 @@ async function loadAwsSecret(secretArn: string): Promise<string> {
 }
 
 /**
- * Local development may provide the secret directly. AWS receives only a
- * Secrets Manager ARN and caches the fetched value for the warm Lambda.
+ * Local development may provide the secret directly. AWS receives only the
+ * SSM SecureString parameter name and caches its value for the warm Lambda.
  */
 export async function resolvePartnerPoPdfSecret(
   configuredSecret: unknown,
@@ -29,10 +33,10 @@ export async function resolvePartnerPoPdfSecret(
   if (localSecret) return localSecret;
   if (cachedSecret) return cachedSecret;
 
-  const secretArn = process.env.PARTNER_PO_PDF_SECRET_ARN?.trim();
-  if (!secretArn) return "";
+  const parameterName = process.env.PARTNER_PO_PDF_SECRET_PARAM?.trim();
+  if (!parameterName) return "";
 
-  pendingSecret ??= loadAwsSecret(secretArn);
+  pendingSecret ??= loadAwsParameter(parameterName);
   try {
     cachedSecret = await pendingSecret;
     return cachedSecret;

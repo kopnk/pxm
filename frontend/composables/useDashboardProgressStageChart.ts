@@ -20,6 +20,7 @@ export type ProgressStageDef = {
   code: string;
   name: string;
   sequence: number;
+  isActive?: boolean;
 };
 
 /**
@@ -109,10 +110,9 @@ export function useDashboardProgressStageChart(
     stagesLoading.value = true;
     try {
       stagesLoadError.value = null;
-      const res: unknown = await getProgressStages({
-        limit: 1000,
-        isActive: true,
-      });
+      // Donut harus mencakup actual historis, termasuk stage yang kini
+      // sudah tidak aktif pada master.
+      const res: unknown = await getProgressStages({ limit: 1000 });
       const body = res as {
         data?: { items?: ProgressStageDef[] };
       };
@@ -127,8 +127,14 @@ export function useDashboardProgressStageChart(
     }
   };
 
+  const allStages = computed(() => stageList.value);
+
+  // Pipeline tetap hanya menampilkan workflow aktif. Donut memakai semua
+  // stage agar actual historis tidak berubah menjadi "Not started".
   const pipelineStages = computed(() =>
-    sliceProgressStagesCafThroughAccrued(stageList.value),
+    sliceProgressStagesCafThroughAccrued(
+      stageList.value.filter((stage) => stage.isActive !== false),
+    ),
   );
 
   const stagePipelineChart = computed(() => {
@@ -250,6 +256,7 @@ export function useDashboardProgressStageChart(
 
   return {
     loadProgressStages,
+    allStages,
     stagePipelineChart,
     pipelineStages,
     hasPipelineStages,
