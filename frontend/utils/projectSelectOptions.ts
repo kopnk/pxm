@@ -2,6 +2,7 @@ export type ProjectSelectSource = {
   id: string;
   projectName?: string | null;
   poNumber?: string | null;
+  progressStageCodes?: string[];
 };
 
 export type ProjectSelectOption = {

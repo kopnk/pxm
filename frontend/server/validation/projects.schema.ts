@@ -19,6 +19,7 @@ export const createProjectSchema = z.object({
   status: z.enum(["active", "closed", "cancelled"]).optional(),
 
   clientId: z.string().uuid().optional().nullable(),
+  progressStageCodes: z.array(z.string().min(1)).min(1).optional(),
 });
 
 export const updateProjectSchema = createProjectSchema.partial();

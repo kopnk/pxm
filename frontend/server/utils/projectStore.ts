@@ -40,6 +40,7 @@ export type ProjectRecord = {
   status: ProjectStatus;
   pm: string | null;
   clientId: string | null;
+  progressStageCodes: string[];
   createdUser: string | null;
   updatedUser: string | null;
   createdAt: string;
@@ -174,6 +175,11 @@ function normalizeProjectStatus(value: unknown): ProjectStatus {
   return "active";
 }
 
+function normalizeProgressStageCodes(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((item) => String(item ?? "").trim()).filter(Boolean))];
+}
+
 function normalizeProjectRecord(
   project: Partial<ProjectRecord> & { id: string },
 ): ProjectRecord {
@@ -203,6 +209,7 @@ function normalizeProjectRecord(
     status: normalizeProjectStatus(project.status),
     pm: normalizeNullableText(project.pm),
     clientId: normalizeNullableText(project.clientId),
+    progressStageCodes: normalizeProgressStageCodes(project.progressStageCodes),
     createdUser: normalizeNullableText(project.createdUser),
     updatedUser: normalizeNullableText(project.updatedUser),
     createdAt,

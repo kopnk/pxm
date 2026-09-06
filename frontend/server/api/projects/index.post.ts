@@ -10,6 +10,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { createProjectSchema } from "~/server/validation/projects.schema";
+import { validateProgressStageCodes } from "~/server/utils/progressStageValidation";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin"]);
@@ -21,6 +22,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = parseBody(createProjectSchema, await readBody(event));
+  await validateProgressStageCodes(body.progressStageCodes ?? []);
   const poDate = toLocalDate(body.poDate);
   if (!poDate) {
     throw createError({ statusCode: 400, statusMessage: "Invalid PO date" });
@@ -48,6 +50,7 @@ export default defineEventHandler(async (event) => {
     status: body.status ?? "active",
     pm: body.pm ?? null,
     clientId: body.clientId ?? null,
+    progressStageCodes: body.progressStageCodes ?? [],
     createdUser: userId,
     updatedUser: userId,
   });

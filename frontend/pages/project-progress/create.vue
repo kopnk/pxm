@@ -24,6 +24,7 @@ import {
 import { apiFetch } from "~/utils/apiFetch";
 import ProgressStageDocCells from "@/components/form/ProgressStageDocCells.vue";
 import { formatProjectDetailSelectLabel } from "~/utils/formatProjectDetailSelectLabel";
+import { isProjectStageEnabled } from "~/utils/projectProgressStages";
 import {
   toProjectSelectOptions,
   type ProjectSelectSource,
@@ -103,6 +104,7 @@ const selectProject = async (option: { value: string }) => {
   }
 
   await refreshForProject(p.id);
+  initStageRows();
 };
 
 const loadStages = async () => {
@@ -114,9 +116,13 @@ const loadStages = async () => {
   progressStageStore.setItems(res.data.items);
 };
 
-const stages = computed(() =>
-  [...progressStageStore.items].sort((a, b) => a.sequence - b.sequence),
-);
+const stages = computed(() => {
+  const selectedCodes =
+    projects.value.find((project) => project.id === form.projectId);
+  return [...progressStageStore.items]
+    .filter((stage) => isProjectStageEnabled(selectedCodes, stage.code))
+    .sort((a, b) => a.sequence - b.sequence);
+});
 
 type StageForm = {
   plan_submit_date: string | null;

@@ -1,6 +1,8 @@
 import { computed, reactive, ref } from "vue";
 import type { Project } from "@/stores/projects";
 import { apiFetch } from "~/utils/apiFetch";
+import { useProgressStageApi } from "@/composables/useProgressStageApi";
+import type { ProgressStage } from "@/stores/progressStage";
 
 type ProjectStatus = "active" | "closed" | "cancelled";
 
@@ -21,6 +23,7 @@ export interface ProjectFormState {
   status: ProjectStatus;
   pm: string;
   clientId: string;
+  progressStageCodes: string[];
 }
 
 interface ClientOption {
@@ -45,6 +48,7 @@ const defaultProjectForm = (): ProjectFormState => ({
   status: "active",
   pm: "",
   clientId: "",
+  progressStageCodes: [],
 });
 
 export const useProjectForm = () => {
@@ -52,6 +56,10 @@ export const useProjectForm = () => {
   const clients = ref<ClientOption[]>([]);
   const clientsLoading = ref(false);
   const clientsError = ref<string | null>(null);
+  const progressStages = ref<ProgressStage[]>([]);
+  const progressStagesLoading = ref(false);
+  const progressStagesError = ref<string | null>(null);
+  const { getProgressStages } = useProgressStageApi();
 
   const isValid = computed(() => {
     return (
@@ -108,6 +116,23 @@ export const useProjectForm = () => {
     }
   };
 
+  const loadProgressStageOptions = async () => {
+    progressStagesLoading.value = true;
+    progressStagesError.value = null;
+    try {
+      const res: any = await getProgressStages({ limit: 1000, isActive: true });
+      progressStages.value = [...(res.data?.items ?? [])].sort(
+        (a: ProgressStage, b: ProgressStage) => a.sequence - b.sequence,
+      );
+    } catch (err: any) {
+      progressStagesError.value =
+        err?.data?.message || err?.message || "Failed to load progress stages";
+      throw err;
+    } finally {
+      progressStagesLoading.value = false;
+    }
+  };
+
   const fillFromProject = (project: Project) => {
     Object.assign(form, {
       contractNumber: project.contractNumber ?? "",
@@ -126,6 +151,7 @@ export const useProjectForm = () => {
       status: (project.status ?? "active") as ProjectStatus,
       pm: project.pm ?? "",
       clientId: project.clientId ?? "",
+      progressStageCodes: [...(project.progressStageCodes ?? [])],
     });
   };
 
@@ -143,6 +169,7 @@ export const useProjectForm = () => {
     status: form.status,
     pm: form.pm.trim(),
     clientId: form.clientId || null,
+    progressStageCodes: [...form.progressStageCodes],
   });
 
   const resetForm = () => {
@@ -154,6 +181,9 @@ export const useProjectForm = () => {
     clients,
     clientsLoading,
     clientsError,
+    progressStages,
+    progressStagesLoading,
+    progressStagesError,
     isValid,
     netPrice,
     vatAmount,
@@ -163,6 +193,7 @@ export const useProjectForm = () => {
     grandTotalDisplay,
     formatCurrency,
     loadClientOptions,
+    loadProgressStageOptions,
     fillFromProject,
     buildPayload,
     resetForm,

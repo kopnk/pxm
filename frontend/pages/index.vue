@@ -213,6 +213,7 @@ import {
   dashboardStageChartOptions,
   stageBarPercentLabelsPlugin,
 } from "@/composables/useDashboardProgressStageChart";
+import { isProjectStageEnabled } from "~/utils/projectProgressStages";
 
 type ProjectRow = {
   id: string;
@@ -221,6 +222,7 @@ type ProjectRow = {
   subTotal?: number | null;
   vatRate?: number | null;
   grandTotal?: number | null;
+  progressStageCodes?: string[] | null;
 };
 
 type ProjectDetailRow = {
@@ -424,11 +426,14 @@ const {
   loadProgressStages,
   allStages,
   stagePipelineChart,
-  pipelineStages,
   hasPipelineStages,
   stagesLoadError,
   stagesLoading,
-} = useDashboardProgressStageChart(filteredProgressRows, detailCount);
+} = useDashboardProgressStageChart(
+  filteredProgressRows,
+  detailCount,
+  filteredProjects,
+);
 
 /* =========================================================
    FLOW 3/6 - KPI TURUNAN (COMPUTED)
@@ -703,6 +708,9 @@ function rebuildSeries() {
 
   const currentProgressRows = filteredProgressRows.value;
   const currentFinancialRows = filteredFinancialRows.value;
+  const projectsById = new Map(
+    filteredProjects.value.map((project) => [project.id, project]),
+  );
 
   const plannedPointsByWeek: Record<string, number> = {};
   const actualPointsByWeek: Record<string, number> = {};
@@ -713,7 +721,12 @@ function rebuildSeries() {
   const siteFirstActualWeek = new Map<string, string>();
 
   for (const row of currentProgressRows) {
-    const stages = Object.values(row.stageData || {});
+    // Project lama tanpa konfigurasi stage tetap mempertahankan seluruh data.
+    const stages = Object.entries(row.stageData || {})
+      .filter(([code]) =>
+        isProjectStageEnabled(projectsById.get(row.projectId), code),
+      )
+      .map(([, stage]) => stage);
     let firstActualWeek: string | null = null;
 
     for (const stage of stages) {

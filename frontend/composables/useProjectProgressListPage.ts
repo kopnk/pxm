@@ -36,9 +36,14 @@ export const useProjectProgressListPage = () => {
   const deleteTargetId = ref<string | null>(null);
   const deleteTargetLabel = ref("this project progress");
 
-  const stageColumns = computed(() =>
-    [...progressStageStore.items].sort((a, b) => a.sequence - b.sequence),
-  );
+  const stageColumns = computed(() => {
+    const usedCodes = new Set(
+      store.items.flatMap((item) => Object.keys(item.stageData ?? {})),
+    );
+    return [...progressStageStore.items]
+      .filter((stage) => usedCodes.has(stage.code))
+      .sort((a, b) => a.sequence - b.sequence);
+  });
 
   const stageFilterOptions = computed(() =>
     stageColumns.value.map((item) => ({

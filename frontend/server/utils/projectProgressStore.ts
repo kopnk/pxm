@@ -411,6 +411,23 @@ async function ensureProjectProgressRelations(input: {
   return { project, detail };
 }
 
+function ensureStagesMatchProject(
+  project: { progressStageCodes: string[] },
+  stageData: ProjectProgressStageData | null | undefined,
+) {
+  const configuredCodes = project.progressStageCodes ?? [];
+  // Projects created before this setting existed retain access to all stages.
+  if (!configuredCodes.length || !stageData) return;
+  const invalidCodes = Object.keys(stageData).filter(
+    (code) => !configuredCodes.includes(code),
+  );
+  if (invalidCodes.length) {
+    throw createValidationError(
+      `Stage is not enabled for this project: ${invalidCodes.join(", ")}`,
+    );
+  }
+}
+
 async function ensureUniqueProgressByDetail(
   projectDetailId: string,
   excludeId?: string,
@@ -589,13 +606,14 @@ export async function createProjectProgressRecord(params: {
   createdUser?: string | null;
   updatedUser?: string | null;
 }) {
-  const { detail } = await ensureProjectProgressRelations({
+  const { project, detail } = await ensureProjectProgressRelations({
     projectId: params.projectId,
     projectDetailId: params.projectDetailId,
   });
   await ensureUniqueProgressByDetail(detail.id);
 
   const stageData = normalizeStageData(params.stageData);
+  ensureStagesMatchProject(project, stageData);
   validateApprovedAndDelayedRules({
     stageData,
     remarksDelay: params.remarksDelay ?? detail.remarksDelay,
@@ -689,12 +707,13 @@ export async function updateProjectProgressRecord(
   const nextProjectDetailId = String(
     updates.projectDetailId ?? current.projectDetailId,
   ).trim();
-  const { detail } = await ensureProjectProgressRelations({
+  const { project, detail } = await ensureProjectProgressRelations({
     projectId: nextProjectId,
     projectDetailId: nextProjectDetailId,
   });
   await ensureUniqueProgressByDetail(detail.id, current.id);
 
+  ensureStagesMatchProject(project, updates.stageData);
   const nextStageData = mergeStageData(current.stageData, updates.stageData);
   validateApprovedAndDelayedRules({
     stageData: nextStageData,

@@ -11,6 +11,7 @@ import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
 import { logAudit } from "~/server/utils/audit";
 import { updateProjectSchema } from "~/server/validation/projects.schema";
+import { validateProgressStageCodes } from "~/server/utils/progressStageValidation";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["admin", "superadmin"]);
@@ -27,6 +28,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = parseBody(updateProjectSchema, await readBody(event));
+  if (body.progressStageCodes !== undefined) {
+    await validateProgressStageCodes(body.progressStageCodes);
+  }
   const oldData = await getProjectRecordById(id);
   if (!oldData) {
     throw createError({ statusCode: 404, statusMessage: "Project not found" });
@@ -68,6 +72,10 @@ export default defineEventHandler(async (event) => {
     status: body.status ?? oldData.status,
     pm: body.pm !== undefined ? body.pm : oldData.pm,
     clientId: body.clientId !== undefined ? body.clientId : oldData.clientId,
+    progressStageCodes:
+      body.progressStageCodes !== undefined
+        ? body.progressStageCodes
+        : oldData.progressStageCodes,
     updatedUser: userId,
   });
 

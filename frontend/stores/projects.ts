@@ -28,6 +28,7 @@ export interface Project {
   pm: string | null;
 
   clientId?: string | null;
+  progressStageCodes?: string[];
 
   createdUser: string | null;
   createdBy?: string | null;

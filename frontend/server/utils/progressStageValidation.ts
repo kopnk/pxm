@@ -4,7 +4,11 @@ import { listProgressStageRecords } from "~/server/utils/progressStageStore";
 type StageDataShape = Record<string, unknown> | null | undefined;
 
 export async function validateStageDataKeys(stageData: StageDataShape) {
-  const keys = Object.keys(stageData ?? {});
+  return validateProgressStageCodes(Object.keys(stageData ?? {}));
+}
+
+export async function validateProgressStageCodes(codes: readonly string[]) {
+  const keys = [...new Set(codes.map((code) => String(code ?? "").trim()).filter(Boolean))];
   if (!keys.length) return;
 
   const rows = await listProgressStageRecords({ codes: keys });

@@ -31,12 +31,16 @@ const {
   form,
   clients,
   clientsError,
+  progressStages,
+  progressStagesLoading,
+  progressStagesError,
   isValid,
   netPriceDisplay,
   vatAmountDisplay,
   grandTotalDisplay,
   formatCurrency,
   loadClientOptions,
+  loadProgressStageOptions,
   fillFromProject,
   buildPayload,
 } = useProjectForm();
@@ -92,9 +96,12 @@ const fetchProject = async () => {
   }
 
   try {
-    await loadClientOptions();
+    await Promise.all([loadClientOptions(), loadProgressStageOptions()]);
+    if (!form.progressStageCodes.length) {
+      form.progressStageCodes = progressStages.value.map((stage) => stage.code);
+    }
   } catch {
-    notify.error(clientsError.value || "Failed to load clients");
+    notify.error(clientsError.value || progressStagesError.value || "Failed to load form options");
   }
 
   try {
@@ -144,6 +151,10 @@ const handleSubmit = async () => {
     notify.warning(
       "Project name, PR/SC number, PO number, and PO date are required",
     );
+    return;
+  }
+  if (!form.progressStageCodes.length) {
+    notify.warning("Select at least one progress stage");
     return;
   }
 
@@ -300,6 +311,18 @@ onMounted(fetchProject);
           />
           <div class="data-meta mt-1">
             Optional. External link (GDrive, local, etc.). Copy manually to access.
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Progress Stages</label>
+          <div class="form-text mt-0 mb-2">Choose the stages needed for this project.</div>
+          <div v-if="progressStagesLoading" class="text-body-secondary">Loading stages...</div>
+          <div v-else class="d-flex flex-wrap gap-3">
+            <label v-for="stage in progressStages" :key="stage.id" class="form-check">
+              <input v-model="form.progressStageCodes" class="form-check-input" type="checkbox" :value="stage.code" />
+              <span class="form-check-label">{{ stage.name }}</span>
+            </label>
           </div>
         </div>
 

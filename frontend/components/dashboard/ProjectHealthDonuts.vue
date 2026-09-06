@@ -37,7 +37,11 @@ type ProgressRow = {
   projectDetailId: string;
   stageData?: Record<
     string,
-    { actual_approve_date?: string | null; status?: string | null }
+    {
+      plan_submit_date?: string | null;
+      actual_approve_date?: string | null;
+      status?: string | null;
+    }
   > | null;
 };
 type FinancialRow = {
@@ -76,14 +80,15 @@ const stageSequence = computed(
   () => new Map(props.stages.map((stage) => [stage.code, stage.sequence])),
 );
 
-/** Semua stage yang sudah memiliki actual per detail, untuk donut progress. */
-const actualStageCodesByDetail = computed(() => {
+/** Hanya stage yang mempunyai tanggal rencana atau aktual yang dihitung di donut. */
+const datedStageCodesByDetail = computed(() => {
   const result = new Map<string, Set<string>>();
   for (const row of props.progressRows) {
     const codes = result.get(row.projectDetailId) ?? new Set<string>();
     for (const [code, stage] of Object.entries(row.stageData ?? {})) {
       if (
-        String(stage.actual_approve_date ?? "").trim() &&
+        (String(stage.plan_submit_date ?? "").trim() ||
+          String(stage.actual_approve_date ?? "").trim()) &&
         stageSequence.value.has(code)
       ) {
         codes.add(code);
@@ -97,7 +102,7 @@ const actualStageCodesByDetail = computed(() => {
 /** Stage aktual terakhir dipakai untuk alokasi HPP agar nilai tidak terduplikasi. */
 const currentStageByDetail = computed(() => {
   const result = new Map<string, string>();
-  for (const [detailId, codes] of actualStageCodesByDetail.value) {
+  for (const [detailId, codes] of datedStageCodesByDetail.value) {
     let currentCode = "";
     let currentSequence = -1;
     for (const code of codes) {
@@ -119,7 +124,7 @@ const distribution = computed(() => {
   let unallocatedHpp = 0;
 
   for (const detail of props.details) {
-    const codes = actualStageCodesByDetail.value.get(detail.id);
+    const codes = datedStageCodesByDetail.value.get(detail.id);
     if (codes?.size) {
       for (const code of codes) {
         siteCounts.set(code, (siteCounts.get(code) ?? 0) + 1);
@@ -142,31 +147,46 @@ const distribution = computed(() => {
     }
   }
 
-  const activeStages = props.stages.filter(
-    (stage) =>
-      (siteCounts.get(stage.code) ?? 0) > 0 ||
-      (hppValues.get(stage.code) ?? 0) > 0,
+  const siteStages = props.stages.filter(
+    (stage) => (siteCounts.get(stage.code) ?? 0) > 0,
   );
-  return { siteCounts, hppValues, activeStages, notStarted, unallocatedHpp };
+  const hppStages = props.stages.filter(
+    (stage) => (hppValues.get(stage.code) ?? 0) > 0,
+  );
+  return {
+    siteCounts,
+    hppValues,
+    siteStages,
+    hppStages,
+    notStarted,
+    unallocatedHpp,
+  };
 });
 
-const activeStageLabels = computed(() =>
-  distribution.value.activeStages.map((stage) => stage.name || stage.code),
+const siteStageLabels = computed(() =>
+  distribution.value.siteStages.map((stage) => stage.name || stage.code),
+);
+const hppStageLabels = computed(() =>
+  distribution.value.hppStages.map((stage) => stage.name || stage.code),
 );
 
-const chartColors = computed(() => [
-  ...distribution.value.activeStages.map((_, index) => colors[index % colors.length]),
+const siteChartColors = computed(() => [
+  ...distribution.value.siteStages.map((_, index) => colors[index % colors.length]),
+  "#cbd5e1",
+]);
+const hppChartColors = computed(() => [
+  ...distribution.value.hppStages.map((_, index) => colors[index % colors.length]),
   "#cbd5e1",
 ]);
 
 const siteValues = computed(() => [
-  ...distribution.value.activeStages.map(
+  ...distribution.value.siteStages.map(
     (stage) => distribution.value.siteCounts.get(stage.code) ?? 0,
   ),
   distribution.value.notStarted,
 ]);
 const hppValues = computed(() => [
-  ...distribution.value.activeStages.map(
+  ...distribution.value.hppStages.map(
     (stage) => distribution.value.hppValues.get(stage.code) ?? 0,
   ),
   distribution.value.unallocatedHpp,
@@ -184,13 +204,13 @@ const dpp = computed(() =>
 const hpp = computed(() => hppValues.value.reduce((sum, value) => sum + value, 0));
 
 const siteLabels = computed(() =>
-  [...activeStageLabels.value, "Not started"].map((label, index) => {
+  [...siteStageLabels.value, "Not started"].map((label, index) => {
     const value = siteValues.value[index] ?? 0;
     return `${label} · ${value} · ${percent(value, props.details.length)}`;
   }),
 );
 const valueLabels = computed(() =>
-  [...activeStageLabels.value, "Unallocated"].map((label, index) => {
+  [...hppStageLabels.value, "Unallocated"].map((label, index) => {
     const value = hppValues.value[index] ?? 0;
     return `${label} · ${formatCompactCurrency(value)} · ${percent(value, dpp.value)}`;
   }),
@@ -198,11 +218,11 @@ const valueLabels = computed(() =>
 
 const siteChartData = computed(() => ({
   labels: siteLabels.value,
-  datasets: [{ data: siteValues.value, backgroundColor: chartColors.value, borderWidth: 2 }],
+  datasets: [{ data: siteValues.value, backgroundColor: siteChartColors.value, borderWidth: 2 }],
 }));
 const valueChartData = computed(() => ({
   labels: valueLabels.value,
-  datasets: [{ data: hppValues.value, backgroundColor: chartColors.value, borderWidth: 2 }],
+  datasets: [{ data: hppValues.value, backgroundColor: hppChartColors.value, borderWidth: 2 }],
 }));
 
 function percent(value: number, total: number) {

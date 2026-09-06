@@ -1,6 +1,7 @@
 import { computed, ref, type ComputedRef } from "vue";
 import { useProgressStageApi } from "@/composables/useProgressStageApi";
 import { useNotify } from "@/composables/useNotify";
+import { collectProjectStageCodes } from "~/utils/projectProgressStages";
 
 /** Selaras `stageData` di dashboard / project-progress */
 export type DashboardProgressStageRow = {
@@ -14,6 +15,12 @@ export type DashboardProgressStageRow = {
         }
       >
     | null;
+};
+
+export type DashboardProjectStageConfig = {
+  id: string;
+  /** Empty/missing means a legacy project, which uses all active stages. */
+  progressStageCodes?: string[] | null;
 };
 
 export type ProgressStageDef = {
@@ -99,6 +106,7 @@ export function computeStageDetailBarCounts(
 export function useDashboardProgressStageChart(
   filteredProgressRows: ComputedRef<DashboardProgressStageRow[]>,
   totalDetailLines: ComputedRef<number>,
+  filteredProjects: ComputedRef<DashboardProjectStageConfig[]>,
 ) {
   const stageList = ref<ProgressStageDef[]>([]);
   const stagesLoadError = ref<string | null>(null);
@@ -127,13 +135,24 @@ export function useDashboardProgressStageChart(
     }
   };
 
-  const allStages = computed(() => stageList.value);
+  const selectedStageCodes = computed(() => {
+    const activeCodes = stageList.value
+      .filter((stage) => stage.isActive !== false)
+      .map((stage) => stage.code);
+    return collectProjectStageCodes(filteredProjects.value, activeCodes);
+  });
 
-  // Pipeline tetap hanya menampilkan workflow aktif. Donut memakai semua
-  // stage agar actual historis tidak berubah menjadi "Not started".
+  const allStages = computed(() =>
+    stageList.value.filter((stage) => selectedStageCodes.value.has(stage.code)),
+  );
+
+  // Konfigurasi stage pada project adalah sumber kebenaran. Untuk project
+  // lama, selectedStageCodes hanya berisi stage master yang masih aktif.
   const pipelineStages = computed(() =>
     sliceProgressStagesCafThroughAccrued(
-      stageList.value.filter((stage) => stage.isActive !== false),
+      stageList.value.filter(
+        (stage) => selectedStageCodes.value.has(stage.code),
+      ),
     ),
   );
 
