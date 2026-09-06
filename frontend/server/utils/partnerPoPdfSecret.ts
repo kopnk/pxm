@@ -10,15 +10,10 @@ let pendingSecret: Promise<string> | undefined;
 
 async function loadAwsParameter(parameterName: string): Promise<string> {
   const result = await ssmClient.send(
-    new GetParameterCommand({
-      Name: parameterName,
-      WithDecryption: true,
-    }),
+    new GetParameterCommand({ Name: parameterName, WithDecryption: true }),
   );
   const secret = result.Parameter?.Value?.trim();
-  if (!secret) {
-    throw new Error("Partner PO PDF signing secret is empty.");
-  }
+  if (!secret) throw new Error("Partner PO PDF signing secret is empty.");
   return secret;
 }
 

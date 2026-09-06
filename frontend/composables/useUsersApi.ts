@@ -58,7 +58,7 @@ export const useUsersApi = () => {
     isActive?: boolean;
     avatarUrl?: string;
   }) => {
-    return apiFetch("/api/users/signup", {
+    return apiFetch<ApiSuccessEnvelope<{ id: string; temporaryPassword: string }>>("/api/users/signup", {
       method: "POST",
       body: payload,
     });
@@ -81,7 +81,8 @@ export const useUsersApi = () => {
       ApiSuccessEnvelope<{
         id: string;
         mustChangePassword: boolean;
-      }>
+        temporaryPassword: string;
+      }> & { temporaryPassword?: string }
     >(`/api/users/${id}/reset-password`, { method: "POST" });
   };
 

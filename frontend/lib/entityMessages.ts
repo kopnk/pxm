@@ -38,7 +38,7 @@ export function confirmDeleteDocumentMessage() {
 }
 
 export function passwordResetToDefaultMessage() {
-  return "Password reset to default. User must change it on next login.";
+  return "Password reset. User must change it on next login.";
 }
 
 export function passwordChangeRequiredMessage() {

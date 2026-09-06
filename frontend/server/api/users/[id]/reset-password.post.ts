@@ -1,10 +1,10 @@
-import { defineEventHandler, createError } from "h3";
+import { defineEventHandler, createError, setHeader } from "h3";
 import { passwordResetToDefaultMessage } from "~/lib/entityMessages";
 import { requireRole } from "~/server/utils/authorize";
 import { successResponse } from "~/server/utils/response";
 import { logAudit } from "~/server/utils/audit";
 import { assertNotSuperadminTarget } from "~/server/utils/userRolePolicy";
-import { getDefaultUserPassword } from "~/server/utils/defaultUserPassword";
+import { generateTemporaryPassword } from "~/server/utils/temporaryPassword";
 import { resetCognitoUserPassword } from "~/server/utils/cognitoAuth";
 import {
   getAppUserRecordById,
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
   }
 
   assertNotSuperadminTarget(target.user.role ?? "staff", "reset_password");
-  const temporaryPassword = getDefaultUserPassword();
+  const temporaryPassword = generateTemporaryPassword();
 
   await resetCognitoUserPassword({
     email: target.user.email,
@@ -53,8 +53,10 @@ export default defineEventHandler(async (event) => {
     newData: { email: target.user.email },
   });
 
+  setHeader(event, "cache-control", "no-store");
   return successResponse(event, passwordResetToDefaultMessage(), {
     id: target.user.id,
     mustChangePassword: true,
+    temporaryPassword,
   });
 });

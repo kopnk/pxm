@@ -11,6 +11,7 @@ export const useUserSignupForm = () => {
   const authStore = useAuthStore();
   const { signupUser } = useUsersApi();
   const { loading, handle } = useFormHandler();
+  const temporaryPassword = ref("");
 
   const creatableRoles = computed(() =>
     getCreatableUserRoles(authStore.user?.role),
@@ -68,7 +69,7 @@ export const useUserSignupForm = () => {
 
     await handle(async () => {
       try {
-        await signupUser({
+        const response = await signupUser({
           email: user.email.trim(),
           firstName: user.firstName.trim(),
           lastName: user.lastName.trim(),
@@ -80,11 +81,16 @@ export const useUserSignupForm = () => {
           avatarUrl: user.avatarUrl,
         });
 
-        await navigateTo("/users");
+        temporaryPassword.value = response.data.temporaryPassword;
       } catch (err: unknown) {
         throw new Error(getSignupErrorMessage(err));
       }
     }, toastSuccessCreated("user"));
+  };
+
+  const closeTemporaryPassword = async () => {
+    temporaryPassword.value = "";
+    await navigateTo("/users");
   };
 
   return {
@@ -97,6 +103,8 @@ export const useUserSignupForm = () => {
     areasLoading,
     loading,
     creatableRoles,
+    temporaryPassword,
     submit,
+    closeTemporaryPassword,
   };
 };

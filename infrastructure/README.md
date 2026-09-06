@@ -93,6 +93,9 @@ Secrets Manager lama ke SSM SecureString `/pxm/<stage>/partner-po-pdf-secret`
 sebelum CloudFormation diperbarui. Deploy dihentikan jika parameter yang sudah ada
 memiliki nilai berbeda, sehingga QR/link PO lama tidak kehilangan validitas.
 
+Password sementara pengguna baru dan hasil reset dibuat unik oleh backend lalu
+ditampilkan sekali kepada admin. Pengguna wajib menggantinya saat login pertama.
+
 Context opsional:
 
 ```bash

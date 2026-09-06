@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody, createError } from "h3";
+import { defineEventHandler, readBody, createError, setHeader } from "h3";
 import { crudActionMessage } from "~/lib/entityMessages";
 import { successResponse } from "~/server/utils/response";
 import { requireRole } from "~/server/utils/authorize";
@@ -6,7 +6,7 @@ import { logAudit } from "~/server/utils/audit";
 import { userSignupSchema } from "~/server/validation/users.schema";
 import { parseBody } from "~/server/utils/zod";
 import { assertCreatableUserRole } from "~/server/utils/userRolePolicy";
-import { getDefaultUserPassword } from "~/server/utils/defaultUserPassword";
+import { generateTemporaryPassword } from "~/server/utils/temporaryPassword";
 import {
   createCognitoUser,
   deleteCognitoUser,
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (isCognitoAuthEnabled()) {
-    const temporaryPassword = getDefaultUserPassword();
+    const temporaryPassword = generateTemporaryPassword();
 
     await createCognitoUser({
       email: body.email,
@@ -76,10 +76,11 @@ export default defineEventHandler(async (event) => {
         newData: { email: body.email, role: body.role },
       });
 
+      setHeader(event, "cache-control", "no-store");
       return successResponse(
         event,
         crudActionMessage("user", "created"),
-        { id: created.user.id },
+        { id: created.user.id, temporaryPassword },
         201
       );
     } catch (error) {

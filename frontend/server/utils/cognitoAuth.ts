@@ -29,7 +29,6 @@ export const AUTH_COOKIE_NAME = "pxm_session";
 type ActiveAuthState = {
   type: "active";
   accessToken: string;
-  refreshToken?: string;
   expiresAt: number;
   email: string;
 };
@@ -194,9 +193,7 @@ export function clearAuthState(event: H3Event) {
 
 export function writeAuthState(event: H3Event, state: AuthState) {
   const maxAge = state.type === "active"
-    ? state.refreshToken
-      ? 30 * 24 * 60 * 60
-      : Math.max(state.expiresAt - nowUnixSeconds(), 60)
+    ? Math.max(state.expiresAt - nowUnixSeconds(), 60)
     : 15 * 60;
 
   setCookie(
@@ -209,14 +206,12 @@ export function writeAuthState(event: H3Event, state: AuthState) {
 
 function toActiveState(params: {
   accessToken: string;
-  refreshToken?: string;
   expiresIn?: number;
   email: string;
 }): ActiveAuthState {
   return {
     type: "active",
     accessToken: params.accessToken,
-    refreshToken: params.refreshToken,
     expiresAt: nowUnixSeconds() + Math.max(params.expiresIn ?? 3600, 60),
     email: params.email.trim().toLowerCase(),
   };
@@ -259,44 +254,6 @@ function cognitoFromActiveState(state: ActiveAuthState) {
   };
 }
 
-async function refreshActiveState(state: ActiveAuthState) {
-  if (!state.refreshToken) {
-    throw createError({ statusCode: 401, statusMessage: "Session expired" });
-  }
-
-  let response;
-  try {
-    response = await getCognitoClient().send(
-      new AdminInitiateAuthCommand({
-        UserPoolId: getUserPoolId(),
-        ClientId: getClientId(),
-        AuthFlow: "REFRESH_TOKEN_AUTH",
-        AuthParameters: {
-          REFRESH_TOKEN: state.refreshToken,
-        },
-      }),
-    );
-  } catch (error) {
-    if (isUnauthorizedSessionError(error)) {
-      throw createError({ statusCode: 401, statusMessage: "Session expired" });
-    }
-
-    throw error;
-  }
-
-  const accessToken = response.AuthenticationResult?.AccessToken;
-  if (!accessToken) {
-    throw createError({ statusCode: 401, statusMessage: "Session expired" });
-  }
-
-  return toActiveState({
-    accessToken,
-    refreshToken: state.refreshToken,
-    expiresIn: response.AuthenticationResult?.ExpiresIn,
-    email: state.email,
-  });
-}
-
 export async function resolveAuthSession(
   event: H3Event,
 ): Promise<ResolvedAuthSession | null> {
@@ -323,19 +280,10 @@ export async function resolveAuthSession(
     };
   }
 
-  let activeState = state;
+  const activeState = state;
   if (activeState.expiresAt <= nowUnixSeconds() + 60) {
-    try {
-      activeState = await refreshActiveState(activeState);
-      writeAuthState(event, activeState);
-    } catch (error) {
-      if (isUnauthorizedSessionError(error)) {
-        clearAuthState(event);
-        return null;
-      }
-
-      throw error;
-    }
+    clearAuthState(event);
+    return null;
   }
 
   const appUser = await getAppUserRecordByEmail(activeState.email);
@@ -409,7 +357,6 @@ export async function loginWithPassword(email: string, password: string) {
   return {
     state: toActiveState({
       accessToken,
-      refreshToken: response.AuthenticationResult?.RefreshToken,
       expiresIn: response.AuthenticationResult?.ExpiresIn,
       email,
     }),
@@ -452,7 +399,6 @@ export async function completeNewPasswordChallenge(
 
   return toActiveState({
     accessToken,
-    refreshToken: response.AuthenticationResult?.RefreshToken,
     expiresIn: response.AuthenticationResult?.ExpiresIn,
     email: state.email,
   });

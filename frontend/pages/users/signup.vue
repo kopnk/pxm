@@ -22,7 +22,9 @@ const {
   areasLoading,
   loading,
   creatableRoles,
+  temporaryPassword,
   submit,
+  closeTemporaryPassword,
 } = useUserSignupForm();
 </script>
 
@@ -48,7 +50,7 @@ const {
 
       <div class="col-12">
         <p class="data-meta mb-0">
-          Temporary password is configured on the server and the user must change it on first login.
+          A unique temporary password will be generated. The user must change it on first login.
         </p>
       </div>
 
@@ -159,4 +161,11 @@ const {
       </div>
     </FormSection>
   </FormShell>
+
+  <TemporaryPasswordDialog
+    :visible="Boolean(temporaryPassword)"
+    :password="temporaryPassword"
+    title="User created"
+    @close="closeTemporaryPassword"
+  />
 </template>

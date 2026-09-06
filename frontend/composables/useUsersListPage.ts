@@ -6,7 +6,6 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { getApiErrorMessage } from "@/lib/apiError";
-import { passwordResetToDefaultMessage } from "@/lib/entityMessages";
 import { canManageUserInList } from "~/lib/userRoles";
 import {
   createStoreFilter,
@@ -30,6 +29,8 @@ export const useUsersListPage = () => {
   const showResetModal = ref(false);
   const deleteTargetId = ref<string | null>(null);
   const resetTargetId = ref<string | null>(null);
+  const resetTemporaryPassword = ref("");
+  const temporaryPasswordCopied = ref(false);
 
   const searchFilter = createStoreFilter(store, "search");
   const roleFilter = createStoreFilter(store, "role");
@@ -111,7 +112,7 @@ export const useUsersListPage = () => {
     const targetId = deleteTargetId.value;
 
     try {
-      await handle(async () => {
+      const response = await handle(async () => {
         deletingId.value = targetId;
         await deleteUser(targetId);
 
@@ -141,30 +142,52 @@ export const useUsersListPage = () => {
 
   const cancelReset = () => {
     if (resettingId.value) return;
+    resetTemporaryPassword.value = "";
     showResetModal.value = false;
     resetTargetId.value = null;
   };
 
   const performReset = async () => {
     if (!resetTargetId.value || resettingId.value) return;
+    if (resetTemporaryPassword.value) {
+      closeTemporaryPassword();
+      return;
+    }
 
     const targetId = resetTargetId.value;
 
     try {
+      let temporaryPassword = "";
       await handle(async () => {
         resettingId.value = targetId;
         const response = await resetUserPassword(targetId);
-        await fetchUsers(store.meta.page, false);
-        return response;
-      }, passwordResetToDefaultMessage());
+        temporaryPassword =
+          response.data?.temporaryPassword ?? response.temporaryPassword ?? "";
+        if (!temporaryPassword) {
+          throw new Error("Temporary password was not returned by the server.");
+        }
+        void fetchUsers(store.meta.page, false).catch(() => {});
+      });
 
-      showResetModal.value = false;
-      resetTargetId.value = null;
+      resetTemporaryPassword.value = temporaryPassword;
+      temporaryPasswordCopied.value = false;
     } catch {
       // `useFormHandler` already shows the toast.
     } finally {
       resettingId.value = null;
     }
+  };
+
+  const closeTemporaryPassword = () => {
+    resetTemporaryPassword.value = "";
+    temporaryPasswordCopied.value = false;
+    showResetModal.value = false;
+    resetTargetId.value = null;
+  };
+
+  const copyTemporaryPassword = async () => {
+    await navigator.clipboard.writeText(resetTemporaryPassword.value);
+    temporaryPasswordCopied.value = true;
   };
 
   const nextPage = () => {
@@ -201,6 +224,8 @@ export const useUsersListPage = () => {
     showResetModal,
     deleteTargetUser,
     resetTargetUser,
+    resetTemporaryPassword,
+    temporaryPasswordCopied,
     searchFilter,
     roleFilter,
     isActiveFilter,
@@ -212,6 +237,8 @@ export const useUsersListPage = () => {
     openResetModal,
     cancelReset,
     performReset,
+    closeTemporaryPassword,
+    copyTemporaryPassword,
     nextPage,
     prevPage,
     toggleRow,

@@ -17,6 +17,8 @@ const {
   showResetModal,
   deleteTargetUser,
   resetTargetUser,
+  resetTemporaryPassword,
+  temporaryPasswordCopied,
   searchFilter,
   roleFilter,
   isActiveFilter,
@@ -28,6 +30,8 @@ const {
   openResetModal,
   cancelReset,
   performReset,
+  closeTemporaryPassword,
+  copyTemporaryPassword,
   nextPage,
   prevPage,
   toggleRow,
@@ -236,23 +240,41 @@ const {
 
     <AppConfirmDialog
       :visible="showResetModal"
-      title="Reset password"
+      :title="resetTemporaryPassword ? 'Temporary password' : 'Reset password'"
       :loading="!!resettingId"
-      confirm-label="Reset password"
+      :confirm-label="resetTemporaryPassword ? 'Done' : 'Reset password'"
       confirm-variant="warning"
       focus-target="confirm"
-      @cancel="cancelReset"
-      @confirm="performReset"
+      @cancel="resetTemporaryPassword ? closeTemporaryPassword() : cancelReset()"
+      @confirm="resetTemporaryPassword ? closeTemporaryPassword() : performReset()"
     >
-      <p class="mb-2">
+      <template v-if="resetTemporaryPassword">
+        <p class="mb-2">
+          Give this password to the user securely. It is shown only once.
+        </p>
+        <div class="input-group">
+          <input
+            :value="resetTemporaryPassword"
+            class="form-control font-monospace"
+            readonly
+            aria-label="Generated temporary password"
+          />
+          <button type="button" class="btn btn-outline-secondary" @click="copyTemporaryPassword">
+            {{ temporaryPasswordCopied ? "Copied" : "Copy" }}
+          </button>
+        </div>
+      </template>
+      <template v-else>
+        <p class="mb-2">
         Reset password for
         <span class="fw-bold">{{ resetTargetUser?.email || "this user" }}</span
         >?
-      </p>
-      <p class="data-meta mb-0">
-        The temporary password is configured on the server. After reset, the
-        user must change it on first login.
-      </p>
+        </p>
+        <p class="data-meta mb-0">
+          A unique temporary password will be generated. The user must change it
+          on first login.
+        </p>
+      </template>
     </AppConfirmDialog>
   </div>
 </template>
