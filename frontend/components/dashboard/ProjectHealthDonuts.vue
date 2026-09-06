@@ -3,7 +3,11 @@
     <section class="card health-card">
       <h3 class="section-title">Project Progress by Site</h3>
       <div class="donut-wrap">
-        <Doughnut :data="siteChartData" :options="siteChartOptions" />
+        <Doughnut
+          :data="siteChartData"
+          :options="siteChartOptions"
+          :plugins="[doughnutPercentLabelsPlugin]"
+        />
         <div class="donut-center" aria-hidden="true">
           <strong>{{ details.length }}</strong>
           <span>Site / Details</span>
@@ -14,7 +18,11 @@
     <section class="card health-card">
       <h3 class="section-title">Project Progress by HPP</h3>
       <div class="donut-wrap">
-        <Doughnut :data="valueChartData" :options="valueChartOptions" />
+        <Doughnut
+          :data="valueChartData"
+          :options="valueChartOptions"
+          :plugins="[doughnutPercentLabelsPlugin]"
+        />
         <div class="donut-center donut-center-value" aria-hidden="true">
           <span>PO Excl. PPN</span>
           <strong>{{ formatCompactCurrency(poExclPpn) }}</strong>
@@ -64,6 +72,41 @@ const props = defineProps<{
 }>();
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+const doughnutPercentLabelsPlugin = {
+  id: "doughnutPercentLabels",
+  afterDatasetsDraw(chart: any) {
+    const config = chart.options?.plugins?.doughnutPercentLabels;
+    const total = Number(config?.total ?? 0);
+    if (!config?.enabled || total <= 0) return;
+
+    const values = chart.data.datasets[0]?.data ?? [];
+    const arcs = chart.getDatasetMeta(0).data;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    arcs.forEach((arc: any, index: number) => {
+      const value = safeNumber(values[index]);
+      if (value <= 0) return;
+      const props = arc.getProps(
+        ["x", "y", "startAngle", "endAngle", "innerRadius", "outerRadius"],
+        true,
+      );
+      const angle = (props.startAngle + props.endAngle) / 2;
+      const radius = (props.innerRadius + props.outerRadius) / 2;
+      ctx.fillText(
+        `${((value / total) * 100).toFixed(0)}%`,
+        props.x + Math.cos(angle) * radius,
+        props.y + Math.sin(angle) * radius,
+      );
+    });
+    ctx.restore();
+  },
+};
 
 const colors = [
   "#2563eb", "#0891b2", "#0d9488", "#16a34a", "#65a30d",
@@ -212,7 +255,7 @@ const siteLabels = computed(() =>
 const valueLabels = computed(() =>
   [...hppStageLabels.value, "Unallocated"].map((label, index) => {
     const value = hppValues.value[index] ?? 0;
-    return `${label} · ${formatCompactCurrency(value)} · ${percent(value, dpp.value)}`;
+    return `${label} · ${formatCompactCurrency(value)} · ${percent(value, hpp.value)}`;
   }),
 );
 
@@ -254,6 +297,10 @@ const siteChartOptions = computed(() => ({
         },
       },
     },
+    doughnutPercentLabels: {
+      enabled: true,
+      total: props.details.length,
+    },
   },
 }));
 
@@ -269,6 +316,10 @@ const valueChartOptions = computed(() => ({
           return `${label}: ${formatCurrency(value)} (${percent(value, dpp.value)})`;
         },
       },
+    },
+    doughnutPercentLabels: {
+      enabled: true,
+      total: hpp.value,
     },
   },
 }));
