@@ -4,6 +4,7 @@ export type PartnerBastPdfLine = {
   siteId: string | null;
   siteName: string | null;
   workType: string | null;
+  partnerDocumentWorkLocation: string | null;
 };
 
 export type PartnerBastPdfMeta = {
@@ -158,8 +159,8 @@ export async function buildPartnerBastPdfBuffer(
   const colLoc = ml + 220;
   doc.font("Helvetica-Bold").fontSize(9);
   doc.text("No", colNo, y, { width: 28 });
-  doc.text("Type Pekerjaan", colType, y, { width: 180 });
-  doc.text("Lokasi Pekerjaan", colLoc, y, { width: mw - (colLoc - ml) });
+  doc.text("Type / Jenis Pekerjaan", colType, y, { width: 180 });
+  doc.text("Details / Lokasi Pekerjaan", colLoc, y, { width: mw - (colLoc - ml) });
   y += 12;
 
   doc.font("Helvetica").fontSize(9);
@@ -170,7 +171,10 @@ export async function buildPartnerBastPdfBuffer(
     }
 
     const workType = line.workType || "Pekerjaan";
-    const location = `${line.siteId || "—"} ${line.siteName || "—"}`.trim();
+    const location =
+      line.partnerDocumentWorkLocation ||
+      line.siteName ||
+      "—";
 
     doc.text(String(idx + 1), colNo, y, { width: 28 });
     doc.text(workType, colType, y, { width: 180 });

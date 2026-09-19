@@ -57,6 +57,7 @@ export default defineEventHandler(async (event) => {
       siteId: r.detailSiteId,
       siteName: r.detailSiteName,
       workType: r.detailMaterialName,
+      partnerDocumentWorkLocation: r.partnerDocumentWorkLocation,
     })),
     {
       bastNumber: bast,

@@ -62,6 +62,8 @@ const projectFinancialSchemaBase = z.object({
 
   qtyPartner: optNum,
   unitPricePartner: optNum,
+  // Optional redaction override for partner BAST and invoice PDFs only.
+  partnerDocumentWorkLocation: optStr,
 
   poNumberClient: optStr,
   poDateClient: z.string().optional().nullable(),

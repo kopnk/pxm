@@ -57,6 +57,7 @@ export default defineEventHandler(async (event) => {
       detailSiteId: row.detailSiteId,
       detailSiteName: row.detailSiteName,
       detailMaterialName: row.detailMaterialName,
+      partnerDocumentWorkLocation: row.partnerDocumentWorkLocation,
       qtyPartner: row.qtyPartner,
       unitPricePartner: row.unitPricePartner,
     })),

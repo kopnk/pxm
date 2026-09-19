@@ -79,6 +79,8 @@ export type ProjectFinancialFormModel = {
   fpDatePartner: string | null;
   qtyPartner: number | null;
   unitPricePartner: number | null;
+  /** Optional wording override for the location wording in partner BAST and invoice. */
+  partnerDocumentWorkLocation: string;
 
   poNumberClient: string;
   poDateClient: string | null;
@@ -124,6 +126,7 @@ export function emptyProjectFinancialForm(): ProjectFinancialFormModel {
     fpDatePartner: null,
     qtyPartner: null,
     unitPricePartner: null,
+    partnerDocumentWorkLocation: "",
     poNumberClient: "",
     poDateClient: null,
     invoiceNumberClient: "",
@@ -188,6 +191,7 @@ export function buildProjectFinancialPayload(form: ProjectFinancialFormModel) {
     fpDatePartner: isInFlow ? form.fpDatePartner || null : null,
     qtyPartner: isInFlow ? n(form.qtyPartner) : null,
     unitPricePartner: isInFlow ? n(form.unitPricePartner) : null,
+    partnerDocumentWorkLocation: isInFlow ? form.partnerDocumentWorkLocation || null : null,
 
     poNumberClient: isOutFlow ? form.poNumberClient || null : null,
     poDateClient: isOutFlow ? form.poDateClient || null : null,
@@ -263,6 +267,7 @@ export function applyFinancialRowToForm(
     : null;
   form.qtyPartner = n(row.qtyPartner);
   form.unitPricePartner = n(row.unitPricePartner);
+  form.partnerDocumentWorkLocation = str(row.partnerDocumentWorkLocation);
 
   form.poNumberClient = str(row.poNumberClient);
   form.poDateClient = row.poDateClient

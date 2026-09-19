@@ -5,6 +5,7 @@ export type PartnerInvoicePdfLine = {
   detailSiteId: string | null;
   detailSiteName: string | null;
   detailMaterialName: string | null;
+  partnerDocumentWorkLocation: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
 };
@@ -125,8 +126,12 @@ export async function buildPartnerInvoicePdfBuffer(
       y = doc.page.margins.top;
     }
 
-    const desc =
-      `${line.detailMaterialName || "Work"} ${line.detailSiteId || "—"} ${line.detailSiteName || "—"}`.trim();
+    const workType = line.detailMaterialName || "Work";
+    const workLocation =
+      line.partnerDocumentWorkLocation ||
+      line.detailSiteName ||
+      "—";
+    const desc = `${workType} ${workLocation}`.trim();
     const total = pfListLineBase(line.qtyPartner, line.unitPricePartner);
     if (total != null) grandTotal += total;
 

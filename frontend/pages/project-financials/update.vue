@@ -791,6 +791,14 @@ const handleSubmit = async () => {
           <option value="cancelled">Cancelled</option>
         </select>
       </div>
+      <div class="col-12">
+        <label class="form-label">Optional for BAST &amp; Invoice</label>
+        <input v-model="form.partnerDocumentWorkLocation" class="form-control" />
+        <div class="form-text">
+          Use this field only to adjust the work type wording in the BAST and
+          partner invoice as needed. Leave it blank to use the Project Detail Site Name by default.
+        </div>
+      </div>
       <div class="col-md-12">
         <label class="form-label">Note</label>
         <textarea v-model="form.note" class="form-control" rows="2" />

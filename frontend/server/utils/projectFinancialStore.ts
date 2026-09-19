@@ -83,6 +83,8 @@ export type ProjectFinancialRecord = {
   fpDatePartner: string | null;
   qtyPartner: number | null;
   unitPricePartner: number | null;
+  /** Optional wording override used only in the partner BAST and invoice PDFs. */
+  partnerDocumentWorkLocation: string | null;
   poNumberClient: string | null;
   poDateClient: string | null;
   invoiceNumberClient: string | null;
@@ -305,6 +307,7 @@ function normalizeProjectFinancialRecord(
     fpDatePartner: normalizeNullableDate(record.fpDatePartner),
     qtyPartner: normalizeNullableNumber(record.qtyPartner),
     unitPricePartner: normalizeNullableNumber(record.unitPricePartner),
+    partnerDocumentWorkLocation: normalizeNullableText(record.partnerDocumentWorkLocation),
     poNumberClient: normalizeNullableText(record.poNumberClient),
     poDateClient: normalizeNullableDate(record.poDateClient),
     invoiceNumberClient: normalizeNullableText(record.invoiceNumberClient),
