@@ -792,11 +792,11 @@ const handleSubmit = async () => {
         </select>
       </div>
       <div class="col-12">
-        <label class="form-label">Optional for BAST &amp; Invoice</label>
+        <label class="form-label">Optional for BAST, Invoice &amp; PO</label>
         <input v-model="form.partnerDocumentWorkLocation" class="form-control" />
         <div class="form-text">
-          Use this field only to adjust the work type wording in the BAST and
-          partner invoice as needed. Leave it blank to use the Project Detail Site Name by default.
+          Use this field only to adjust the wording in the BAST, partner invoice,
+          and partner PO as needed. Leave it blank to use the Project Detail Site Name by default.
         </div>
       </div>
       <div class="col-md-12">
