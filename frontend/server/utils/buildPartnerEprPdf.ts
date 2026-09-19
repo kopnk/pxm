@@ -12,6 +12,7 @@ export type PartnerEprPdfLine = {
   invoiceDatePartner: string | null;
   detailSiteId: string | null;
   detailSiteName: string | null;
+  partnerDocumentWorkLocation: string | null;
   detailMaterialName: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
@@ -65,7 +66,10 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
     const existing = map.get(invoiceNumber);
     const rawPph = pfParseNum(row.pph);
     const rawTax = pfParseNum(row.taxIn);
-    const site = [row.detailSiteId?.trim(), row.detailSiteName?.trim()]
+    const site = [
+      row.detailSiteId?.trim(),
+      row.partnerDocumentWorkLocation?.trim() || row.detailSiteName?.trim(),
+    ]
       .filter(Boolean)
       .join(" - ");
 

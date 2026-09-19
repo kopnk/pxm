@@ -199,11 +199,13 @@ function tableLayout(
   const wSiteId =
     0.12 * mw;
 
+  // Give the free-form site wording enough room to wrap without intruding
+  // into the Material column.
   const wSite =
-    0.21 * mw;
+    0.28 * mw;
 
   const wMat =
-    0.21 * mw;
+    0.14 * mw;
 
   const wQty =
     0.09 * mw;
@@ -226,13 +228,13 @@ function tableLayout(
   x += wNo;
 
   const c1 = x;
-  x += wSiteId;
+  x += wMat;
 
   const c2 = x;
-  x += wSite;
+  x += wSiteId;
 
   const c3 = x;
-  x += wMat;
+  x += wSite;
 
   const c4 = x;
   x += wQty;
@@ -294,9 +296,9 @@ function renderTableHeader(
     },
   );
 
-    doc.text(
+  doc.text(
     "Material",
-    T.c3,
+    T.c1,
     y,
     {
       width: T.wMat,
@@ -305,7 +307,7 @@ function renderTableHeader(
 
   doc.text(
     "Site ID",
-    T.c1,
+    T.c2,
     y,
     {
       width: T.wSiteId,
@@ -313,8 +315,8 @@ function renderTableHeader(
   );
 
   doc.text(
-    "Details /List Site",
-    T.c2,
+    "Details / List Site",
+    T.c3,
     y,
     {
       width: T.wSite,
@@ -1121,6 +1123,7 @@ export async function buildPartnerPoPdfBuffer(
           {
             width:
               T.wSiteId,
+            lineGap: 1,
           },
         );
 
@@ -1130,6 +1133,7 @@ export async function buildPartnerPoPdfBuffer(
           {
             width:
               T.wSite,
+            lineGap: 1,
           },
         );
 
@@ -1139,6 +1143,7 @@ export async function buildPartnerPoPdfBuffer(
           {
             width:
               T.wMat,
+            lineGap: 1,
           },
         );
 
@@ -1182,11 +1187,12 @@ export async function buildPartnerPoPdfBuffer(
        */
       doc.text(
         material,
-        T.c3,
+        T.c1,
         y,
         {
           width:
             T.wMat,
+          lineGap: 1,
         },
       );
 
@@ -1195,11 +1201,12 @@ export async function buildPartnerPoPdfBuffer(
        */
       doc.text(
         siteId,
-        T.c1,
+        T.c2,
         y,
         {
           width:
             T.wSiteId,
+          lineGap: 1,
         },
       );
 
@@ -1208,11 +1215,12 @@ export async function buildPartnerPoPdfBuffer(
        */
       doc.text(
         siteName,
-        T.c2,
+        T.c3,
         y,
         {
           width:
             T.wSite,
+          lineGap: 1,
         },
       );
 

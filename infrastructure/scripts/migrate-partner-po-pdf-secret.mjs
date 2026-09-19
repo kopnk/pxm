@@ -32,14 +32,14 @@ function awsConnectionArgs(extraArgs) {
   return result;
 }
 
-export async function migratePartnerPoPdfSecret(stage, _templateDir, extraArgs = []) {
+async function migrateSecretToSsm({ stage, logicalIdPrefix, parameterSuffix, description, extraArgs }) {
   const connectionArgs = awsConnectionArgs(extraArgs);
   let secretArn = "";
   try {
     secretArn = await runAws([
     "cloudformation", "list-stack-resources",
     "--stack-name", `PxmStack-${stage}`,
-    "--query", "StackResourceSummaries[?starts_with(LogicalResourceId, 'PartnerPoPdfSecret')].PhysicalResourceId | [0]",
+    "--query", `StackResourceSummaries[?starts_with(LogicalResourceId, '${logicalIdPrefix}')].PhysicalResourceId | [0]`,
     "--output", "text",
     ...connectionArgs,
     ]);
@@ -48,7 +48,7 @@ export async function migratePartnerPoPdfSecret(stage, _templateDir, extraArgs =
     if (!String(error).includes("does not exist")) throw error;
   }
 
-  const parameterName = `/pxm/${stage}/partner-po-pdf-secret`;
+  const parameterName = `/pxm/${stage}/${parameterSuffix}`;
   let currentValue;
 
   try {
@@ -80,10 +80,27 @@ export async function migratePartnerPoPdfSecret(stage, _templateDir, extraArgs =
     await runAws([
       "ssm", "put-parameter", "--name", parameterName,
       "--type", "SecureString", "--value", secretValue,
-      "--description", `Encryption secret for pxm-${stage} authenticated PO PDF QR links`,
+      "--description", description,
       ...connectionArgs,
     ]);
   }
 
-  console.log(`[migration] preserved Partner PO PDF secret in ${parameterName}`);
+  console.log(`[migration] preserved secret in ${parameterName}`);
+}
+
+export async function migrateSecretsToSsm(stage, extraArgs = []) {
+  await migrateSecretToSsm({
+    stage,
+    logicalIdPrefix: "PartnerPoPdfSecret",
+    parameterSuffix: "partner-po-pdf-secret",
+    description: `Encryption secret for pxm-${stage} authenticated PO PDF QR links`,
+    extraArgs,
+  });
+  await migrateSecretToSsm({
+    stage,
+    logicalIdPrefix: "AuthCookieSecret",
+    parameterSuffix: "auth-cookie-secret",
+    description: `HMAC secret for pxm-${stage} authentication cookies`,
+    extraArgs,
+  });
 }

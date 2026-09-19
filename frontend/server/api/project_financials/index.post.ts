@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
     taxOut: body.taxOut ?? null,
     pph: body.pph ?? null,
     note: body.note ?? null,
+    partnerDocumentWorkLocation: body.partnerDocumentWorkLocation ?? null,
     stage: body.stage ?? null,
     clientId: body.clientId ?? null,
     partnerId: body.partnerId ?? null,

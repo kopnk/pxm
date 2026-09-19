@@ -20,6 +20,17 @@ function resolveOpaquePo() {
   return value.startsWith("v1.") ? value : "";
 }
 
+async function clearPwaAssetCache() {
+  if (!("caches" in window)) return;
+
+  const cacheNames = await caches.keys();
+  await Promise.all(
+    cacheNames
+      .filter((name) => name.startsWith("pxm-cache-"))
+      .map((name) => caches.delete(name)),
+  );
+}
+
 function downloadPdf() {
   if (!pdfObjectUrl.value) return;
   const anchor = document.createElement("a");
@@ -104,7 +115,10 @@ async function renderPdf() {
   }
 }
 
-onMounted(renderPdf);
+onMounted(async () => {
+  await clearPwaAssetCache();
+  await renderPdf();
+});
 
 onBeforeUnmount(() => {
   if (pdfObjectUrl.value) URL.revokeObjectURL(pdfObjectUrl.value);

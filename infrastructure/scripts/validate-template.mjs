@@ -15,10 +15,10 @@ export async function validateTemplate(stage, outputDir) {
   const cookieSecret = apiHandler?.Properties?.Environment?.Variables?.AWS_AUTH_COOKIE_SECRET;
   const serializedCookieSecret = JSON.stringify(cookieSecret ?? null);
   if (
-    !serializedCookieSecret.includes("secretsmanager") ||
+    !serializedCookieSecret.includes("ssm-secure") ||
     serializedCookieSecret.includes("AWS::StackId")
   ) {
-    failures.push("API auth cookie must use a Secrets Manager dynamic reference");
+    failures.push("API auth cookie must use an SSM SecureString dynamic reference");
   }
 
   const partnerSecretParameter =

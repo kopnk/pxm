@@ -48,7 +48,6 @@ import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 import { Code, Function as LambdaFunction, Runtime } from "aws-cdk-lib/aws-lambda";
 import { EmailIdentity, Identity } from "aws-cdk-lib/aws-ses";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { Secret } from "aws-cdk-lib/aws-secretsmanager";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { join } from "node:path";
@@ -194,14 +193,15 @@ export class PxmStack extends Stack {
       },
     );
 
-    const authCookieSecret = new Secret(this, "AuthCookieSecret", {
-      description: `HMAC secret for ${resourcePrefix} authentication cookies`,
-      generateSecretString: {
-        passwordLength: 64,
-        excludePunctuation: true,
+    const authCookieSecretParameterName =
+      `/${APP_NAME}/${config.stage}/auth-cookie-secret`;
+    const authCookieSecret = StringParameter.fromSecureStringParameterAttributes(
+      this,
+      "AuthCookieSecret",
+      {
+        parameterName: authCookieSecretParameterName,
       },
-      removalPolicy: config.removalPolicy,
-    });
+    );
 
     const emailIdentity = config.sesIdentityEmail
       ? new EmailIdentity(this, "SesEmailIdentity", {
@@ -224,7 +224,7 @@ export class PxmStack extends Stack {
         AWS_DYNAMODB_TABLE: dataTable.tableName,
         AWS_COGNITO_USER_POOL_ID: userPool.userPoolId,
         AWS_COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
-        AWS_AUTH_COOKIE_SECRET: authCookieSecret.secretValue.unsafeUnwrap(),
+        AWS_AUTH_COOKIE_SECRET: authCookieSecret.stringValue,
         PARTNER_PO_PDF_SECRET_PARAM: partnerPoPdfSecretParameterName,
         PXM_PUBLIC_APP_URL: config.publicAppUrl ?? "",
         SESSION_COOKIE_SECURE: config.frontendHostingEnabled ? "true" : "false",
@@ -241,6 +241,7 @@ export class PxmStack extends Stack {
     dataTable.grantReadWriteData(apiHandler);
     appFilesBucket.grantReadWrite(apiHandler);
     partnerPoPdfSecret.grantRead(apiHandler);
+    authCookieSecret.grantRead(apiHandler);
     apiHandler.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
