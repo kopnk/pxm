@@ -12,13 +12,13 @@ export async function validateTemplate(stage, outputDir) {
       resource.Type === "AWS::Lambda::Function" &&
       resource.Properties?.FunctionName === `pxm-${stage}-api`,
   );
-  const cookieSecret = apiHandler?.Properties?.Environment?.Variables?.AWS_AUTH_COOKIE_SECRET;
-  const serializedCookieSecret = JSON.stringify(cookieSecret ?? null);
-  if (
-    !serializedCookieSecret.includes("ssm-secure") ||
-    serializedCookieSecret.includes("AWS::StackId")
-  ) {
-    failures.push("API auth cookie must use an SSM SecureString dynamic reference");
+  const cookieSecretParameter =
+    apiHandler?.Properties?.Environment?.Variables?.AWS_AUTH_COOKIE_SECRET_PARAM;
+  if (cookieSecretParameter !== `/pxm/${stage}/auth-cookie-secret`) {
+    failures.push("API auth cookie must use the stage-specific SSM parameter");
+  }
+  if (apiHandler?.Properties?.Environment?.Variables?.AWS_AUTH_COOKIE_SECRET) {
+    failures.push("Direct API auth cookie secrets are forbidden");
   }
 
   const partnerSecretParameter =

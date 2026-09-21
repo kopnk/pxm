@@ -23,6 +23,7 @@ import {
   type AppUserRecord,
   getAppUserRecordByEmail,
 } from "~/server/utils/appUserStore";
+import { resolveAuthCookieSecret } from "~/server/utils/partnerPoPdfSecret";
 
 export const AUTH_COOKIE_NAME = "pxm_session";
 
@@ -90,15 +91,6 @@ function nowUnixSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
-function getCookieSecret() {
-  const secret = process.env.AWS_AUTH_COOKIE_SECRET?.trim();
-  if (!secret) {
-    throw new Error("AWS_AUTH_COOKIE_SECRET is missing or empty.");
-  }
-
-  return secret;
-}
-
 function getUserPoolId() {
   const userPoolId = process.env.AWS_COGNITO_USER_POOL_ID?.trim();
   if (!userPoolId) {
@@ -129,22 +121,24 @@ function getCognitoClient() {
   return cognitoClient;
 }
 
-function cookieSignature(payload: string) {
-  return createHmac("sha256", getCookieSecret()).update(payload).digest("base64url");
+async function cookieSignature(payload: string) {
+  return createHmac("sha256", await resolveAuthCookieSecret())
+    .update(payload)
+    .digest("base64url");
 }
 
-function toCookieValue(state: AuthState) {
+async function toCookieValue(state: AuthState) {
   const payload = Buffer.from(JSON.stringify(state), "utf8").toString("base64url");
-  return `${payload}.${cookieSignature(payload)}`;
+  return `${payload}.${await cookieSignature(payload)}`;
 }
 
-function fromCookieValue(value?: string | null): AuthState | null {
+async function fromCookieValue(value?: string | null): Promise<AuthState | null> {
   if (!value) return null;
 
   const [payload, signature] = value.split(".");
   if (!payload || !signature) return null;
 
-  const expectedSignature = cookieSignature(payload);
+  const expectedSignature = await cookieSignature(payload);
   const valid =
     signature.length === expectedSignature.length &&
     timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
@@ -179,7 +173,8 @@ export function isCognitoAuthEnabled() {
   return Boolean(
     process.env.AWS_COGNITO_USER_POOL_ID?.trim() &&
       process.env.AWS_COGNITO_CLIENT_ID?.trim() &&
-      process.env.AWS_AUTH_COOKIE_SECRET?.trim(),
+      (process.env.AWS_AUTH_COOKIE_SECRET?.trim() ||
+        process.env.AWS_AUTH_COOKIE_SECRET_PARAM?.trim()),
   );
 }
 
@@ -191,7 +186,7 @@ export function clearAuthState(event: H3Event) {
   deleteCookie(event, AUTH_COOKIE_NAME, sessionCookieAttributes(0));
 }
 
-export function writeAuthState(event: H3Event, state: AuthState) {
+export async function writeAuthState(event: H3Event, state: AuthState) {
   const maxAge = state.type === "active"
     ? Math.max(state.expiresAt - nowUnixSeconds(), 60)
     : 15 * 60;
@@ -199,7 +194,7 @@ export function writeAuthState(event: H3Event, state: AuthState) {
   setCookie(
     event,
     AUTH_COOKIE_NAME,
-    toCookieValue(state),
+    await toCookieValue(state),
     sessionCookieAttributes(maxAge),
   );
 }
@@ -257,7 +252,7 @@ function cognitoFromActiveState(state: ActiveAuthState) {
 export async function resolveAuthSession(
   event: H3Event,
 ): Promise<ResolvedAuthSession | null> {
-  const state = readAuthState(event);
+  const state = await readAuthState(event);
   if (!state) return null;
 
   if (state.type === "challenge") {

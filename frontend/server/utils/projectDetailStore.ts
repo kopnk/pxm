@@ -32,7 +32,7 @@ export type ProjectDetailRecord = {
   cityKabId: string;
   picArea: string | null;
   lineNumber: number | null;
-  systemkey: string;
+  systemkey: string | null;
   neId: string | null;
   materialId: string | null;
   materialName: string | null;
@@ -180,7 +180,7 @@ function normalizeProjectDetailRecord(
     id: string;
     projectId: string;
     cityKabId: string;
-    systemkey: string;
+    systemkey?: string | null;
     siteName: string;
   },
 ): ProjectDetailRecord {
@@ -193,7 +193,7 @@ function normalizeProjectDetailRecord(
     cityKabId: String(detail.cityKabId).trim(),
     picArea: normalizeNullableText(detail.picArea),
     lineNumber: normalizeLineNumber(detail.lineNumber),
-    systemkey: String(detail.systemkey ?? "").trim(),
+    systemkey: normalizeNullableText(detail.systemkey),
     neId: normalizeNullableText(detail.neId),
     materialId: normalizeNullableText(detail.materialId),
     materialName: normalizeNullableText(detail.materialName),
@@ -222,7 +222,7 @@ function toProjectDetailItem(detail: ProjectDetailRecord): ProjectDetailItem {
     pk: buildProjectDetailPk(normalized.id),
     sk: PROJECT_DETAIL_SK,
     gsi1pk: `PROJECT_DETAIL_PROJECT#${normalized.projectId}`,
-    gsi1sk: `SYSTEMKEY#${normalized.systemkey.toLowerCase()}#${normalized.id}`,
+    gsi1sk: `SYSTEMKEY#${normalized.systemkey?.toLowerCase() ?? ""}#${normalized.id}`,
     entityType: PROJECT_DETAIL_ENTITY,
     stage: getStageName(),
     ...normalized,
@@ -433,7 +433,9 @@ async function ensureUniqueSystemkeys(
 ) {
   const existing = await scanAllProjectDetailItems();
   const existingMap = new Map(
-    existing.map((item) => [String(item.systemkey).trim(), String(item.id)] as const),
+    existing
+      .map((item) => [normalizeNullableText(item.systemkey), String(item.id)] as const)
+      .filter((entry): entry is [string, string] => entry[0] != null),
   );
 
   for (const systemkey of systemkeys) {
@@ -536,18 +538,21 @@ export async function createProjectDetailRecords(
     }),
   );
 
-  const systemkeys = normalizedParams.map((detail) => detail.systemkey);
+  const systemkeys = normalizedParams
+    .map((detail) => detail.systemkey)
+    .filter((systemkey): systemkey is string => systemkey != null);
   if (new Set(systemkeys).size !== systemkeys.length) {
     throw createValidationError("Duplicate systemkey in payload");
   }
 
+  const uniqueReferences = new Map(
+    normalizedParams.map((detail) => [
+      `${detail.projectId}#${detail.cityKabId}`,
+      { projectId: detail.projectId, cityKabId: detail.cityKabId },
+    ]),
+  );
   await Promise.all(
-    normalizedParams.map((detail) =>
-      validateProjectDetailReferences({
-        projectId: detail.projectId,
-        cityKabId: detail.cityKabId,
-      }),
-    ),
+    [...uniqueReferences.values()].map(validateProjectDetailReferences),
   );
 
   await ensureUniqueSystemkeys(systemkeys);
@@ -577,14 +582,17 @@ export async function updateProjectDetailRecord(
 
   const nextProjectId = String(updates.projectId ?? current.projectId).trim();
   const nextCityKabId = String(updates.cityKabId ?? current.cityKabId).trim();
-  const nextSystemkey = String(updates.systemkey ?? current.systemkey).trim();
+  const nextSystemkey =
+    updates.systemkey === undefined
+      ? current.systemkey
+      : normalizeNullableText(updates.systemkey);
 
   await validateProjectDetailReferences({
     projectId: nextProjectId,
     cityKabId: nextCityKabId,
   });
 
-  if (nextSystemkey !== current.systemkey) {
+  if (nextSystemkey && nextSystemkey !== current.systemkey) {
     await ensureUniqueSystemkeys([nextSystemkey], current.id);
   }
 

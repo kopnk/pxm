@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import {
+  pfAmountFromPercent,
   pfListLineBase,
   pfParseNum,
   pfPartnerTaxRupiahForDisplay,
@@ -16,6 +17,8 @@ export type PartnerEprPdfLine = {
   detailMaterialName: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
+  partnerInstallment: string | null;
+  partnerInstallmentPercent: unknown;
   pph: unknown;
   taxIn: unknown;
   projectName: string | null;
@@ -32,6 +35,8 @@ type GroupedInvoice = {
   materialNames: string[];
   sites: string[];
   baseAmount: number;
+  installments: string[];
+  installmentAmount: number;
   pphPercent: number | null;
   pphAmount: number;
   taxPercent: number | null;
@@ -43,11 +48,12 @@ const MARGIN = 44;
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
 
-const idNum = (n: number) =>
-  new Intl.NumberFormat("id-ID", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(n);
+const idNumberFormat = new Intl.NumberFormat("id-ID", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+const idNum = (n: number) => idNumberFormat.format(n);
 
 function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
   const map = new Map<string, GroupedInvoice>();
@@ -59,13 +65,34 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
   for (const row of lines) {
     const invoiceNumber = row.invoiceNumberPartner?.trim() || "Tanpa Invoice";
     const base = pfListLineBase(row.qtyPartner, row.unitPricePartner) ?? 0;
-    const pph =
+    const fullPph =
       pfPartnerTaxRupiahForDisplay(row.qtyPartner, row.unitPricePartner, row.pph) ?? 0;
-    const tax =
+    const fullTax =
       pfPartnerTaxRupiahForDisplay(row.qtyPartner, row.unitPricePartner, row.taxIn) ?? 0;
     const existing = map.get(invoiceNumber);
     const rawPph = pfParseNum(row.pph);
     const rawTax = pfParseNum(row.taxIn);
+    const inputInstallmentPercent = pfParseNum(row.partnerInstallmentPercent);
+    const installmentPercent =
+      inputInstallmentPercent != null &&
+      inputInstallmentPercent >= 0 &&
+      inputInstallmentPercent <= 100
+        ? inputInstallmentPercent
+        : 100;
+    const installmentAmount =
+      pfAmountFromPercent(base, installmentPercent) ?? base;
+    const pph =
+      rawPph != null && rawPph <= 100
+        ? pfAmountFromPercent(installmentAmount, rawPph) ?? 0
+        : (fullPph * installmentPercent) / 100;
+    const tax =
+      rawTax != null && rawTax <= 100
+        ? pfAmountFromPercent(installmentAmount, rawTax) ?? 0
+        : (fullTax * installmentPercent) / 100;
+    const installmentName = row.partnerInstallment?.trim();
+    const installmentLabel = installmentName
+      ? `${installmentName} (${idNum(installmentPercent)}%)`
+      : `${idNum(installmentPercent)}%`;
     const site = [
       row.detailSiteId?.trim(),
       row.partnerDocumentWorkLocation?.trim() || row.detailSiteName?.trim(),
@@ -77,10 +104,12 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
       appendUnique(existing.projectNames, row.projectName);
       appendUnique(existing.materialNames, row.detailMaterialName);
       appendUnique(existing.sites, site);
+      appendUnique(existing.installments, installmentLabel);
       existing.baseAmount += base;
+      existing.installmentAmount += installmentAmount;
       existing.pphAmount += pph;
       existing.taxAmount += tax;
-      existing.totalPay += base - pph + tax;
+      existing.totalPay += installmentAmount - pph + tax;
       continue;
     }
 
@@ -92,11 +121,13 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
         : [],
       sites: site ? [site] : [],
       baseAmount: base,
+      installments: [installmentLabel],
+      installmentAmount,
       pphPercent: rawPph != null && rawPph <= 100 ? rawPph : null,
       pphAmount: pph,
       taxPercent: rawTax != null && rawTax <= 100 ? rawTax : null,
       taxAmount: tax,
-      totalPay: base - pph + tax,
+      totalPay: installmentAmount - pph + tax,
     });
   }
   return Array.from(map.values());
@@ -153,9 +184,13 @@ export async function buildPartnerEprPdfBuffer(
     });
   }
 
-  doc.font(FONT_BOLD).fontSize(12).text("EXTERNAL PAYMENT REQUEST", ml + wLeft + 8, y + 12, {
-    width: wCenter - 16,
-  });
+  doc
+    .font(FONT_BOLD)
+    .fontSize(12)
+    .text("EXTERNAL PAYMENT REQUEST", ml + wLeft + 8, y + 17, {
+      width: wCenter - 16,
+      align: "center",
+    });
   doc.font(FONT)
     .fontSize(9)
     .text("FILED BY AP", topX2 + 8, y + 8, { width: mr - topX2 - 16 })
@@ -175,7 +210,7 @@ export async function buildPartnerEprPdfBuffer(
   doc.text(`No. Invoice: ${invoiceText || "—"}`, ml + 8, y + 30, {
     width: bottomX1 - ml - 16,
   });
-  doc.text(`PO / Contract No: ${po}`, ml + 8, y + 42, {
+  doc.text(`WO / Contract No: ${po}`, ml + 8, y + 42, {
     width: bottomX1 - ml - 16,
   });
   doc.text("Unit: Regional Kalimantan", bottomX1 + 8, y + 6, {
@@ -227,8 +262,10 @@ export async function buildPartnerEprPdfBuffer(
 
   let grandPay = 0;
   let grandBase = 0;
+  let grandInstallment = 0;
   let grandPph = 0;
   let grandTax = 0;
+  const installmentLabels: string[] = [];
 
   groups.forEach((g) => {
     const description = [
@@ -239,12 +276,21 @@ export async function buildPartnerEprPdfBuffer(
     ].join("\n");
     drawAmountRow(description, g.baseAmount, false, 8.5);
     grandBase += g.baseAmount;
+    grandInstallment += g.installmentAmount;
     grandPph += g.pphAmount;
     grandTax += g.taxAmount;
     grandPay += g.totalPay;
+    g.installments.forEach((label) => {
+      if (!installmentLabels.includes(label)) installmentLabels.push(label);
+    });
   });
 
   drawAmountRow("TOTAL", grandBase, true);
+  drawAmountRow(
+    `INSTALLMENT ${installmentLabels.join("; ") || "100%"}`,
+    grandInstallment,
+    true,
+  );
   drawAmountRow(`PPH ${(groups[0]?.pphPercent ?? 0).toString()}%`, grandPph, true);
   drawAmountRow(`TAX ${(groups[0]?.taxPercent ?? 0).toString()}%`, grandTax, true);
   drawAmountRow("GRAND TOTAL", grandPay, true);

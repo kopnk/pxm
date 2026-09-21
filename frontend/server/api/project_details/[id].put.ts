@@ -42,7 +42,8 @@ export default defineEventHandler(async (event) => {
     updated = await updateProjectDetailRecord(id, {
       projectId: body.projectId,
       cityKabId: body.cityKabId,
-      systemkey: body.systemkey?.trim(),
+      systemkey:
+        body.systemkey === undefined ? undefined : body.systemkey?.trim() || null,
       neId: body.neId?.trim() ?? body.neId,
       materialId: body.materialId,
       materialName: body.materialName,

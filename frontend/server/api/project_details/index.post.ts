@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
         cityKabId: item.cityKabId,
         picArea: item.picArea ?? null,
         lineNumber: item.lineNumber ?? null,
-        systemkey: item.systemkey.trim(),
+        systemkey: item.systemkey?.trim() || null,
         neId: item.neId ?? null,
         materialId: item.materialId ?? null,
         materialName: item.materialName ?? null,

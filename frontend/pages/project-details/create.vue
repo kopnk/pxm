@@ -30,7 +30,7 @@ const BULK_TEMPLATE_HEADERS = [
   "materialId",
   "materialName",
   "siteId",
-  "siteName",
+  "detailsListSite",
   "picArea",
   "quantity",
   "uom",
@@ -42,6 +42,7 @@ const BULK_TEMPLATE_HEADERS = [
   "taxOut",
 ] as const;
 const PROJECT_DETAIL_STATUSES = ["active", "delay", "closed", "cancelled"] as const;
+const BULK_REFERENCE_PAGE_SIZE = 1000;
 
 type BulkTemplateHeader = (typeof BULK_TEMPLATE_HEADERS)[number];
 const {
@@ -125,15 +126,34 @@ const normalizeStatus = (value: unknown) => {
   return text || "active";
 };
 
+const bulkSiteName = (row: Record<string, unknown>) =>
+  normalizeText(row.detailsListSite) ?? normalizeText(row.siteName);
+
 const hasRequiredBulkFields = (row: Record<string, unknown>) => {
   return (
     normalizeRequiredText(row.projectId).length > 0 &&
     normalizeRequiredText(row.cityKabId).length > 0 &&
-    normalizeRequiredText(row.siteName).length > 0 &&
+    bulkSiteName(row) != null &&
     normalizeNumber(row.quantity) != null &&
-    normalizeNumber(row.unitPrice) != null &&
-    normalizeRequiredText(row.systemkey).length > 0
+    normalizeNumber(row.unitPrice) != null
   );
+};
+
+const loadAllReferenceItems = async (path: string, query: Record<string, string> = {}) => {
+  const first = await apiFetch<any>(path, {
+    query: { ...query, page: 1, limit: BULK_REFERENCE_PAGE_SIZE },
+  });
+  const items = Array.isArray(first?.data?.items) ? [...first.data.items] : [];
+  const totalPages = Math.max(1, Number(first?.data?.totalPages) || 1);
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const response = await apiFetch<any>(path, {
+      query: { ...query, page, limit: BULK_REFERENCE_PAGE_SIZE },
+    });
+    if (Array.isArray(response?.data?.items)) items.push(...response.data.items);
+  }
+
+  return items;
 };
 
 const downloadBulkTemplate = async () => {
@@ -144,49 +164,12 @@ const downloadBulkTemplate = async () => {
 
   try {
     const XLSX = await loadXlsx();
-    const [projectResponse, cityResponse, subRegionResponse, regionResponse] =
-      await Promise.all([
-      apiFetch<any>("/api/projects", {
-        query: {
-          page: 1,
-          limit: 1000,
-        },
-      }),
-      apiFetch<any>("/api/regions", {
-        query: {
-          type: "city_kab",
-          page: 1,
-          limit: 1000,
-        },
-      }),
-      apiFetch<any>("/api/regions", {
-        query: {
-          type: "sub_region",
-          page: 1,
-          limit: 1000,
-        },
-      }),
-      apiFetch<any>("/api/regions", {
-        query: {
-          type: "region",
-          page: 1,
-          limit: 1000,
-        },
-      }),
+    const [projectItems, cityItems, subRegionItems, regionItems] = await Promise.all([
+      loadAllReferenceItems("/api/projects"),
+      loadAllReferenceItems("/api/regions", { type: "city_kab" }),
+      loadAllReferenceItems("/api/regions", { type: "sub_region" }),
+      loadAllReferenceItems("/api/regions", { type: "region" }),
     ]);
-
-    const projectItems = Array.isArray(projectResponse?.data?.items)
-      ? projectResponse.data.items
-      : [];
-    const cityItems = Array.isArray(cityResponse?.data?.items)
-      ? cityResponse.data.items
-      : [];
-    const subRegionItems = Array.isArray(subRegionResponse?.data?.items)
-      ? subRegionResponse.data.items
-      : [];
-    const regionItems = Array.isArray(regionResponse?.data?.items)
-      ? regionResponse.data.items
-      : [];
 
     const sampleProjectId = projectItems[0]?.id || "uuid-project";
     const sampleCityKabId = cityItems[0]?.id || "uuid-city-kab";
@@ -200,7 +183,7 @@ const downloadBulkTemplate = async () => {
       materialId: "",
       materialName: "",
       siteId: "",
-      siteName: "",
+      detailsListSite: "",
       picArea: "",
       quantity: 1,
       uom: "",
@@ -328,7 +311,7 @@ const handleBulkFileChange = async (event: Event) => {
     const invalidRowIndex = rows.findIndex((row) => !hasRequiredBulkFields(row));
     if (invalidRowIndex !== -1) {
       notify.warning(
-        `Row ${invalidRowIndex + 2} wajib isi: projectId, cityKabId, siteName, quantity, unitPrice, systemkey`,
+        `Row ${invalidRowIndex + 2} wajib isi: projectId, cityKabId, Details / List Site, quantity, unitPrice`,
       );
       return;
     }
@@ -356,12 +339,12 @@ const handleBulkFileChange = async (event: Event) => {
       projectId: normalizeRequiredText(row.projectId),
       cityKabId: normalizeRequiredText(row.cityKabId),
       lineNumber: normalizeInteger(row.lineNumber),
-      systemkey: normalizeRequiredText(row.systemkey),
+      systemkey: normalizeText(row.systemkey),
       neId: normalizeText(row.neId),
       materialId: normalizeText(row.materialId),
       materialName: normalizeText(row.materialName),
       siteId: normalizeText(row.siteId),
-      siteName: normalizeText(row.siteName),
+      siteName: bulkSiteName(row),
       picArea: normalizeText(row.picArea),
       quantity: normalizeNumber(row.quantity),
       uom: normalizeText(row.uom),
@@ -514,7 +497,7 @@ onMounted(async () => {
       </div>
       <div class="col-md-4">
         <label class="form-label">System Key</label>
-        <input v-model="form.systemkey" class="form-control" required />
+        <input v-model="form.systemkey" class="form-control" />
       </div>
     </FormSection>
 
@@ -539,7 +522,7 @@ onMounted(async () => {
       </div>
 
       <div class="col-md-6">
-        <label class="form-label">Site Name</label>
+        <label class="form-label">Details / List Site</label>
         <input v-model="form.siteName" class="form-control" required />
       </div>
     </FormSection>

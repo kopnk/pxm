@@ -4,6 +4,7 @@ import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination";
 const optStr = z.string().optional().nullable();
 const optUuid = z.string().uuid().optional().nullable();
 const optNum = z.number().optional().nullable();
+const optPercent = z.number().min(0).max(100).optional().nullable();
 
 export const financialStatusZ = z.enum([
   "draft",
@@ -62,6 +63,16 @@ const projectFinancialSchemaBase = z.object({
 
   qtyPartner: optNum,
   unitPricePartner: optNum,
+  partnerInstallment: z
+    .enum([
+      "1st",
+      "2nd",
+      "3rd",
+      "Final",
+    ])
+    .optional()
+    .nullable(),
+  partnerInstallmentPercent: optPercent,
   // Optional redaction override for partner BAST and invoice PDFs only.
   partnerDocumentWorkLocation: optStr,
 

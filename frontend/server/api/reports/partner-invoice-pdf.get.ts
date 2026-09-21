@@ -60,6 +60,8 @@ export default defineEventHandler(async (event) => {
       partnerDocumentWorkLocation: row.partnerDocumentWorkLocation,
       qtyPartner: row.qtyPartner,
       unitPricePartner: row.unitPricePartner,
+      partnerInstallment: row.partnerInstallment,
+      partnerInstallmentPercent: row.partnerInstallmentPercent,
     })),
     {
       invoiceNumber: invoice,

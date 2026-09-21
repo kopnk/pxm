@@ -5,16 +5,31 @@ import {
 
 const ssmClient = new SSMClient({});
 
-let cachedSecret: string | undefined;
-let pendingSecret: Promise<string> | undefined;
+const cachedSecrets = new Map<string, string>();
+const pendingSecrets = new Map<string, Promise<string>>();
 
 async function loadAwsParameter(parameterName: string): Promise<string> {
   const result = await ssmClient.send(
     new GetParameterCommand({ Name: parameterName, WithDecryption: true }),
   );
   const secret = result.Parameter?.Value?.trim();
-  if (!secret) throw new Error("Partner PO PDF signing secret is empty.");
+  if (!secret) throw new Error(`SSM secret ${parameterName} is empty.`);
   return secret;
+}
+
+async function resolveSsmSecret(parameterName: string): Promise<string> {
+  const cached = cachedSecrets.get(parameterName);
+  if (cached) return cached;
+
+  const pending = pendingSecrets.get(parameterName) ?? loadAwsParameter(parameterName);
+  pendingSecrets.set(parameterName, pending);
+  try {
+    const secret = await pending;
+    cachedSecrets.set(parameterName, secret);
+    return secret;
+  } finally {
+    pendingSecrets.delete(parameterName);
+  }
 }
 
 /**
@@ -26,17 +41,17 @@ export async function resolvePartnerPoPdfSecret(
 ): Promise<string> {
   const localSecret = String(configuredSecret || "").trim();
   if (localSecret) return localSecret;
-  if (cachedSecret) return cachedSecret;
-
   const parameterName = process.env.PARTNER_PO_PDF_SECRET_PARAM?.trim();
   if (!parameterName) return "";
 
-  pendingSecret ??= loadAwsParameter(parameterName);
-  try {
-    cachedSecret = await pendingSecret;
-    return cachedSecret;
-  } catch (error) {
-    pendingSecret = undefined;
-    throw error;
-  }
+  return resolveSsmSecret(parameterName);
+}
+
+export async function resolveAuthCookieSecret(): Promise<string> {
+  const localSecret = process.env.AWS_AUTH_COOKIE_SECRET?.trim();
+  if (localSecret) return localSecret;
+
+  const parameterName = process.env.AWS_AUTH_COOKIE_SECRET_PARAM?.trim();
+  if (!parameterName) throw new Error("AWS auth cookie secret is not configured.");
+  return resolveSsmSecret(parameterName);
 }

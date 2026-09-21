@@ -167,7 +167,7 @@ const handleSubmit = async () => {
       </div>
       <div class="col-md-4">
         <label class="form-label">System Key</label>
-        <input v-model="form.systemkey" class="form-control" required />
+        <input v-model="form.systemkey" class="form-control" />
       </div>
     </FormSection>
 
@@ -192,7 +192,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="col-md-6">
-        <label class="form-label">Site Name</label>
+        <label class="form-label">Details / List Site</label>
         <input v-model="form.siteName" class="form-control" required />
       </div>
     </FormSection>

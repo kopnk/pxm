@@ -5,6 +5,7 @@ export type PartnerBastPdfLine = {
   siteName: string | null;
   workType: string | null;
   partnerDocumentWorkLocation: string | null;
+  qtyPartner: unknown;
 };
 
 export type PartnerBastPdfMeta = {
@@ -21,6 +22,12 @@ export type PartnerBastPdfMeta = {
 };
 
 const MARGIN = 44;
+const qtyFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
+
+function formatQty(value: unknown) {
+  const qty = Number(value);
+  return Number.isFinite(qty) ? qtyFormat.format(qty) : "—";
+}
 
 function pageBounds(doc: InstanceType<typeof PDFDocument>) {
   const ml = doc.page.margins.left;
@@ -56,7 +63,7 @@ export async function buildPartnerBastPdfBuffer(
   y = doc.y + 6;
 
   doc.font("Helvetica").fontSize(10).text(
-    `PO: ${meta.poNumberPartner || "—"}    Tanggal: ${meta.poDatePartnerLabel || "—"}`,
+    `WO: ${meta.poNumberPartner || "—"}    Tanggal: ${meta.poDatePartnerLabel || "—"}`,
     ml,
     y,
     { width: mw, align: "center" },
@@ -116,7 +123,7 @@ export async function buildPartnerBastPdfBuffer(
   doc.text("Berdasarkan atas:", ml, y, { width: mw });
   y = doc.y + 2;
   doc.text(
-    `1. PO / SPK: ${meta.poNumberPartner || "—"}   Tanggal: ${meta.poDatePartnerLabel || "—"}`,
+    `1. WO / SPK: ${meta.poNumberPartner || "—"}   Tanggal: ${meta.poDatePartnerLabel || "—"}`,
     ml,
     y,
     { width: mw },
@@ -157,10 +164,12 @@ export async function buildPartnerBastPdfBuffer(
   const colNo = ml;
   const colType = ml + 32;
   const colLoc = ml + 220;
+  const colQty = mr - 64;
   doc.font("Helvetica-Bold").fontSize(9);
   doc.text("No", colNo, y, { width: 28 });
   doc.text("Type / Jenis Pekerjaan", colType, y, { width: 180 });
-  doc.text("Details / Lokasi Pekerjaan", colLoc, y, { width: mw - (colLoc - ml) });
+  doc.text("Details / Lokasi Pekerjaan", colLoc, y, { width: colQty - colLoc - 8 });
+  doc.text("Qty / Items", colQty, y, { width: mr - colQty, align: "right" });
   y += 12;
 
   doc.font("Helvetica").fontSize(9);
@@ -178,11 +187,15 @@ export async function buildPartnerBastPdfBuffer(
 
     doc.text(String(idx + 1), colNo, y, { width: 28 });
     doc.text(workType, colType, y, { width: 180 });
-    doc.text(location, colLoc, y, { width: mw - (colLoc - ml) });
+    doc.text(location, colLoc, y, { width: colQty - colLoc - 8 });
+    doc.text(formatQty(line.qtyPartner), colQty, y, {
+      width: mr - colQty,
+      align: "right",
+    });
 
     const rowH = Math.max(
       doc.heightOfString(workType, { width: 180 }),
-      doc.heightOfString(location, { width: mw - (colLoc - ml) }),
+      doc.heightOfString(location, { width: colQty - colLoc - 8 }),
       12,
     );
     y += rowH + 3;

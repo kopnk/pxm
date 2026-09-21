@@ -224,7 +224,7 @@ export class PxmStack extends Stack {
         AWS_DYNAMODB_TABLE: dataTable.tableName,
         AWS_COGNITO_USER_POOL_ID: userPool.userPoolId,
         AWS_COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
-        AWS_AUTH_COOKIE_SECRET: authCookieSecret.stringValue,
+        AWS_AUTH_COOKIE_SECRET_PARAM: authCookieSecretParameterName,
         PARTNER_PO_PDF_SECRET_PARAM: partnerPoPdfSecretParameterName,
         PXM_PUBLIC_APP_URL: config.publicAppUrl ?? "",
         SESSION_COOKIE_SECURE: config.frontendHostingEnabled ? "true" : "false",

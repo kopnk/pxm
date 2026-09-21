@@ -111,7 +111,7 @@ export default defineEventHandler(async (event) => {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="PO-${name}.pdf"`,
+      "Content-Disposition": `inline; filename="WO-${name}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

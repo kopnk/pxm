@@ -10,7 +10,7 @@ export const createProjectDetailSchema = z.object({
 
   lineNumber: z.number().int().nullable().optional(),
 
-  systemkey: z.string().min(1),
+  systemkey: z.string().min(1).nullable().optional(),
   neId: z.string().nullable().optional(),
 
   materialId: z.string().nullable().optional(),

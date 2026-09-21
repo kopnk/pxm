@@ -34,7 +34,6 @@ try {
     "--output",
     validationOutput,
     "--quiet",
-    ...extraArgs,
   ]);
   if (synthCode !== 0) throw new Error(`cdk synth exited with code ${synthCode}`);
 

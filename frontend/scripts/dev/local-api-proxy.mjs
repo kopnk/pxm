@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { createServer, request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { resolveLocalDevConfig } from "./dev-stage-config.mjs";
 
 const args = new Set(process.argv.slice(2));
@@ -8,16 +9,17 @@ const config = resolveLocalDevConfig();
 if (args.has("--help")) {
   console.log("Usage: node scripts/dev/local-api-proxy.mjs");
   console.log(
-    `Starts the local dev API proxy on http://${config.apiProxyHost}:${config.apiProxyPort}`,
+    `Starts the local dev frontend/API proxy on http://${config.apiProxyHost}:${config.apiProxyPort}`,
   );
   process.exit(0);
 }
 
 const PROXY_HOST = config.apiProxyHost;
 const PROXY_PORT = Number(config.apiProxyPort);
-const TARGET_HOST = config.uiHost;
-const TARGET_PORT = Number(config.uiPort);
+const TARGET_URL = new URL(config.apiTargetUrl);
+const UI_URL = new URL(config.uiOrigin);
 const ALLOW_ORIGIN = config.uiOrigin;
+const PROXY_ORIGIN = `http://${PROXY_HOST}:${PROXY_PORT}`;
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
   "keep-alive",
@@ -31,7 +33,7 @@ const HOP_BY_HOP_HEADERS = new Set([
 
 function isAllowedOrigin(origin) {
   if (!origin) return true;
-  return origin === ALLOW_ORIGIN;
+  return origin === ALLOW_ORIGIN || origin === PROXY_ORIGIN;
 }
 
 function sanitizeProxyRequestHeaders(headers) {
@@ -46,8 +48,11 @@ function sanitizeProxyRequestHeaders(headers) {
   return next;
 }
 
-function writeCorsHeaders(headers) {
-  headers.set("access-control-allow-origin", ALLOW_ORIGIN);
+function writeCorsHeaders(headers, origin) {
+  headers.set(
+    "access-control-allow-origin",
+    isAllowedOrigin(origin) && origin ? origin : ALLOW_ORIGIN,
+  );
   headers.set("access-control-allow-credentials", "true");
   headers.set(
     "access-control-allow-methods",
@@ -68,20 +73,22 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "OPTIONS") {
+  const isApiRequest = req.url.startsWith("/api/");
+
+  if (isApiRequest && req.method === "OPTIONS") {
     if (!isAllowedOrigin(req.headers.origin)) {
       res.writeHead(403, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ success: false, message: "Origin not allowed" }));
       return;
     }
     const headers = new Headers();
-    writeCorsHeaders(headers);
+    writeCorsHeaders(headers, req.headers.origin);
     res.writeHead(204, Object.fromEntries(headers.entries()));
     res.end();
     return;
   }
 
-  if (!isAllowedOrigin(req.headers.origin)) {
+  if (isApiRequest && !isAllowedOrigin(req.headers.origin)) {
     res.writeHead(403, {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": ALLOW_ORIGIN,
@@ -93,15 +100,18 @@ const server = createServer(async (req, res) => {
   }
 
   try {
-    const proxyRequest = httpRequest(
+    const target = isApiRequest ? TARGET_URL : UI_URL;
+    const request = target.protocol === "https:" ? httpsRequest : httpRequest;
+    const proxyRequest = request(
       {
-        hostname: TARGET_HOST,
-        port: TARGET_PORT,
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port || (target.protocol === "https:" ? 443 : 80),
         method: req.method,
-        path: req.url,
+        path: `${target.pathname.replace(/\/$/, "")}${req.url}`,
         headers: {
           ...sanitizeProxyRequestHeaders(req.headers),
-          host: `${TARGET_HOST}:${TARGET_PORT}`,
+          host: target.host,
         },
       },
       (proxyResponse) => {
@@ -116,7 +126,7 @@ const server = createServer(async (req, res) => {
           responseHeaders.set(key, value);
         }
 
-        writeCorsHeaders(responseHeaders);
+        if (isApiRequest) writeCorsHeaders(responseHeaders, req.headers.origin);
 
         const nodeHeaders = Object.fromEntries(responseHeaders.entries());
         const setCookies = proxyResponse.headers["set-cookie"];
@@ -174,6 +184,6 @@ server.on("error", (error) => {
 
 server.listen(PROXY_PORT, PROXY_HOST, () => {
   console.log(
-    `[local-api-proxy] http://${PROXY_HOST}:${PROXY_PORT} -> http://${TARGET_HOST}:${TARGET_PORT}`,
+    `[local-api-proxy] http://${PROXY_HOST}:${PROXY_PORT} serves ${UI_URL.href} and proxies /api to ${TARGET_URL.href}`,
   );
 });

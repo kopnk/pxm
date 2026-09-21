@@ -99,10 +99,9 @@ export const useProjectDetailForm = () => {
     const fields: string[] = [];
     if (!form.projectId) fields.push("Project");
     if (!form.cityKabId) fields.push("City/Kab");
-    if (!nullableText(form.siteName)) fields.push("Site Name");
+    if (!nullableText(form.siteName)) fields.push("Details / List Site");
     if (form.quantity == null) fields.push("Quantity");
     if (form.unitPrice == null) fields.push("Unit Price");
-    if (!form.systemkey.trim()) fields.push("System Key");
     return fields;
   });
   const isValid = computed(() => missingRequiredFields.value.length === 0);
@@ -232,7 +231,7 @@ export const useProjectDetailForm = () => {
     projectId: form.projectId,
     cityKabId: form.cityKabId,
     lineNumber: form.lineNumber,
-    systemkey: form.systemkey.trim(),
+    systemkey: nullableText(form.systemkey),
     neId: form.neId.trim(),
     materialId: nullableText(form.materialId),
     materialName: nullableText(form.materialName),

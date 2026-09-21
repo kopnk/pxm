@@ -39,6 +39,7 @@ definePageMeta({});
 const route = useRoute();
 const router = useRouter();
 const id = route.query.id as string | undefined;
+const apiBaseUrl = useRuntimeConfig().public.apiBaseUrl?.trim().replace(/\/$/, "") || "";
 
 const { getProjectFinancialById, updateProjectFinancial } =
   useProjectFinancialsApi();
@@ -100,29 +101,30 @@ const detailSelectOptions = computed(() =>
 );
 const isInFlow = computed(() => form.flowDirection === "in");
 const isOutFlow = computed(() => form.flowDirection === "out");
+const reportHref = (path: string) => `${apiBaseUrl}${path}`;
 
 const partnerPoPdfHref = computed(() => {
   const po = form.poNumberPartner?.trim();
   if (!po) return "#";
-  return `/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}`;
+  return reportHref(`/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}`);
 });
 
 const partnerBastPdfHref = computed(() => {
   const bast = form.bastNumber?.trim();
   if (!bast) return "#";
-  return `/api/reports/partner-bast-pdf?bast=${encodeURIComponent(bast)}`;
+  return reportHref(`/api/reports/partner-bast-pdf?bast=${encodeURIComponent(bast)}`);
 });
 
 const partnerInvoicePdfHref = computed(() => {
   const invoice = form.invoiceNumberPartner?.trim();
   if (!invoice) return "#";
-  return `/api/reports/partner-invoice-pdf?invoice=${encodeURIComponent(invoice)}`;
+  return reportHref(`/api/reports/partner-invoice-pdf?invoice=${encodeURIComponent(invoice)}`);
 });
 
 const partnerEprPdfHref = computed(() => {
   const po = form.poNumberPartner?.trim();
   if (!po) return "#";
-  return `/api/reports/partner-epr-pdf?po=${encodeURIComponent(po)}`;
+  return reportHref(`/api/reports/partner-epr-pdf?po=${encodeURIComponent(po)}`);
 });
 
 const partnerTotalPreview = computed(() => {
@@ -390,6 +392,20 @@ const handleSubmit = async () => {
           {{ fmtMoney(form.taxInPercent) }}%
         </div>
       </div>
+      <div class="col-md-3">
+        <label class="form-label">Installment</label>
+        <select v-model="form.partnerInstallment" class="form-select">
+          <option value="">Select Installment</option>
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="Final">Final</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Installment Percentage (%)</label>
+        <DecimalInput v-model="form.partnerInstallmentPercent" :min="0" :max="100" />
+      </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">
           <div>
@@ -404,7 +420,7 @@ const handleSubmit = async () => {
       </div>
 
       <div class="col-md-3">
-        <label class="form-label">Partner PO</label>
+        <label class="form-label">Partner WO</label>
         <input v-model="form.poNumberPartner" class="form-control" />
         <div class="data-meta mt-1">
           <a
@@ -413,19 +429,19 @@ const handleSubmit = async () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Print PO
+            Print WO
           </a>
           <span v-else class="text-muted">Enter PO number to open PDF</span>
         </div>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Partner PO Date</label>
+        <label class="form-label">Partner WO Date</label>
         <input v-model="form.poDatePartner" type="date" class="form-control" />
       </div>
       <FinancialDocumentUrlFile
         :model-value="selectedDocUrls.partner_po ?? ''"
         @update:model-value="setDocUrl('partner_po', $event)"
-        file-label="Partner PO File"
+        file-label="Partner WO File"
         :selected-file-name="selectedDocFiles.partner_po?.name ?? null"
         @file-change="onDocFileChange('partner_po', $event)"
       />

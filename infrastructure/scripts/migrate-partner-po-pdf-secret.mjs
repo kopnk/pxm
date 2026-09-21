@@ -60,8 +60,9 @@ async function migrateSecretToSsm({ stage, logicalIdPrefix, parameterSuffix, des
     if (!String(error).includes("ParameterNotFound")) throw error;
   }
 
-  // Subsequent deploys no longer have the legacy CloudFormation resource.
-  if (!secretArn && currentValue) return;
+  // Once SSM contains the value, never read a legacy secret again. It may
+  // already be scheduled for deletion after a successful migration.
+  if (currentValue) return;
 
   const secretValue = secretArn
     ? await runAws([

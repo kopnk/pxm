@@ -16,12 +16,16 @@ export function resolveLocalDevConfig(env = process.env) {
   const uiPort = env.PXM_LOCAL_UI_PORT || "3000";
   const apiProxyHost = env.PXM_LOCAL_API_PROXY_HOST || "localhost";
   const apiProxyPort = env.PXM_LOCAL_API_PROXY_PORT || "3001";
+  const apiTargetUrl =
+    env.PXM_DEV_API_URL ||
+    "https://7p9wo6rwvl.execute-api.ap-southeast-1.amazonaws.com/dev/";
   const uiOrigin = env.PXM_LOCAL_UI_ORIGIN || `http://${uiHost}:${uiPort}`;
 
   return {
     stage,
     sessionCookieSecure: env.SESSION_COOKIE_SECURE || "false",
     apiBaseUrl: env.NUXT_PUBLIC_API_BASE_URL || `http://${apiProxyHost}:${apiProxyPort}`,
+    apiTargetUrl,
     uiHost,
     uiPort,
     apiProxyHost,

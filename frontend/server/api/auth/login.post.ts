@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const loginResult = await loginWithPassword(email, password);
-  writeAuthState(event, loginResult.state);
+  await writeAuthState(event, loginResult.state);
 
   if (loginResult.state.type === "challenge") {
     return successResponse(event, passwordChangeRequiredMessage(), {

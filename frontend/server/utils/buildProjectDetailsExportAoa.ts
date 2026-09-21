@@ -49,7 +49,7 @@ export const PROJECT_DETAILS_EXPORT_HEADERS: string[] = [
   "Ne Id",
   "Systemkey",
   "Site Id",
-  "Site Name",
+  "Details / List Site",
   "Qty",
   "Uom",
   "Unit Price",

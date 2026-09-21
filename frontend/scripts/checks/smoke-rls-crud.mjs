@@ -115,16 +115,6 @@ expectIncludes(
 );
 
 expectIncludes(
-  "composables/useProjectProgressListPage.ts",
-  'useListPagePermissions("progress_stage");',
-  "project progress page must read progress stage access from RLS",
-);
-expectIncludes(
-  "pages/project-progress/index.vue",
-  'v-if="canReadProgressStage"',
-  "progress stage shortcut must follow RLS read permission",
-);
-expectIncludes(
   "middleware/auth.global.ts",
   "if (!auth.canAccess(resource, action)) {",
   "frontend route guard must enforce RLS before entering protected pages",

@@ -58,6 +58,8 @@ export default defineEventHandler(async (event) => {
     fpDatePartner: body.fpDatePartner ?? null,
     qtyPartner: body.qtyPartner ?? null,
     unitPricePartner: body.unitPricePartner ?? null,
+    partnerInstallment: body.partnerInstallment ?? null,
+    partnerInstallmentPercent: body.partnerInstallmentPercent ?? null,
     poNumberClient: body.poNumberClient ?? null,
     poDateClient: body.poDateClient ?? null,
     invoiceNumberClient: body.invoiceNumberClient ?? null,

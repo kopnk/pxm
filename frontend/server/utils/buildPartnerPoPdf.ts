@@ -67,7 +67,7 @@ const LOGO_HEADER_HEIGHT = 34;
 const QR_SIZE = 40;
 
 /**
- * Jarak QR dari tulisan Purchase Order.
+ * Jarak QR dari tulisan Work Order.
  */
 const QR_TOP_GAP = 7;
 
@@ -125,10 +125,8 @@ const SIGNATURE_TOP_SPACE = 78;
  * ============================================================
  */
 
-const idr = (n: number | null): string =>
+const amount = (n: number | null): string =>
   new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "IDR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(n ?? 0);
@@ -550,7 +548,7 @@ export async function buildPartnerPoPdfBuffer(
 
       info: {
         Title:
-          `PO ${meta.poNumber}`,
+          `WO ${meta.poNumber}`,
 
         Author:
           "PXM",
@@ -675,10 +673,10 @@ export async function buildPartnerPoPdfBuffer(
   }
 
   /**
-   * Purchase Order.
+   * Work Order.
    */
   const poTitle =
-    "Purchase Order";
+    "Work Order";
 
   const poTitleWidth =
     doc.widthOfString(
@@ -738,7 +736,7 @@ export async function buildPartnerPoPdfBuffer(
 
   /**
    * ============================================================
-   * PO INFO
+   * WO INFO
    * ============================================================
    */
 
@@ -755,10 +753,10 @@ export async function buildPartnerPoPdfBuffer(
     .fontSize(10);
 
   /**
-   * PO Number.
+   * WO Number.
    */
   doc.text(
-    "PO Number:",
+    "WO Number:",
     ml,
     y,
     {
@@ -785,10 +783,10 @@ export async function buildPartnerPoPdfBuffer(
     doc.y + 2;
 
   /**
-   * PO Date.
+   * WO Date.
    */
   doc.text(
-    "PO Date:",
+    "WO Date:",
     ml,
     y,
     {
@@ -1254,7 +1252,7 @@ export async function buildPartnerPoPdfBuffer(
 
       doc.text(
         unitPrice != null
-          ? idr(
+          ? amount(
               unitPrice,
             )
           : "—",
@@ -1274,7 +1272,7 @@ export async function buildPartnerPoPdfBuffer(
        */
       doc.text(
         lineTotal != null
-          ? idr(
+          ? amount(
               lineTotal,
             )
           : "—",
@@ -1332,7 +1330,7 @@ export async function buildPartnerPoPdfBuffer(
     )
     .fontSize(10)
     .text(
-      `Total: ${idr(
+      `Total: ${amount(
         grandTotal,
       )}`,
       T.ml,

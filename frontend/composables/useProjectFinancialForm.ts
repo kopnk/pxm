@@ -79,6 +79,8 @@ export type ProjectFinancialFormModel = {
   fpDatePartner: string | null;
   qtyPartner: number | null;
   unitPricePartner: number | null;
+  partnerInstallment: string;
+  partnerInstallmentPercent: number | null;
   /** Optional wording override for the location wording in partner BAST and invoice. */
   partnerDocumentWorkLocation: string;
 
@@ -126,6 +128,8 @@ export function emptyProjectFinancialForm(): ProjectFinancialFormModel {
     fpDatePartner: null,
     qtyPartner: null,
     unitPricePartner: null,
+    partnerInstallment: "",
+    partnerInstallmentPercent: 100,
     partnerDocumentWorkLocation: "",
     poNumberClient: "",
     poDateClient: null,
@@ -191,6 +195,8 @@ export function buildProjectFinancialPayload(form: ProjectFinancialFormModel) {
     fpDatePartner: isInFlow ? form.fpDatePartner || null : null,
     qtyPartner: isInFlow ? n(form.qtyPartner) : null,
     unitPricePartner: isInFlow ? n(form.unitPricePartner) : null,
+    partnerInstallment: isInFlow ? form.partnerInstallment || null : null,
+    partnerInstallmentPercent: isInFlow ? n(form.partnerInstallmentPercent) : null,
     partnerDocumentWorkLocation: isInFlow ? form.partnerDocumentWorkLocation || null : null,
 
     poNumberClient: isOutFlow ? form.poNumberClient || null : null,
@@ -208,6 +214,16 @@ type ApiFinancialRow = Record<string, unknown>;
 
 function str(v: unknown): string {
   return v == null ? "" : String(v);
+}
+
+function normalizeInstallment(v: unknown): string {
+  const value = str(v).trim();
+  return {
+    "1st Installment": "1st",
+    "2nd Installment": "2nd",
+    "3rd Installment": "3rd",
+    "Final Installment": "Final",
+  }[value] ?? value;
 }
 
 /** Baris lama: kolom berisi rupiah (>100) → turunkan % untuk input form. Baru: kolom sudah %. */
@@ -267,6 +283,8 @@ export function applyFinancialRowToForm(
     : null;
   form.qtyPartner = n(row.qtyPartner);
   form.unitPricePartner = n(row.unitPricePartner);
+  form.partnerInstallment = normalizeInstallment(row.partnerInstallment);
+  form.partnerInstallmentPercent = n(row.partnerInstallmentPercent) ?? 100;
   form.partnerDocumentWorkLocation = str(row.partnerDocumentWorkLocation);
 
   form.poNumberClient = str(row.poNumberClient);
