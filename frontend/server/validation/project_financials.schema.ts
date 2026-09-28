@@ -6,6 +6,26 @@ const optUuid = z.string().uuid().optional().nullable();
 const optNum = z.number().optional().nullable();
 const optPercent = z.number().min(0).max(100).optional().nullable();
 
+const validatePartnerInstallment = (
+  val: {
+    partnerInstallment?: string | null;
+    partnerInstallmentPercent?: number | null;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (
+    val.partnerInstallment &&
+    !(typeof val.partnerInstallmentPercent === "number" && val.partnerInstallmentPercent > 0)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "partnerInstallmentPercent is required and must be greater than 0 when partnerInstallment is selected",
+      path: ["partnerInstallmentPercent"],
+    });
+  }
+};
+
 export const financialStatusZ = z.enum([
   "draft",
   "issued",
@@ -75,6 +95,8 @@ const projectFinancialSchemaBase = z.object({
   partnerInstallmentPercent: optPercent,
   // Optional redaction override for partner BAST and invoice PDFs only.
   partnerDocumentWorkLocation: optStr,
+  kopindosatSignatoryName: optStr,
+  kopindosatSignatoryTitle: optStr,
 
   poNumberClient: optStr,
   poDateClient: z.string().optional().nullable(),
@@ -105,15 +127,24 @@ export const createProjectFinancialSchema = projectFinancialSchemaBase.superRefi
       path: ["clientId"],
     });
   }
+
+  validatePartnerInstallment(val, ctx);
 });
 
-export const updateProjectFinancialSchema =
-  projectFinancialSchemaBase.partial();
+export const createProjectFinancialBulkSchema = z.union([
+  createProjectFinancialSchema,
+  z.array(createProjectFinancialSchema).min(1).max(25),
+]);
 
-/** Query `GET /api/project_financials/export` (search + status + pagination; merge per project detail). */
+export const updateProjectFinancialSchema =
+  projectFinancialSchemaBase.partial().superRefine(validatePartnerInstallment);
+
+/** Query `GET /api/project_financials/export` (search, status, flow, pagination; merge per project detail). */
 export const projectFinancialsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
+  material: z.string().max(500).optional(),
   status: financialStatusZ.optional(),
+  flowDirection: z.enum(["in", "out"]).optional(),
   projectId: z.string().uuid().optional(),
   projectDetailId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -124,6 +155,7 @@ export const projectFinancialsExportQueryZ = z.object({
 export const projectFinancialsTaxSectionExportQueryZ =
   projectFinancialsExportQueryZ.pick({
     search: true,
+    material: true,
     status: true,
     page: true,
     limit: true,

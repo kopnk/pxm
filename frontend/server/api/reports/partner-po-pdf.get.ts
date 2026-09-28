@@ -12,7 +12,10 @@ import {
   signPartnerPoAccess,
 } from "~/server/utils/partnerPoPdfAccess";
 import { pfFormatIdDate } from "~/lib/projectFinancialsMath";
-import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
+import {
+  listProjectFinancialRecords,
+  selectKopindosatSignatoryRecord,
+} from "~/server/utils/projectFinancialStore";
 import { matchesReportDocumentNumber } from "~/server/utils/reportDocumentNumber";
 import { resolvePartnerPoPdfSecret } from "~/server/utils/partnerPoPdfSecret";
 
@@ -26,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const secret = await resolvePartnerPoPdfSecret(config.partnerPoPdfSecret);
 
   const reference = resolvePartnerPoPdfReference(query, secret);
-  const { po, requestedPo } = reference;
+  const { po, projectId, requestedPo } = reference;
   const allowed = Boolean(reference.verifiedPo);
 
   if (!po) {
@@ -37,7 +40,7 @@ export default defineEventHandler(async (event) => {
     if (forbidden) return forbidden;
 
     if (secret && requestedPo) {
-      const opaquePo = signPartnerPoAccess(requestedPo, secret);
+      const opaquePo = signPartnerPoAccess(requestedPo, secret, undefined, projectId || undefined);
       return sendRedirect(
         event,
         `/api/reports/partner-po-pdf?po=${encodeURIComponent(opaquePo)}`,
@@ -56,6 +59,7 @@ export default defineEventHandler(async (event) => {
     .filter(
       (row) =>
         matchesReportDocumentNumber(row.poNumberPartner, po) &&
+        (!projectId || row.projectId === projectId) &&
         row.status !== "cancelled",
     )
     .sort((a, b) => {
@@ -72,8 +76,12 @@ export default defineEventHandler(async (event) => {
       statusMessage: "No partner (in) lines for this PO number",
     });
   }
+  if (!projectId && new Set(rows.map((row) => row.projectId)).size > 1) {
+    throw createError({ statusCode: 400, statusMessage: "projectId is required for a PO number used in multiple projects" });
+  }
 
   const first = rows[0]!;
+  const signatory = selectKopindosatSignatoryRecord(rows) ?? first;
   const poDates = rows
     .map((r) => r.poDatePartner)
     .filter(Boolean)
@@ -88,10 +96,10 @@ export default defineEventHandler(async (event) => {
     .trim()
     .replace(/\/+$/, "");
   const origin = configuredOrigin || `${reqUrl.protocol}//${reqUrl.host}`;
-  const accessToken = secret ? signPartnerPoAccess(po, secret) : "";
+  const accessToken = secret ? signPartnerPoAccess(po, secret, undefined, projectId || undefined) : "";
   const qrTargetUrl = accessToken
     ? `${origin}/reports/partner-po?po=${encodeURIComponent(accessToken)}`
-    : `${origin}/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}`;
+    : `${origin}/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}${projectId ? `&projectId=${encodeURIComponent(projectId)}` : ""}`;
 
   const pdfBuffer = await buildPartnerPoPdfBuffer(rows, {
     poNumber: po,
@@ -103,6 +111,8 @@ export default defineEventHandler(async (event) => {
     partnerAddressText: first.partnerAddressText,
     signatoryName: first.partnerSignatoryName,
     signatoryTitle: first.partnerSignatoryTitle,
+    kopindosatSignatoryName: signatory.kopindosatSignatoryName,
+    kopindosatSignatoryTitle: signatory.kopindosatSignatoryTitle,
     qrTargetUrl,
   });
 

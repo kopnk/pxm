@@ -7,15 +7,16 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-type TokenBody = { po: string; exp: number; sig: string };
+type TokenBody = { po: string; projectId?: string; exp: number; sig: string };
 type PartnerPoPdfQuery = {
   po?: unknown;
   ref?: unknown;
   access?: unknown;
+  projectId?: unknown;
 };
 
-function stableBody(po: string, exp: number) {
-  return JSON.stringify({ po, exp });
+function stableBody(po: string, exp: number, projectId?: string) {
+  return JSON.stringify(projectId ? { po, projectId, exp } : { po, exp });
 }
 
 const OPAQUE_TOKEN_PREFIX = "v1";
@@ -27,13 +28,15 @@ function encryptionKey(secret: string) {
   return createHash("sha256").update(secret, "utf8").digest();
 }
 
-function isValidPayload(value: unknown): value is Pick<TokenBody, "po" | "exp"> {
+function isValidPayload(value: unknown): value is Pick<TokenBody, "po" | "projectId" | "exp"> {
   const payload = value as Partial<TokenBody> | null;
   return Boolean(
     payload &&
       typeof payload.po === "string" &&
       payload.po.length > 0 &&
       payload.po.length <= MAX_PO_LENGTH &&
+      (payload.projectId === undefined ||
+        (typeof payload.projectId === "string" && payload.projectId.length > 0 && payload.projectId.length <= 64)) &&
       Number.isSafeInteger(payload.exp),
   );
 }
@@ -43,8 +46,9 @@ export function signPartnerPoAccess(
   po: string,
   secret: string,
   ttlSec = 90 * 24 * 60 * 60,
+  projectId?: string,
 ): string {
-  if (!po || po.length > MAX_PO_LENGTH || !secret || ttlSec <= 0) {
+  if (!po || po.length > MAX_PO_LENGTH || !secret || ttlSec <= 0 || (projectId != null && (!projectId || projectId.length > 64))) {
     throw new Error("Invalid partner PO PDF token input.");
   }
 
@@ -53,7 +57,7 @@ export function signPartnerPoAccess(
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(secret), iv);
   cipher.setAAD(OPAQUE_TOKEN_AAD);
   const encrypted = Buffer.concat([
-    cipher.update(stableBody(po, exp), "utf8"),
+    cipher.update(stableBody(po, exp, projectId), "utf8"),
     cipher.final(),
   ]);
   return [
@@ -67,7 +71,7 @@ export function signPartnerPoAccess(
 export function verifyPartnerPoAccess(
   token: string,
   secret: string,
-): { po: string } | null {
+): { po: string; projectId?: string } | null {
   try {
     if (!token || token.length > MAX_TOKEN_LENGTH || !secret) return null;
 
@@ -99,10 +103,10 @@ export function verifyPartnerPoAccess(
         decipher.update(Buffer.from(encodedPayload, "base64url")),
         decipher.final(),
       ]).toString("utf8");
-      const obj = JSON.parse(raw) as Pick<TokenBody, "po" | "exp">;
+      const obj = JSON.parse(raw) as Pick<TokenBody, "po" | "projectId" | "exp">;
       if (!isValidPayload(obj)) return null;
       if (Math.floor(Date.now() / 1000) > obj.exp) return null;
-      return { po: obj.po };
+      return { po: obj.po, projectId: obj.projectId };
     }
 
     // Backward compatibility for the previous compact signed format.
@@ -138,7 +142,7 @@ export function verifyPartnerPoAccess(
     const a = Buffer.from(obj.sig, "utf8");
     const b = Buffer.from(expected, "utf8");
     if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-    return { po: obj.po };
+    return { po: obj.po, projectId: obj.projectId };
   } catch {
     return null;
   }
@@ -156,9 +160,11 @@ export function resolvePartnerPoPdfReference(
     ? verifyPartnerPoAccess(accessToken, secret)
     : null;
   const requestedPo = poParam === accessToken ? "" : poParam;
+  const requestedProjectId = String(query.projectId ?? "").trim();
 
   return {
     po: verified?.po || requestedPo,
+    projectId: verified ? verified.projectId || "" : requestedProjectId,
     requestedPo,
     verifiedPo: verified?.po ?? "",
   };

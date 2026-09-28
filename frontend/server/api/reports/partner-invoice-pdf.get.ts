@@ -14,6 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event);
   const invoice = String(query.invoice ?? "").trim();
+  const projectId = String(query.projectId ?? "").trim();
   if (!invoice) {
     throw createError({
       statusCode: 400,
@@ -27,6 +28,7 @@ export default defineEventHandler(async (event) => {
     .filter(
       (row) =>
         matchesReportDocumentNumber(row.invoiceNumberPartner, invoice) &&
+        (!projectId || row.projectId === projectId) &&
         row.status !== "cancelled",
     )
     .sort((a, b) => {
@@ -42,6 +44,9 @@ export default defineEventHandler(async (event) => {
       statusCode: 404,
       statusMessage: "No partner invoice lines found",
     });
+  }
+  if (!projectId && new Set(rows.map((row) => row.projectId)).size > 1) {
+    throw createError({ statusCode: 400, statusMessage: "projectId is required for an invoice number used in multiple projects" });
   }
 
   const first = rows[0]!;

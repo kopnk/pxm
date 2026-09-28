@@ -7,7 +7,7 @@ import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { projectProgressExportQueryZ } from "~/server/validation/project_progress.schema";
 import { requireRole } from "~/server/utils/authorize";
 import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
-import { firstQuery } from "~/server/utils/firstQuery";
+import { firstQuery, matchesMaterialName } from "~/server/utils/firstQuery";
 import { formatProjectProgressStageData } from "~/server/utils/projectProgressResponse";
 import { listProjectProgressRecords } from "~/server/utils/projectProgressStore";
 import { successResponse } from "~/server/utils/response";
@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
   const raw = getQuery(event);
   const parsed = projectProgressExportQueryZ.safeParse({
     search: firstQuery(raw.search),
+    material: firstQuery(raw.material),
     stage: firstQuery(raw.stage),
     stageDateType: firstQuery(raw.stageDateType),
     status: firstQuery(raw.status),
@@ -45,9 +46,10 @@ export default defineEventHandler(async (event) => {
     stageDateType: q.stageDateType,
     status: q.status,
   });
-  const total = records.length;
+  const filteredRecords = records.filter((record) => matchesMaterialName(record.materialName, q.material));
+  const total = filteredRecords.length;
   const { page, limit, offset } = buildPagination(q);
-  const rows = records.slice(offset, offset + limit);
+  const rows = filteredRecords.slice(offset, offset + limit);
 
   const exportRows: ProjectProgressExportRow[] = rows.map((row) => ({
     contractNumber: row.contractNumber,

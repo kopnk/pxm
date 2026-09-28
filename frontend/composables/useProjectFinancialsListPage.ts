@@ -60,6 +60,11 @@ export const useProjectFinancialsListPage = (options?: {
     set: (value: string) => store.setFilters({ flowDirection: value }),
   });
 
+  const material = computed({
+    get: () => store.filters.material,
+    set: (value: string) => store.setFilters({ material: value }),
+  });
+
   const fetchError = ref<string | null>(null);
   const deletingId = ref<string | null>(null);
   const deleteTargetId = ref<string | null>(null);
@@ -116,7 +121,7 @@ export const useProjectFinancialsListPage = (options?: {
   );
 
   watchStoreFilters(
-    () => [store.filters.status, store.filters.flowDirection] as const,
+    () => [store.filters.status, store.filters.flowDirection, store.filters.material] as const,
     () => void fetchData(1).catch(() => {}),
   );
 
@@ -227,6 +232,7 @@ export const useProjectFinancialsListPage = (options?: {
     search,
     status,
     flowDirection,
+    material,
     showPartnerLineTotal,
     showClientLineTotal,
     statusOptions,

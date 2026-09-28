@@ -19,6 +19,7 @@ export const useProjectDetailsApi = () => {
           page: params?.page ?? store.page,
           limit: params?.limit ?? store.limit,
           search: store.filters.search || undefined,
+          material: store.filters.material || undefined,
           projectId: params?.projectId,
           status: store.filters.status || undefined,
           cityKabId: params?.cityKabId,

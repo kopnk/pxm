@@ -21,6 +21,17 @@ export default defineEventHandler(async (event) => {
     (sum, record) => sum + Number(record.subTotal || 0),
     0,
   );
+  const listTotalDpp = records.reduce(
+    (sum, record) => sum + Number(record.dpp || 0),
+    0,
+  );
+  const listTotalHpp = records.reduce(
+    (sum, record) => sum + Number(record.hpp || 0),
+    0,
+  );
+  const listTotalMrg = listTotalDpp > 0
+    ? ((listTotalDpp - listTotalHpp) / listTotalDpp) * 100
+    : 0;
   const items = records.slice(offset, offset + limit).map((record) => ({
     ...record,
     createdAt: toLocalTime(record.createdAt),
@@ -34,6 +45,9 @@ export default defineEventHandler(async (event) => {
     total,
     totalPages,
     listTotalPoPrice,
+    listTotalDpp,
+    listTotalHpp,
+    listTotalMrg,
   });
 
 });

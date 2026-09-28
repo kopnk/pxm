@@ -27,6 +27,9 @@ export const useProjectsApi = () => {
         total: res.data.total,
         totalPages: res.data.totalPages,
         listTotalPoPrice: res.data.listTotalPoPrice,
+        listTotalDpp: res.data.listTotalDpp,
+        listTotalHpp: res.data.listTotalHpp,
+        listTotalMrg: res.data.listTotalMrg,
       });
 
     } finally {

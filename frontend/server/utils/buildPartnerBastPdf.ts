@@ -19,9 +19,16 @@ export type PartnerBastPdfMeta = {
   partnerAddressText: string | null;
   signatoryName: string | null;
   signatoryTitle: string | null;
+  kopindosatSignatoryName: string | null;
+  kopindosatSignatoryTitle: string | null;
+  paymentTerms: string[];
 };
 
 const MARGIN = 44;
+const SIGNATURE_NAME_TO_LINE_GAP = 1.5;
+const SIGNATURE_LINE_TO_TITLE_GAP = 3;
+const SIGNATURE_SEPARATOR_COLOR = "#7A7A7A";
+const SIGNATURE_SEPARATOR_WIDTH = 0.45;
 const qtyFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
 
 function formatQty(value: unknown) {
@@ -63,7 +70,7 @@ export async function buildPartnerBastPdfBuffer(
   y = doc.y + 6;
 
   doc.font("Helvetica").fontSize(10).text(
-    `WO: ${meta.poNumberPartner || "—"}    Tanggal: ${meta.poDatePartnerLabel || "—"}`,
+    `BAST: ${meta.bastNumber || "—"}    Tanggal: ${meta.bastDateLabel || "—"}`,
     ml,
     y,
     { width: mw, align: "center" },
@@ -81,18 +88,10 @@ export async function buildPartnerBastPdfBuffer(
   doc.font("Helvetica-Bold").text("1. PIHAK PERTAMA", ml, y, { width: mw });
   y = doc.y + 3;
   doc.font("Helvetica");
-  doc.text("Nama / Jabatan :", ml, y, { width: mw });
-  const firstPartyLineY = y + 13;
-  const firstPartyLineStart = ml + 98;
-  const firstPartyLineEnd = mr - 8;
-  doc.save();
-  doc.lineWidth(0.8);
-  doc.strokeColor("#9ca3af");
-  doc.dash(1, { space: 2 });
-  doc.moveTo(firstPartyLineStart, firstPartyLineY).lineTo(firstPartyLineEnd, firstPartyLineY).stroke();
-  doc.undash();
-  doc.restore();
-  y = firstPartyLineY + 8;
+  const firstPartyName = meta.kopindosatSignatoryName || "—";
+  const firstPartyTitle = meta.kopindosatSignatoryTitle || "—";
+  doc.text(`Nama / Jabatan : ${firstPartyName} / ${firstPartyTitle}`, ml, y, { width: mw });
+  y = doc.y + 8;
   doc.text(
     "Dalam hal ini bertindak untuk dan atas nama KOPINDOSAT, selanjutnya disebut PIHAK PERTAMA.",
     ml,
@@ -152,6 +151,15 @@ export async function buildPartnerBastPdfBuffer(
   y = doc.y + 2;
   doc.text(
     "c. PIHAK KEDUA bertanggung jawab dan menjamin tidak akan ada permasalahan baik selama pekerjaan maupun setelah dilakukan serah terima.",
+    ml,
+    y,
+    { width: mw, align: "justify" },
+  );
+  y = doc.y + 2;
+  doc.text(
+    meta.paymentTerms.length === 1 && meta.paymentTerms[0]?.endsWith("sebesar 100%")
+      ? "d. Pembayaran atas pekerjaan ini dilakukan sebesar 100%."
+      : `d. Pembayaran atas pekerjaan ini dilakukan sesuai ${meta.paymentTerms.join(" dan ") || "termin pembayaran sebesar 100%"}.`,
     ml,
     y,
     { width: mw, align: "justify" },
@@ -230,13 +238,38 @@ export async function buildPartnerBastPdfBuffer(
 
   doc.font("Helvetica").fontSize(10);
   y += 4;
-  doc.text(" ", leftX, y, { width: colW, align: "left" });
-  doc.text(`${meta.signatoryName || "__________________________"}`, rightX, y, {
+  const kopindosatName = meta.kopindosatSignatoryName || "";
+  const partnerName = meta.signatoryName || "__________________________";
+  doc.text(kopindosatName, leftX, y, { width: colW, align: "left" });
+  const kopindosatSeparatorY = doc.y + SIGNATURE_NAME_TO_LINE_GAP;
+  const kopindosatLineWidth = Math.min(doc.widthOfString(kopindosatName), colW);
+  if (kopindosatLineWidth > 0) {
+    doc
+      .strokeColor(SIGNATURE_SEPARATOR_COLOR)
+      .lineWidth(SIGNATURE_SEPARATOR_WIDTH)
+      .moveTo(leftX, kopindosatSeparatorY)
+      .lineTo(leftX + kopindosatLineWidth, kopindosatSeparatorY)
+      .stroke();
+  }
+  doc.strokeColor("#000000").lineWidth(1);
+  doc.text(partnerName, rightX, y, {
     width: colW,
     align: "right",
   });
-  y += 12;
-  doc.text(" ", leftX, y, { width: colW, align: "left" });
+  const separatorY = doc.y + SIGNATURE_NAME_TO_LINE_GAP;
+  const partnerLineWidth = Math.min(doc.widthOfString(partnerName), colW);
+  if (partnerLineWidth > 0) {
+    doc
+      .strokeColor(SIGNATURE_SEPARATOR_COLOR)
+      .lineWidth(SIGNATURE_SEPARATOR_WIDTH)
+      .moveTo(rightX + colW - partnerLineWidth, separatorY)
+      .lineTo(rightX + colW, separatorY)
+      .stroke();
+  }
+  doc.strokeColor("#000000").lineWidth(1);
+
+  y = Math.max(separatorY, kopindosatSeparatorY) + SIGNATURE_LINE_TO_TITLE_GAP;
+  doc.text(meta.kopindosatSignatoryTitle || "", leftX, y, { width: colW, align: "left" });
   doc.text(meta.signatoryTitle || "____________________________", rightX, y, {
     width: colW,
     align: "right",

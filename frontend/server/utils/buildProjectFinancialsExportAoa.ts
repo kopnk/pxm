@@ -1,8 +1,8 @@
 import {
   pfClientLineTotal,
   pfClientTaxRupiahForDisplay,
-  pfPartnerLineTotal,
   pfPartnerTaxRupiahForDisplay,
+  pfListLineBase,
 } from "~/lib/projectFinancialsMath";
 import { cellDate, cellNum, cellStr } from "~/server/utils/exportCellHelpers";
 
@@ -81,8 +81,8 @@ export type ProjectFinancialExportRow = {
 export const PROJECT_FINANCIALS_EXPORT_HEADERS: string[] = [
   "No",
   "Contract number",
-  "Po number(client)",
-  "po date",
+  "WO Number (Client)",
+  "WO Date (Client)",
   "delivery date",
   "kom date",
   "Project Name",
@@ -103,13 +103,13 @@ export const PROJECT_FINANCIALS_EXPORT_HEADERS: string[] = [
   "status",
   "pic",
   "remaks project",
-  "po partner",
-  "po partner date",
+  "WO Number (Partner)",
+  "WO Date (Partner)",
   "partner invoice",
   "partner invoice date",
   "partner qty",
   "partner unit price",
-  "total partner price",
+  "total partner price (DPP)",
   "pph",
   "ppn",
   "balap number partner",
@@ -169,11 +169,9 @@ export function buildProjectFinancialsExportAoa(
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]!;
 
-    const totalPartner = pfPartnerLineTotal(
+    const totalPartner = pfListLineBase(
       r.qtyPartner,
       r.unitPricePartner,
-      r.pph,
-      r.taxIn,
     );
     const totalClient = pfClientLineTotal(
       r.qtyClient,

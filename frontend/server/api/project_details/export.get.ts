@@ -8,7 +8,7 @@ import { projectDetailsExportQueryZ } from "~/server/validation/project_details.
 import { exportFileDateLabel } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { buildPagination, buildTotalPages } from "~/lib/pagination";
-import { firstQuery } from "~/server/utils/firstQuery";
+import { firstQuery, matchesMaterialName } from "~/server/utils/firstQuery";
 import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
 
 export default defineEventHandler(async (event) => {
@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
   const raw = getQuery(event);
   const parsed = projectDetailsExportQueryZ.safeParse({
     search: firstQuery(raw.search),
+    material: firstQuery(raw.material),
     projectId: firstQuery(raw.projectId),
     status: firstQuery(raw.status),
     cityKabId: firstQuery(raw.cityKabId),
@@ -40,10 +41,11 @@ export default defineEventHandler(async (event) => {
     cityKabId: q.cityKabId,
   });
 
-  const total = records.length;
+  const filteredRecords = records.filter((record) => matchesMaterialName(record.materialName, q.material));
+  const total = filteredRecords.length;
   const { page, limit, offset } = buildPagination(q);
 
-  const exportRows: ProjectDetailExportRow[] = records
+  const exportRows: ProjectDetailExportRow[] = filteredRecords
     .slice(offset, offset + limit)
     .map((row) => ({
       contractNumber: row.contractNumber,

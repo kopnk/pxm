@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
         po: pdfParams.get("po"),
         ref: pdfParams.get("ref"),
         access: pdfParams.get("access"),
+        projectId: pdfParams.get("projectId"),
       },
       secret,
     );

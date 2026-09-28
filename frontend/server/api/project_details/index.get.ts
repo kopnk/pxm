@@ -4,6 +4,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { toLocalTime } from "~/server/utils/datetime";
 import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
+import { matchesMaterialName } from "~/server/utils/firstQuery";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -18,13 +19,16 @@ export default defineEventHandler(async (event) => {
     cityKabId: query.cityKabId ? String(query.cityKabId) : undefined,
   });
 
-  const total = records.length;
+  const filteredRecords = records.filter((record) =>
+    matchesMaterialName(record.materialName, query.material ? String(query.material) : undefined),
+  );
+  const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);
-  const listTotalPrice = records.reduce(
+  const listTotalPrice = filteredRecords.reduce(
     (sum, record) => sum + Number(record.totalPrice || 0),
     0,
   );
-  const items = records.slice(offset, offset + limit).map((record) => ({
+  const items = filteredRecords.slice(offset, offset + limit).map((record) => ({
     ...record,
     createdAt: record.createdAt ? toLocalTime(record.createdAt) : null,
     updatedAt: record.updatedAt ? toLocalTime(record.updatedAt) : null,

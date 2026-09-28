@@ -28,7 +28,7 @@ export const PROJECTS_EXPORT_HEADERS: string[] = [
   "kom date",
   "PM",
   "Client",
-  "PO Price",
+  "PO Price (DPP)",
   "Diskon",
   "Net Price",
   "Tax/VAT Amount",

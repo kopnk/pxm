@@ -76,15 +76,31 @@ const onExportExcel = () => {
           class="text-secondary user-select-none flex-shrink-0"
           aria-hidden="true"
         >|</span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
-          Total PO Price
+        <span class="text-nowrap flex-shrink-0 small text-muted ms-auto">
+          <span title="DPP: nilai PO sebelum PPN">Total PO Price</span>
           <span class="fw-bold text-dark ms-1">{{
             store.loading ? "..." : formatCurrency(store.meta.listTotalPoPrice)
           }}</span>
         </span>
+        <span class="text-nowrap flex-shrink-0 small text-muted">
+          DPP <span class="fw-bold text-dark ms-1">{{
+            store.loading ? "..." : formatCurrency(store.meta.listTotalDpp)
+          }}</span>
+        </span>
+        <span class="text-nowrap flex-shrink-0 small text-muted">
+          HPP <span class="fw-bold text-dark ms-1">{{
+            store.loading ? "..." : formatCurrency(store.meta.listTotalHpp)
+          }}</span>
+        </span>
+        <span class="text-nowrap flex-shrink-0 small text-muted">
+          MRG <span class="fw-bold text-dark ms-1">{{
+            store.loading ? "..." : `${store.meta.listTotalMrg.toFixed(2)}%`
+          }}</span>
+        </span>
+        <span class="filter-export-divider" aria-hidden="true"></span>
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0"
           :disabled="exporting"
           aria-label="Download Excel for current search and status filters"
           @click="onExportExcel"
@@ -116,7 +132,7 @@ const onExportExcel = () => {
 
             <tbody>
               <!-- LOADING -->
-              <tr v-if="store.loading">
+              <tr v-if="store.loading && store.items.length === 0">
                 <td colspan="10" class="text-center py-3">Loading...</td>
               </tr>
 
@@ -348,8 +364,8 @@ const onExportExcel = () => {
 
 .projects-filter-search {
   min-width: 0;
-  flex: 1 1 24rem;
-  max-width: 48rem;
+  flex: 0 1 32rem;
+  max-width: 32rem;
 }
 
 .projects-filter-status {

@@ -26,6 +26,7 @@ export const useProjectProgressApi = () => {
           page: params?.page ?? store.page,
           limit: params?.limit ?? store.limit,
           search: store.filters.search || undefined,
+          material: store.filters.material || undefined,
           project: params?.project,
           detail: params?.detail,
           stage: store.filters.stage || undefined,

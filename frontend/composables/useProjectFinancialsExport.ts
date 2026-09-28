@@ -9,6 +9,8 @@ export function useProjectFinancialsExport() {
   const downloadExcel = (params?: {
     search?: string;
     status?: string;
+    material?: string;
+    flowDirection?: "in" | "out" | "";
     page?: number;
     limit?: number;
   }) =>
@@ -16,10 +18,13 @@ export function useProjectFinancialsExport() {
       async () => {
         const s = (params?.search ?? store.filters.search).trim();
         const st = (params?.status ?? store.filters.status).trim();
+        const material = (params?.material ?? store.filters.material).trim();
         return apiFetch("/api/project_financials/export", {
           query: {
             search: s || undefined,
             status: st || undefined,
+            material: material || undefined,
+            flowDirection: params?.flowDirection || undefined,
             page: params?.page ?? store.page,
             limit: params?.limit ?? store.limit,
           },

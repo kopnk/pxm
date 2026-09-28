@@ -26,6 +26,7 @@ export function useProjectFinancialsTaxSectionExport(
   const downloadExcel = (params?: {
     search?: string;
     status?: string;
+    material?: string;
     page?: number;
     limit?: number;
   }) =>
@@ -35,10 +36,12 @@ export function useProjectFinancialsTaxSectionExport(
         const st = normalizeFinancialStatus(
           params?.status ?? store.filters.status,
         );
+        const material = (params?.material ?? store.filters.material).trim();
         return apiFetch(ENDPOINTS[section], {
           query: {
             search: s || undefined,
             status: st,
+            material: material || undefined,
             page: params?.page ?? store.page,
             limit: params?.limit ?? store.limit,
           },

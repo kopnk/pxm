@@ -25,6 +25,7 @@ export const useProjectFinancialsApi = () => {
           projectId: params?.projectId,
           projectDetailId: params?.projectDetailId,
           search: store.filters.search || undefined,
+          material: store.filters.material || undefined,
           status: store.filters.status || undefined,
           flowDirection: store.filters.flowDirection || undefined,
           taxSection: params?.taxSection,
@@ -72,6 +73,9 @@ export const useProjectFinancialsApi = () => {
       body: payload,
     });
 
+  const createProjectFinancialsBulk = (payload: any[]) =>
+    apiFetch("/api/project_financials", { method: "POST", body: payload });
+
   const updateProjectFinancial = (id: string, payload: any) =>
     apiFetch(`/api/project_financials/${id}`, {
       method: "PUT",
@@ -91,6 +95,7 @@ export const useProjectFinancialsApi = () => {
     getProjectFinancials,
     getProjectFinancialById,
     createProjectFinancial,
+    createProjectFinancialsBulk,
     updateProjectFinancial,
     deleteProjectFinancial,
   };

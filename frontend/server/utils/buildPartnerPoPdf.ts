@@ -1,7 +1,7 @@
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import {
-  pfPartnerLineTotal,
+  pfListLineBase,
   pfParseNum,
 } from "../../lib/projectFinancialsMath";
 import { readKopindosatLogoBuffer } from "./pdfBranding";
@@ -85,21 +85,14 @@ const FOOTER_RESERVE = 110;
 /**
  * Warna garis specimen.
  */
-const SIGNATURE_SEPARATOR_COLOR = "#C7C7C7";
+const SIGNATURE_SEPARATOR_COLOR = "#7A7A7A";
 
 /**
  * Sebelumnya 0.5 pt.
  *
  * Sekarang ±1/3 dari ukuran sebelumnya.
  */
-const SIGNATURE_SEPARATOR_WIDTH = 0.18;
-
-/**
- * Panjang garis specimen.
- *
- * Tidak lagi memenuhi seluruh kolom.
- */
-const SIGNATURE_LINE_WIDTH = 135;
+const SIGNATURE_SEPARATOR_WIDTH = 0.45;
 
 /**
  * Jarak vertikal:
@@ -110,8 +103,8 @@ const SIGNATURE_LINE_WIDTH = 135;
  * ↓
  * Title
  */
-const SIGNATURE_NAME_TO_LINE_GAP = 4;
-const SIGNATURE_LINE_TO_TITLE_GAP = 4;
+const SIGNATURE_NAME_TO_LINE_GAP = 1.5;
+const SIGNATURE_LINE_TO_TITLE_GAP = 3;
 
 /**
  * Posisi vertikal specimen dari header
@@ -431,14 +424,8 @@ function renderSignatureSpecimen(
     nameBottomY +
     SIGNATURE_NAME_TO_LINE_GAP;
 
-  /**
-   * Panjang garis dibatasi.
-   */
-  const actualLineWidth =
-    Math.min(
-      SIGNATURE_LINE_WIDTH,
-      columnWidth,
-    );
+  // Underline follows the actual name width, not the signature column width.
+  const actualLineWidth = Math.min(doc.widthOfString(name), columnWidth);
 
   let lineStartX: number;
   let lineEndX: number;
@@ -474,22 +461,14 @@ function renderSignatureSpecimen(
    * ============================================================
    */
 
-  doc
-    .strokeColor(
-      SIGNATURE_SEPARATOR_COLOR,
-    )
-    .lineWidth(
-      SIGNATURE_SEPARATOR_WIDTH,
-    )
-    .moveTo(
-      lineStartX,
-      separatorY,
-    )
-    .lineTo(
-      lineEndX,
-      separatorY,
-    )
-    .stroke();
+  if (actualLineWidth > 0) {
+    doc
+      .strokeColor(SIGNATURE_SEPARATOR_COLOR)
+      .lineWidth(SIGNATURE_SEPARATOR_WIDTH)
+      .moveTo(lineStartX, separatorY)
+      .lineTo(lineEndX, separatorY)
+      .stroke();
+  }
 
   /**
    * Reset stroke configuration.
@@ -1084,12 +1063,11 @@ export async function buildPartnerPoPdfBuffer(
       const T =
         tableLayout(doc);
 
+      // Work Order selalu menampilkan nilai bruto per item, sebelum PPh/tax.
       const lineTotal =
-        pfPartnerLineTotal(
+        pfListLineBase(
           row.qtyPartner,
           row.unitPricePartner,
-          row.pph,
-          row.taxIn,
         );
 
       if (

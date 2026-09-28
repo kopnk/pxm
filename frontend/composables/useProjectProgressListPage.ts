@@ -29,6 +29,7 @@ export const useProjectProgressListPage = () => {
   const stageFilter = createStoreFilter(store, "stage");
   const stageDateTypeFilter = createStoreFilter(store, "stageDateType");
   const statusFilter = createStoreFilter(store, "status");
+  const materialFilter = createStoreFilter(store, "material");
 
   const showDeleteModal = ref(false);
   const deleteTargetId = ref<string | null>(null);
@@ -109,6 +110,7 @@ export const useProjectProgressListPage = () => {
         store.filters.stage,
         store.filters.stageDateType,
         store.filters.status,
+        store.filters.material,
       ] as const,
     () => {
       store.setPage(1);
@@ -122,6 +124,7 @@ export const useProjectProgressListPage = () => {
       stage: store.filters.stage,
       stageDateType: store.filters.stageDateType,
       status: store.filters.status,
+      material: store.filters.material,
       page: store.page,
       limit: store.limit,
     });
@@ -176,6 +179,7 @@ export const useProjectProgressListPage = () => {
     stageFilter,
     stageDateTypeFilter,
     statusFilter,
+    materialFilter,
     showDeleteModal,
     deleteTargetLabel,
     stageColumns,

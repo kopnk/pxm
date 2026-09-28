@@ -6,6 +6,7 @@ import {
   PutCommand,
   QueryCommand,
   ScanCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "node:crypto";
 import {
@@ -87,6 +88,8 @@ export type ProjectFinancialRecord = {
   partnerInstallmentPercent: number | null;
   /** Optional wording override used only in the partner BAST and invoice PDFs. */
   partnerDocumentWorkLocation: string | null;
+  kopindosatSignatoryName: string | null;
+  kopindosatSignatoryTitle: string | null;
   poNumberClient: string | null;
   poDateClient: string | null;
   invoiceNumberClient: string | null;
@@ -312,6 +315,8 @@ function normalizeProjectFinancialRecord(
     partnerInstallment: normalizeNullableText(record.partnerInstallment),
     partnerInstallmentPercent: normalizeNullableNumber(record.partnerInstallmentPercent),
     partnerDocumentWorkLocation: normalizeNullableText(record.partnerDocumentWorkLocation),
+    kopindosatSignatoryName: normalizeNullableText(record.kopindosatSignatoryName),
+    kopindosatSignatoryTitle: normalizeNullableText(record.kopindosatSignatoryTitle),
     poNumberClient: normalizeNullableText(record.poNumberClient),
     poDateClient: normalizeNullableDate(record.poDateClient),
     invoiceNumberClient: normalizeNullableText(record.invoiceNumberClient),
@@ -691,11 +696,9 @@ function computeSectionTotals(items: ProjectFinancialListItem[]) {
 
   for (const item of items) {
     if (item.flowDirection === "in") {
-      totals.partnerLineIdr += pfPartnerLineTotal(
+      totals.partnerLineIdr += pfListLineBase(
         item.qtyPartner,
         item.unitPricePartner,
-        item.pph,
-        item.taxIn,
       ) ?? 0;
     }
 
@@ -802,6 +805,31 @@ export async function listProjectFinancialRecords(
     });
 }
 
+/**
+ * A single WO/BAST can contain several site lines. Signature data is entered
+ * on one financial line, so prefer the most recently saved populated value
+ * instead of relying on the site's display order.
+ */
+export function selectKopindosatSignatoryRecord<
+  T extends {
+    kopindosatSignatoryName?: string | null;
+    kopindosatSignatoryTitle?: string | null;
+    updatedAt: string;
+    id: string;
+  },
+>(records: T[]) {
+  return records
+    .filter(
+      (record) =>
+        Boolean(record.kopindosatSignatoryName?.trim()) ||
+        Boolean(record.kopindosatSignatoryTitle?.trim()),
+    )
+    .sort((a, b) => {
+      const updatedCompare = b.updatedAt.localeCompare(a.updatedAt);
+      return updatedCompare !== 0 ? updatedCompare : b.id.localeCompare(a.id);
+    })[0] ?? records[0] ?? null;
+}
+
 export async function getLatestFinancialByDetailId(input: {
   projectDetailId: string;
   flowDirection?: ProjectFinancialFlowDirection;
@@ -828,54 +856,79 @@ export function computeProjectFinancialsListTotals(items: ProjectFinancialListIt
   return computeSectionTotals(items);
 }
 
-export async function createProjectFinancialRecord(
-  params: Omit<ProjectFinancialRecord, "id" | "createdAt" | "updatedAt" | "projectProgressId"> & {
-    projectProgressId?: string | null;
-  },
+export type CreateProjectFinancialParams = Omit<
+  ProjectFinancialRecord,
+  "id" | "createdAt" | "updatedAt" | "projectProgressId"
+> & {
+  projectProgressId?: string | null;
+};
+
+export async function createProjectFinancialRecords(
+  paramsList: CreateProjectFinancialParams[],
 ) {
-  const flowDirection = normalizeFlowDirection(params.flowDirection);
-  const resolvedProjectProgressId = await resolveProjectProgressIdForFinancial({
-    projectDetailId: params.projectDetailId,
-    projectProgressId: params.projectProgressId,
-    flowDirection,
-  });
+  if (!paramsList.length || paramsList.length > 25) {
+    throw createValidationError("Bulk creation accepts 1 to 25 rows");
+  }
 
-  await validateProjectFinancialReferences({
-    projectId: params.projectId,
-    projectDetailId: params.projectDetailId,
-    projectProgressId: resolvedProjectProgressId,
-    clientId: params.clientId,
-    partnerId: params.partnerId,
-    flowDirection,
-  });
+  const records = await Promise.all(
+    paramsList.map(async (params) => {
+      const flowDirection = normalizeFlowDirection(params.flowDirection);
+      const projectProgressId = await resolveProjectProgressIdForFinancial({
+        projectDetailId: params.projectDetailId,
+        projectProgressId: params.projectProgressId,
+        flowDirection,
+      });
 
-  const createdAt = nowIso();
-  const record = normalizeProjectFinancialRecord({
-    id: randomUUID(),
-    ...params,
-    flowDirection,
-    projectProgressId: resolvedProjectProgressId,
-    createdAt,
-    updatedAt: createdAt,
-  });
+      await validateProjectFinancialReferences({
+        projectId: params.projectId,
+        projectDetailId: params.projectDetailId,
+        projectProgressId,
+        clientId: params.clientId,
+        partnerId: params.partnerId,
+        flowDirection,
+      });
 
-  await getDynamoDocumentClient().send(
-    new PutCommand({
-      TableName: getTableName(),
-      Item: toProjectFinancialItem(record),
+      const createdAt = nowIso();
+      return normalizeProjectFinancialRecord({
+        id: randomUUID(),
+        ...params,
+        flowDirection,
+        projectProgressId,
+        createdAt,
+        updatedAt: createdAt,
+      });
     }),
   );
 
-  if (record.flowDirection === "out") {
-    await syncOutFlowPaidDateToProgress({
-      projectDetailId: record.projectDetailId,
-      projectProgressId: record.projectProgressId,
-      paidDate: record.paidDate,
-      updatedUser: record.updatedUser ?? record.createdUser,
-    });
-  }
+  await getDynamoDocumentClient().send(
+    new TransactWriteCommand({
+      TransactItems: records.map((record) => ({
+        Put: { TableName: getTableName(), Item: toProjectFinancialItem(record) },
+      })),
+    }),
+  );
 
-  return record;
+  await Promise.all(
+    records
+      .filter((record) => record.flowDirection === "out")
+      .map((record) =>
+        syncOutFlowPaidDateToProgress({
+          projectDetailId: record.projectDetailId,
+          projectProgressId: record.projectProgressId,
+          paidDate: record.paidDate,
+          updatedUser: record.updatedUser ?? record.createdUser,
+        }),
+      ),
+  );
+
+  return records;
+}
+
+export async function createProjectFinancialRecord(
+  params: CreateProjectFinancialParams,
+) {
+  const [record] = await createProjectFinancialRecords([params]);
+  return record!;
 }
 
 export async function updateProjectFinancialRecord(

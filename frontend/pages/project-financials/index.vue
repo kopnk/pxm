@@ -3,7 +3,6 @@ import { computed } from "vue";
 import { useProjectFinancialsListPage } from "@/composables/useProjectFinancialsListPage";
 import { useProjectFinancialsExport } from "@/composables/useProjectFinancialsExport";
 import {
-  pfPartnerLineTotal,
   pfClientLineTotal,
   pfFormatIdDate,
   pfListLineBase,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/projectFinancialsMath";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 import { paidPartnerIdLabel } from "~/lib/projectFinancialLabels";
+import { PROJECT_DETAIL_MATERIAL_NAMES } from "@/utils/exportFilters";
 
 const {
   store,
@@ -21,6 +21,7 @@ const {
   search,
   status,
   flowDirection,
+  material,
   statusOptions,
   flowDirectionOptions,
   showPartnerLineTotal,
@@ -51,9 +52,9 @@ const isInFlowFilter = computed(() => flowDirection.value === "in");
 const isOutFlowFilter = computed(() => flowDirection.value === "out");
 
 const poColumnLabel = computed(() => {
-  if (isInFlowFilter.value) return "PO Partner";
-  if (isOutFlowFilter.value) return "PO Client";
-  return "PO";
+  if (isInFlowFilter.value) return "WO Partner";
+  if (isOutFlowFilter.value) return "WO Client";
+  return "WO";
 });
 
 const invoiceColumnLabel = computed(() => {
@@ -107,12 +108,7 @@ const rowTaxOut = (item: ProjectFinancialItem) =>
 
 const rowTotal = (item: ProjectFinancialItem) =>
   isRowIn(item)
-    ? pfPartnerLineTotal(
-        item.qtyPartner,
-        item.unitPricePartner,
-        item.pph,
-        item.taxIn,
-      )
+    ? pfListLineBase(item.qtyPartner, item.unitPricePartner)
     : pfClientLineTotal(item.qtyClient, item.unitPriceClient, item.taxOut);
 
 const rowPoNumber = (item: ProjectFinancialItem) =>
@@ -165,6 +161,11 @@ const onExportExcel = () => {
   void downloadExcel({
     search: search.value,
     status: status.value,
+    material: material.value,
+    flowDirection:
+      flowDirection.value === "in" || flowDirection.value === "out"
+        ? flowDirection.value
+        : "",
     page: store.page,
     limit: store.limit,
   });
@@ -194,7 +195,7 @@ const onExportExcel = () => {
           v-model="search"
           type="search"
           class="form-control form-control-sm flex-grow-1 flex-shrink-1 pf-filter-search"
-          placeholder="PO, project, site, partner, client, invoice, PO partner/client..."
+          placeholder="WO, project, site, partner, client, invoice, WO partner/client..."
         />
         <select
           v-model="status"
@@ -220,12 +221,21 @@ const onExportExcel = () => {
             {{ option.label }}
           </option>
         </select>
+        <select
+          v-model="material"
+          class="form-select form-select-sm flex-shrink-0 pf-filter-material"
+        >
+          <option value="">All Material</option>
+          <option v-for="item in PROJECT_DETAIL_MATERIAL_NAMES" :key="item" :value="item">
+            {{ item }}
+          </option>
+        </select>
         <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
         <span
           v-if="showPartnerLineTotal"
           class="text-nowrap flex-shrink-0 small text-muted"
         >
-          Total Partner
+          <span title="DPP: Qty × harga satuan">Total Partner</span>
           <span class="fw-semibold text-body ms-1">{{
             formatCurrencyIdr(store.listTotals.partnerLineIdr)
           }}</span>
@@ -280,7 +290,7 @@ const onExportExcel = () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-if="store.loading">
+              <tr v-if="store.loading && store.items.length === 0">
                 <td :colspan="TABLE_COL_COUNT" class="text-center py-3">
                   Loading...
                 </td>
@@ -636,5 +646,10 @@ const onExportExcel = () => {
 .pf-filter-flow {
   width: 9.25rem;
   min-width: 9.25rem;
+}
+
+.pf-filter-material {
+  width: 13rem;
+  min-width: 13rem;
 }
 </style>

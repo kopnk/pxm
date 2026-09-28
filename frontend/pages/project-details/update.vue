@@ -180,7 +180,12 @@ const handleSubmit = async () => {
 
       <div class="col-md-4">
         <label class="form-label">Material Name</label>
-        <input v-model="form.materialName" class="form-control" />
+        <select v-model="form.materialName" class="form-select">
+          <option value="" disabled>Select Material Name</option>
+          <option value="Services">Services</option>
+          <option value="Supply">Supply</option>
+          <option value="Supply & Services">Supply & Services</option>
+        </select>
       </div>
     </FormSection>
 

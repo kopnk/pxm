@@ -3,7 +3,7 @@ definePageMeta({
   layout: false,
 });
 
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "#imports";
 import { apiFetch } from "~/utils/apiFetch";
 import type { AuthSessionUser } from "~/stores/auth";
@@ -15,9 +15,19 @@ const auth = useAuthStore();
 
 const email = ref("");
 const password = ref("");
+const rememberEmail = ref(false);
 const showPassword = ref(false);
 const error = ref("");
 const loading = ref(false);
+const rememberedEmailKey = "pxm.remembered-email";
+
+onMounted(() => {
+  const rememberedEmail = localStorage.getItem(rememberedEmailKey)?.trim();
+  if (rememberedEmail) {
+    email.value = rememberedEmail;
+    rememberEmail.value = true;
+  }
+});
 
 const safeRedirectTarget = () => {
   const target = typeof route.query.redirect === "string"
@@ -49,6 +59,12 @@ const submit = async () => {
     }>("/api/auth/me");
 
     auth.setUser(me.data.user, me.data.permissions ?? me.data.user.permissions);
+
+    if (rememberEmail.value) {
+      localStorage.setItem(rememberedEmailKey, email.value.trim());
+    } else {
+      localStorage.removeItem(rememberedEmailKey);
+    }
 
     if (me.data.user.mustChangePassword) {
       await router.push("/profile/change-password");
@@ -82,6 +98,18 @@ const submit = async () => {
               placeholder="your@email.com"
               required
             />
+          </div>
+
+          <div class="form-check mb-3">
+            <input
+              id="remember-email"
+              v-model="rememberEmail"
+              class="form-check-input"
+              type="checkbox"
+            />
+            <label class="form-check-label" for="remember-email">
+              Remember Email
+            </label>
           </div>
 
           <div class="mb-4 position-relative">

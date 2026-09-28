@@ -11,6 +11,7 @@ import { useRefDocumentFields } from "@/composables/useProjectRefDocuments";
 import { useFormHandler } from "@/composables/useFormHandler";
 import { toastSuccessCreated } from "@/composables/useToastMessages";
 import { useNotify } from "@/composables/useNotify";
+import { useAuthStore } from "@/stores/auth";
 import { apiFetch } from "~/utils/apiFetch";
 import {
   emptyProjectFinancialForm,
@@ -32,10 +33,114 @@ import {
 definePageMeta({});
 
 const router = useRouter();
-const { createProjectFinancial } = useProjectFinancialsApi();
+const { createProjectFinancial, createProjectFinancialsBulk } = useProjectFinancialsApi();
 const { uploadProjectFile, createProjectFileByUrl } = useProjectFilesApi();
 const { loading, handle } = useFormHandler();
 const notify = useNotify();
+const authStore = useAuthStore();
+const bulkFileInput = ref<HTMLInputElement | null>(null);
+const bulkFlow = ref<"in" | "out">("in");
+const bulkLoading = ref(false);
+const loadXlsx = () => import("xlsx");
+const canBulkUpload = computed(() => authStore.user?.role?.toLowerCase() === "superadmin");
+const BULK_HEADERS = {
+  in: ["projectId", "projectDetailId", "partnerId", "qtyPartner", "unitPricePartner", "pph", "taxIn", "partnerInstallment", "partnerInstallmentPercent", "poNumberPartner", "poDatePartner", "invoiceNumberPartner", "invoiceDatePartner", "fpNumberPartner", "fpDatePartner", "bastNumber", "bastDate", "status", "stage", "note"],
+  out: ["projectId", "projectDetailId", "clientId", "qtyClient", "unitPriceClient", "taxOut", "poNumberClient", "poDateClient", "invoiceNumberClient", "invoiceDateClient", "fpNumberClient", "fpDateClient", "bastNumber", "bastDate", "paidNumber", "paidDate", "status", "stage", "note"],
+} as const;
+
+const bulkText = (value: unknown) => String(value ?? "").trim() || null;
+const bulkNumber = (value: unknown) => {
+  if (value == null || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = String(value).trim().replace(/\s/g, "");
+  if (!text) return null;
+  const lastComma = text.lastIndexOf(",");
+  const lastDot = text.lastIndexOf(".");
+  const normalized = lastComma >= 0 && lastDot >= 0
+    ? lastComma > lastDot ? text.replace(/\./g, "").replace(",", ".") : text.replace(/,/g, "")
+    : lastComma >= 0 ? text.replace(",", ".")
+    : /^\d{1,3}(\.\d{3})+$/.test(text) ? text.replace(/\./g, "") : text;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+};
+const loadBulkReferenceItems = async (path: string) => {
+  const first = await apiFetch<any>(path, { query: { page: 1, limit: 1000 } });
+  const items = Array.isArray(first?.data?.items) ? [...first.data.items] : [];
+  const totalPages = Math.max(1, Number(first?.data?.totalPages) || 1);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const response = await apiFetch<any>(path, { query: { page, limit: 1000 } });
+    if (Array.isArray(response?.data?.items)) items.push(...response.data.items);
+  }
+  return items;
+};
+const downloadBulkTemplate = async (flow: "in" | "out") => {
+  if (!canBulkUpload.value) return notify.warning("Only superadmin can use bulk upload");
+  try {
+    const XLSX = await loadXlsx();
+    const [projectItems, detailItems, partyItems] = await Promise.all([
+      loadBulkReferenceItems("/api/projects"),
+      loadBulkReferenceItems("/api/project_details"),
+      loadBulkReferenceItems(flow === "in" ? "/api/partners" : "/api/clients"),
+    ]);
+    const headers = BULK_HEADERS[flow];
+    const partyKey = flow === "in" ? "partnerId" : "clientId";
+    const row = Object.fromEntries(headers.map((header) => [header, ""]));
+    Object.assign(row, {
+      projectId: projectItems[0]?.id ?? "",
+      projectDetailId: detailItems[0]?.id ?? "",
+      [partyKey]: partyItems[0]?.id ?? "",
+      ...(flow === "in"
+        ? { qtyPartner: 1, unitPricePartner: 0 }
+        : { qtyClient: 1, unitPriceClient: 0 }),
+      status: "draft",
+      stage: 1,
+    });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([row], { header: [...headers] }), flow === "in" ? "partner_in" : "client_out");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(projectItems.map((item: any) => ({ projectName: item.projectName ?? "", poNumber: item.poNumber ?? "", projectId: item.id ?? "" }))), "project_reference");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(detailItems.map((item: any) => ({ siteName: item.siteName ?? item.detailsListSite ?? "", materialName: item.materialName ?? "", projectId: item.projectId ?? "", projectDetailId: item.id ?? "" }))), "detail_reference");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(partyItems.map((item: any) => ({ name: item.name ?? "", [partyKey]: item.id ?? "" }))), flow === "in" ? "partner_reference" : "client_reference");
+    XLSX.writeFile(workbook, `project-financial-${flow === "in" ? "partner-in" : "client-out"}-template.xlsx`);
+  } catch (error: any) {
+    notify.error(error?.data?.message || error?.message || "Failed to download bulk template");
+  }
+};
+const openBulkUpload = (flow: "in" | "out") => {
+  if (!canBulkUpload.value) return notify.warning("Only superadmin can use bulk upload");
+  bulkFlow.value = flow;
+  bulkFileInput.value?.click();
+};
+const handleBulkUpload = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0]; input.value = "";
+  if (!file || !canBulkUpload.value) return;
+  try {
+    bulkLoading.value = true;
+    const XLSX = await loadXlsx();
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0] ?? ""];
+    const rows = sheet ? XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" }) : [];
+    if (!rows.length) return notify.warning("Excel file is empty");
+    if (rows.length > 25) return notify.warning("Excel file can contain a maximum of 25 rows");
+    const invalid = rows.findIndex((row) => {
+      const isIn = bulkFlow.value === "in";
+      const installment = bulkText(row.partnerInstallment);
+      const installmentPercent = bulkNumber(row.partnerInstallmentPercent);
+      return !bulkText(row.projectId) || !bulkText(row.projectDetailId) || !bulkText(row[isIn ? "partnerId" : "clientId"]) || bulkNumber(row[isIn ? "qtyPartner" : "qtyClient"]) == null || bulkNumber(row[isIn ? "unitPricePartner" : "unitPriceClient"]) == null || (isIn && installment != null && !(installmentPercent != null && installmentPercent > 0));
+    });
+    if (invalid >= 0) return notify.warning(`Row ${invalid + 2} has required data missing`);
+    const payload = rows.map((row) => ({
+      projectId: bulkText(row.projectId), projectDetailId: bulkText(row.projectDetailId), flowDirection: bulkFlow.value,
+      status: bulkText(row.status) || "draft", stage: bulkNumber(row.stage) || 1, note: bulkText(row.note),
+      bastNumber: bulkText(row.bastNumber), bastDate: bulkText(row.bastDate),
+      ...(bulkFlow.value === "in" ? { partnerId: bulkText(row.partnerId), qtyPartner: bulkNumber(row.qtyPartner), unitPricePartner: bulkNumber(row.unitPricePartner), pph: bulkNumber(row.pph), taxIn: bulkNumber(row.taxIn), partnerInstallment: bulkText(row.partnerInstallment), partnerInstallmentPercent: bulkNumber(row.partnerInstallmentPercent), poNumberPartner: bulkText(row.poNumberPartner), poDatePartner: bulkText(row.poDatePartner), invoiceNumberPartner: bulkText(row.invoiceNumberPartner), invoiceDatePartner: bulkText(row.invoiceDatePartner), fpNumberPartner: bulkText(row.fpNumberPartner), fpDatePartner: bulkText(row.fpDatePartner) } : { clientId: bulkText(row.clientId), qtyClient: bulkNumber(row.qtyClient), unitPriceClient: bulkNumber(row.unitPriceClient), taxOut: bulkNumber(row.taxOut), poNumberClient: bulkText(row.poNumberClient), poDateClient: bulkText(row.poDateClient), invoiceNumberClient: bulkText(row.invoiceNumberClient), invoiceDateClient: bulkText(row.invoiceDateClient), fpNumberClient: bulkText(row.fpNumberClient), fpDateClient: bulkText(row.fpDateClient), paidNumber: bulkText(row.paidNumber), paidDate: bulkText(row.paidDate) }),
+    }));
+    await createProjectFinancialsBulk(payload);
+    notify.success(`Success! Project financial bulk created (${payload.length} row).`);
+    await router.push("/project-financials");
+  } catch (error: any) { notify.error(error?.data?.message || error?.message || "Bulk upload failed"); }
+  finally { bulkLoading.value = false; }
+};
 
 const projects = ref<{ id: string; projectName?: string; poNumber?: string }[]>(
   [],
@@ -275,14 +380,32 @@ const handleSubmit = async () => {
     @submit="() => handle(handleSubmit, toastSuccessCreated('projectFinancial'))"
     @cancel="() => router.push('/project-financials')"
   >
+    <template #header-actions>
+      <div v-if="canBulkUpload" class="d-flex gap-2 align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="bulkLoading" @click="downloadBulkTemplate('in')">
+          Partner Template
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="bulkLoading" @click="openBulkUpload('in')">
+          Upload Partner
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="bulkLoading" @click="downloadBulkTemplate('out')">
+          Client Template
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="bulkLoading" @click="openBulkUpload('out')">
+          {{ bulkLoading ? "Uploading..." : "Upload Client" }}
+        </button>
+        <input ref="bulkFileInput" type="file" class="d-none" accept=".xlsx,.xls" @change="handleBulkUpload" />
+      </div>
+    </template>
+
     <FormSection title="Project &amp; Detail">
       <div class="col-md-6">
         <label class="form-label">Project</label>
-        <FormScrollableSelect v-model="form.projectId" :options="projectSelectOptions" placeholder="Select Project" name="projectId" required />
+        <FormScrollableSelect v-model="form.projectId" :options="projectSelectOptions" placeholder="Select Project" search-placeholder="Search project or PO..." :searchable="true" name="projectId" required />
       </div>
       <div class="col-md-6">
         <label class="form-label">Project Detail</label>
-        <FormScrollableSelect v-model="form.projectDetailId" :options="detailSelectOptions" placeholder="Select Project Detail" :disabled="!form.projectId" name="projectDetailId" required />
+        <FormScrollableSelect v-model="form.projectDetailId" :options="detailSelectOptions" placeholder="Select Project Detail" search-placeholder="Search site or material..." :searchable="true" :disabled="!form.projectId" name="projectDetailId" required />
       </div>
 
       <div class="col-12">
@@ -673,6 +796,14 @@ const handleSubmit = async () => {
           <option value="paid">Paid</option>
           <option value="cancelled">Cancelled</option>
         </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Kopindosat Name</label>
+        <input v-model="form.kopindosatSignatoryName" class="form-control" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Kopindosat Tittle</label>
+        <input v-model="form.kopindosatSignatoryTitle" class="form-control" />
       </div>
       <div class="col-md-12">
         <label class="form-label">Note</label>

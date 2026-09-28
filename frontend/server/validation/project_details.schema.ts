@@ -52,6 +52,7 @@ export type UpdateProjectDetailInput = z.infer<typeof updateProjectDetailSchema>
 /** Query untuk `GET /api/project_details/export` (search + status + pagination, sama seperti list). */
 export const projectDetailsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
+  material: z.string().max(500).optional(),
   projectId: z.string().uuid().optional(),
   status: z
     .enum(["active", "delay", "closed", "cancelled"])

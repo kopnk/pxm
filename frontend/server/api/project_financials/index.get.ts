@@ -7,6 +7,7 @@ import {
   computeProjectFinancialsListTotals,
   listProjectFinancialRecords,
 } from "~/server/utils/projectFinancialStore";
+import { matchesMaterialName } from "~/server/utils/firstQuery";
 
 export default defineEventHandler(async (event) => {
 
@@ -33,10 +34,13 @@ export default defineEventHandler(async (event) => {
         ? query.taxSection
         : undefined,
   });
-  const total = records.length;
+  const filteredRecords = records.filter((record) =>
+    matchesMaterialName(record.detailMaterialName, query.material ? String(query.material) : undefined),
+  );
+  const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);
-  const totals = computeProjectFinancialsListTotals(records);
-  const rows = records.slice(offset, offset + limit);
+  const totals = computeProjectFinancialsListTotals(filteredRecords);
+  const rows = filteredRecords.slice(offset, offset + limit);
 
   return successResponse(event, "Project financials retrieved", {
     items: rows.map((row) => {

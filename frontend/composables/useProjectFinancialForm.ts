@@ -83,6 +83,8 @@ export type ProjectFinancialFormModel = {
   partnerInstallmentPercent: number | null;
   /** Optional wording override for the location wording in partner BAST and invoice. */
   partnerDocumentWorkLocation: string;
+  kopindosatSignatoryName: string;
+  kopindosatSignatoryTitle: string;
 
   poNumberClient: string;
   poDateClient: string | null;
@@ -131,6 +133,8 @@ export function emptyProjectFinancialForm(): ProjectFinancialFormModel {
     partnerInstallment: "",
     partnerInstallmentPercent: 100,
     partnerDocumentWorkLocation: "",
+    kopindosatSignatoryName: "",
+    kopindosatSignatoryTitle: "",
     poNumberClient: "",
     poDateClient: null,
     invoiceNumberClient: "",
@@ -198,6 +202,8 @@ export function buildProjectFinancialPayload(form: ProjectFinancialFormModel) {
     partnerInstallment: isInFlow ? form.partnerInstallment || null : null,
     partnerInstallmentPercent: isInFlow ? n(form.partnerInstallmentPercent) : null,
     partnerDocumentWorkLocation: isInFlow ? form.partnerDocumentWorkLocation || null : null,
+    kopindosatSignatoryName: isInFlow ? form.kopindosatSignatoryName || null : null,
+    kopindosatSignatoryTitle: isInFlow ? form.kopindosatSignatoryTitle || null : null,
 
     poNumberClient: isOutFlow ? form.poNumberClient || null : null,
     poDateClient: isOutFlow ? form.poDateClient || null : null,
@@ -286,6 +292,8 @@ export function applyFinancialRowToForm(
   form.partnerInstallment = normalizeInstallment(row.partnerInstallment);
   form.partnerInstallmentPercent = n(row.partnerInstallmentPercent) ?? 100;
   form.partnerDocumentWorkLocation = str(row.partnerDocumentWorkLocation);
+  form.kopindosatSignatoryName = str(row.kopindosatSignatoryName);
+  form.kopindosatSignatoryTitle = str(row.kopindosatSignatoryTitle);
 
   form.poNumberClient = str(row.poNumberClient);
   form.poDateClient = row.poDateClient

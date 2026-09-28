@@ -7,11 +7,13 @@ import {
   pfListLineBase,
   pfPartnerTaxRupiahForDisplay,
 } from "@/lib/projectFinancialsMath";
+import { PROJECT_DETAIL_MATERIAL_NAMES } from "@/utils/exportFilters";
 
 const {
   store,
   search,
   status,
+  material,
   statusOptions,
   prevPage,
   nextPage,
@@ -30,6 +32,7 @@ const onExportExcel = () => {
   void downloadExcel({
     search: search.value,
     status: status.value,
+    material: material.value,
     page: store.page,
     limit: store.limit,
   });
@@ -90,6 +93,15 @@ const formatCity = (value: unknown) => {
             {{ option.label }}
           </option>
         </select>
+        <select
+          v-model="material"
+          class="form-select form-select-sm flex-shrink-0 pf-tax-filter-material"
+        >
+          <option value="">All Material</option>
+          <option v-for="item in PROJECT_DETAIL_MATERIAL_NAMES" :key="item" :value="item">
+            {{ item }}
+          </option>
+        </select>
         <div
           class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto pf-tax-filter-totals"
           role="group"
@@ -104,6 +116,7 @@ const formatCity = (value: unknown) => {
             <span class="fw-semibold">{{ formatCurrencyIdr(sectionTotalTaxIn) }}</span>
           </span>
         </div>
+        <span class="filter-export-divider" aria-hidden="true"></span>
         <button
           type="button"
           class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0"
@@ -238,6 +251,11 @@ const formatCity = (value: unknown) => {
 .pf-tax-filter-status {
   width: 10.5rem;
   min-width: 10.5rem;
+}
+
+.pf-tax-filter-material {
+  width: 13rem;
+  min-width: 13rem;
 }
 
 .pf-tax-filter-totals {

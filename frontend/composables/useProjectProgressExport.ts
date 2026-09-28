@@ -7,6 +7,7 @@ export type ProjectProgressExportParams = {
   stage: string;
   stageDateType: string;
   status: string;
+  material: string;
   project?: string;
   detail?: string;
   page?: number;
@@ -29,6 +30,7 @@ export function useProjectProgressExport() {
         return apiFetch("/api/project_progress/export", {
           query: {
             search: s || undefined,
+            material: params.material.trim() || undefined,
             stage: stg || undefined,
             stageDateType:
               dateType === "planned" || dateType === "actual"

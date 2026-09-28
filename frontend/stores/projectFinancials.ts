@@ -82,6 +82,8 @@ export interface ProjectFinancialItem {
   status: ProjectFinancialStatus;
 
   note?: string | null;
+  kopindosatSignatoryName?: string | null;
+  kopindosatSignatoryTitle?: string | null;
 
   createdUser: string | null;
   createdBy?: string | null;
@@ -121,6 +123,7 @@ export interface ProjectFinancialsState {
     status: string;
     /** "" = all flow, "in" | "out" = filtered */
     flowDirection: string;
+    material: string;
   };
 }
 
@@ -147,6 +150,7 @@ export const useProjectFinancialsStore = defineStore(
         search: "",
         status: "",
         flowDirection: "in",
+        material: "",
       },
     }),
 
@@ -204,6 +208,7 @@ export const useProjectFinancialsStore = defineStore(
           search: string;
           status: string;
           flowDirection: string;
+          material: string;
         }>,
       ) {
         this.filters = {
@@ -232,6 +237,7 @@ export const useProjectFinancialsStore = defineStore(
           search: "",
           status: "",
           flowDirection: "in",
+          material: "",
         };
       },
     },

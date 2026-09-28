@@ -42,7 +42,7 @@ const displayType = (value: string | null | undefined) => {
 
     <div class="card mb-3 border-0 shadow-sm">
       <div class="card-body row g-2">
-        <div class="col-md-4">
+        <div class="col-md-5">
           <input
             v-model="searchFilter"
             type="search"
@@ -59,7 +59,7 @@ const displayType = (value: string | null | undefined) => {
           </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-4">
           <select
             v-model="typeFilter"
             class="form-select"

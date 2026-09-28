@@ -72,8 +72,6 @@ export default defineNuxtConfig({
         { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       ],
     },
-    /** Fade singkat antar halaman (CSS di main.scss, tanpa lib tambahan). */
-    pageTransition: { name: "pxm-page", mode: "default" },
   },
 
   devtools: {

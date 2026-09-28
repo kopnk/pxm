@@ -4,6 +4,7 @@ import {
   detailStatusLabel,
 } from "~/lib/detailStatus";
 import { useProjectProgressListPage } from "@/composables/useProjectProgressListPage";
+import { PROJECT_DETAIL_MATERIAL_NAMES } from "@/utils/exportFilters";
 
 const formatDateDMY = (val?: string | null) => {
   if (!val) return "-";
@@ -25,6 +26,7 @@ const {
   stageFilter,
   stageDateTypeFilter,
   statusFilter,
+  materialFilter,
   showDeleteModal,
   deleteTargetLabel,
   stageColumns,
@@ -107,7 +109,16 @@ const {
           <option value="stage:delayed">Delayed</option>
           <option value="stage:cancelled">Cancelled</option>
         </select>
-        <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true"></span>
+        <select
+          v-model="materialFilter"
+          class="form-select form-select-sm flex-shrink-0 pp-filter-material"
+        >
+          <option value="">All Material</option>
+          <option v-for="material in PROJECT_DETAIL_MATERIAL_NAMES" :key="material" :value="material">
+            {{ material }}
+          </option>
+        </select>
+        <span class="filter-export-divider" aria-hidden="true"></span>
         <button
           type="button"
           class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
@@ -309,7 +320,6 @@ const {
 .pp-filter-search {
   min-width: 0;
   flex: 1 1 24rem;
-  max-width: 48rem;
 }
 
 .pp-filter-stage {
@@ -358,6 +368,11 @@ const {
   min-width: 10.5rem;
   max-width: 10.5rem;
   overflow: hidden;
+}
+
+.pp-filter-material {
+  width: 13rem;
+  min-width: 13rem;
 }
 
 .stage-header-caption {

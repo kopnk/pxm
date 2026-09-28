@@ -102,29 +102,32 @@ const detailSelectOptions = computed(() =>
 const isInFlow = computed(() => form.flowDirection === "in");
 const isOutFlow = computed(() => form.flowDirection === "out");
 const reportHref = (path: string) => `${apiBaseUrl}${path}`;
+const partnerReportProjectQuery = computed(() =>
+  form.projectId ? `&projectId=${encodeURIComponent(form.projectId)}` : "",
+);
 
 const partnerPoPdfHref = computed(() => {
   const po = form.poNumberPartner?.trim();
   if (!po) return "#";
-  return reportHref(`/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}`);
+  return reportHref(`/api/reports/partner-po-pdf?po=${encodeURIComponent(po)}${partnerReportProjectQuery.value}`);
 });
 
 const partnerBastPdfHref = computed(() => {
   const bast = form.bastNumber?.trim();
   if (!bast) return "#";
-  return reportHref(`/api/reports/partner-bast-pdf?bast=${encodeURIComponent(bast)}`);
+  return reportHref(`/api/reports/partner-bast-pdf?bast=${encodeURIComponent(bast)}${partnerReportProjectQuery.value}`);
 });
 
 const partnerInvoicePdfHref = computed(() => {
   const invoice = form.invoiceNumberPartner?.trim();
   if (!invoice) return "#";
-  return reportHref(`/api/reports/partner-invoice-pdf?invoice=${encodeURIComponent(invoice)}`);
+  return reportHref(`/api/reports/partner-invoice-pdf?invoice=${encodeURIComponent(invoice)}${partnerReportProjectQuery.value}`);
 });
 
 const partnerEprPdfHref = computed(() => {
   const po = form.poNumberPartner?.trim();
   if (!po) return "#";
-  return reportHref(`/api/reports/partner-epr-pdf?po=${encodeURIComponent(po)}`);
+  return reportHref(`/api/reports/partner-epr-pdf?po=${encodeURIComponent(po)}${partnerReportProjectQuery.value}`);
 });
 
 const partnerTotalPreview = computed(() => {
@@ -224,6 +227,18 @@ watch(
   },
 );
 
+watch(
+  () => form.partnerInstallment,
+  (installment, previousInstallment) => {
+    if (pageLoading.value) return;
+    if (!installment) {
+      form.partnerInstallmentPercent = 100;
+    } else if (!previousInstallment) {
+      form.partnerInstallmentPercent = null;
+    }
+  },
+);
+
 onMounted(async () => {
   if (!id) {
     await router.replace("/project-financials");
@@ -255,6 +270,15 @@ const handleSubmit = async () => {
     throw new Error("Partner is required");
   if (isOutFlow.value && !form.clientId.trim())
     throw new Error("Client is required");
+  if (
+    isInFlow.value &&
+    form.partnerInstallment &&
+    !(Number(form.partnerInstallmentPercent) > 0)
+  ) {
+    throw new Error(
+      "Installment Percentage (%) is required and must be greater than 0 when an installment is selected",
+    );
+  }
 
   await updateProjectFinancial(id, buildProjectFinancialPayload(form));
 
@@ -814,6 +838,14 @@ const handleSubmit = async () => {
           Use this field only to adjust the wording in the BAST, partner invoice,
           partner PO, and EPR as needed. Leave it blank to use the Project Detail Site Name by default.
         </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Kopindosat Name</label>
+        <input v-model="form.kopindosatSignatoryName" class="form-control" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Kopindosat Tittle</label>
+        <input v-model="form.kopindosatSignatoryTitle" class="form-control" />
       </div>
       <div class="col-md-12">
         <label class="form-label">Note</label>

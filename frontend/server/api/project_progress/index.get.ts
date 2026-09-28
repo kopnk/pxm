@@ -7,6 +7,7 @@ import {
 } from "~/server/utils/projectProgressStore";
 import { mapProjectProgressResponse } from "~/server/utils/projectProgressResponse";
 import { successResponse } from "~/server/utils/response";
+import { matchesMaterialName } from "~/server/utils/firstQuery";
 
 export default defineEventHandler(async (event) => {
 
@@ -39,10 +40,13 @@ export default defineEventHandler(async (event) => {
     status: statusFilter || undefined,
   });
 
-  const total = records.length;
+  const filteredRecords = records.filter((record) =>
+    matchesMaterialName(record.materialName, query.material?.toString()),
+  );
+  const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);
-  const stageCounts = computeStageCounts(records);
-  const items = records
+  const stageCounts = computeStageCounts(filteredRecords);
+  const items = filteredRecords
     .slice(offset, offset + limit)
     .map((record) => mapProjectProgressResponse(record));
 

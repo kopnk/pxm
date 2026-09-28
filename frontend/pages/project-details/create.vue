@@ -432,6 +432,8 @@ onMounted(async () => {
           v-model="form.projectId"
           :options="projectSelectOptions"
           placeholder="-- Select Project --"
+          search-placeholder="Search project or PO..."
+          :searchable="true"
           name="projectId"
           required
         />
@@ -510,7 +512,12 @@ onMounted(async () => {
 
       <div class="col-md-4">
         <label class="form-label">Material Name</label>
-        <input v-model="form.materialName" class="form-control" />
+        <select v-model="form.materialName" class="form-select">
+          <option value="" disabled>Select Material Name</option>
+          <option value="Services">Services</option>
+          <option value="Supply">Supply</option>
+          <option value="Supply & Services">Supply & Services</option>
+        </select>
       </div>
     </FormSection>
 

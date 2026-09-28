@@ -46,6 +46,7 @@ export const updateProjectProgressSchema =
 /** Query untuk `GET /api/project_progress/export` (filter list + pagination; tanpa flow). */
 export const projectProgressExportQueryZ = z.object({
   search: z.string().max(500).optional(),
+  material: z.string().max(500).optional(),
   stage: z.string().max(120).optional(),
   stageDateType: z.enum(["planned", "actual"]).optional(),
   status: z.string().max(120).optional(),

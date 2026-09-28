@@ -63,6 +63,7 @@ export interface ProjectDetailsState {
   filters: {
     search: string;
     status: string;
+    material: string;
   };
 }
 
@@ -79,6 +80,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
     filters: {
       search: "",
       status: "",
+      material: "",
     },
   }),
 
@@ -125,7 +127,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
       this.loading = value;
     },
 
-    setFilters(filters: Partial<{ search: string; status: string }>) {
+    setFilters(filters: Partial<{ search: string; status: string; material: string }>) {
       this.filters = { ...this.filters, ...filters };
     },
 

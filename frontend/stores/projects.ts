@@ -43,6 +43,9 @@ export interface ProjectsMeta {
   total: number;
   totalPages: number;
   listTotalPoPrice: number;
+  listTotalDpp: number;
+  listTotalHpp: number;
+  listTotalMrg: number;
 }
 
 export const useProjectsStore = defineStore("projects", {
@@ -54,6 +57,9 @@ export const useProjectsStore = defineStore("projects", {
       total: 0,
       totalPages: 1,
       listTotalPoPrice: 0,
+      listTotalDpp: 0,
+      listTotalHpp: 0,
+      listTotalMrg: 0,
     } as ProjectsMeta,
     loading: false,
     filters: {
@@ -68,6 +74,9 @@ export const useProjectsStore = defineStore("projects", {
       this.meta = {
         ...meta,
         listTotalPoPrice: Number(meta.listTotalPoPrice) || 0,
+        listTotalDpp: Number(meta.listTotalDpp) || 0,
+        listTotalHpp: Number(meta.listTotalHpp) || 0,
+        listTotalMrg: Number(meta.listTotalMrg) || 0,
       };
     },
 
@@ -95,6 +104,9 @@ export const useProjectsStore = defineStore("projects", {
         total: 0,
         totalPages: 1,
         listTotalPoPrice: 0,
+        listTotalDpp: 0,
+        listTotalHpp: 0,
+        listTotalMrg: 0,
       };
       this.filters.search = "";
       this.filters.status = "";

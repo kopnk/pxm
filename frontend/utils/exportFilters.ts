@@ -2,6 +2,12 @@
 
 export const PROJECT_STATUSES = ["active", "closed", "cancelled"] as const;
 
+export const PROJECT_DETAIL_MATERIAL_NAMES = [
+  "Services",
+  "Supply",
+  "Supply & Services",
+] as const;
+
 export function normalizeProjectStatus(
   s: string,
 ): (typeof PROJECT_STATUSES)[number] | undefined {

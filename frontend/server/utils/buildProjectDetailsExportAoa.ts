@@ -53,7 +53,7 @@ export const PROJECT_DETAILS_EXPORT_HEADERS: string[] = [
   "Qty",
   "Uom",
   "Unit Price",
-  "Total Price",
+  "Total Price (DPP)",
   "PIC",
   "PM",
   "Remaks project",

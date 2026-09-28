@@ -337,7 +337,8 @@ function formatCompactCurrency(value: number) {
     style: "currency",
     currency: "IDR",
     notation: "compact",
-    maximumFractionDigits: 1,
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   }).format(value);
 }
 </script>

@@ -11,7 +11,7 @@ import { projectFinancialsTaxSectionExportQueryZ } from "~/server/validation/pro
 import { exportFileDateLabel } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
 import { buildPagination, buildTotalPages } from "~/lib/pagination";
-import { firstQuery } from "~/server/utils/firstQuery";
+import { firstQuery, matchesMaterialName } from "~/server/utils/firstQuery";
 import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 export async function handleProjectFinancialsTaxSectionExport(
@@ -24,6 +24,7 @@ export async function handleProjectFinancialsTaxSectionExport(
   const raw = getQuery(event);
   const parsed = projectFinancialsTaxSectionExportQueryZ.safeParse({
     search: firstQuery(raw.search),
+    material: firstQuery(raw.material),
     status: firstQuery(raw.status),
     page: firstQuery(raw.page),
     limit: firstQuery(raw.limit),
@@ -42,7 +43,8 @@ export async function handleProjectFinancialsTaxSectionExport(
     status: q.status,
   });
   const filtered = records.filter((record) =>
-    matchesProjectFinancialsTaxSectionKind(kind, record),
+    matchesProjectFinancialsTaxSectionKind(kind, record) &&
+    matchesMaterialName(record.detailMaterialName, q.material),
   );
   const total = filtered.length;
   const { page, limit, offset } = buildPagination(q);

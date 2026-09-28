@@ -11,7 +11,7 @@ import {
 import { projectFinancialsExportQueryZ } from "~/server/validation/project_financials.schema";
 import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
 import { successResponse } from "~/server/utils/response";
-import { firstQuery } from "~/server/utils/firstQuery";
+import { firstQuery, matchesMaterialName } from "~/server/utils/firstQuery";
 import { buildPagination } from "~/lib/pagination";
 import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
@@ -24,7 +24,9 @@ export default defineEventHandler(async (event) => {
   const raw = getQuery(event);
   const parsed = projectFinancialsExportQueryZ.safeParse({
     search: firstQuery(raw.search),
+    material: firstQuery(raw.material),
     status: firstQuery(raw.status),
+    flowDirection: firstQuery(raw.flowDirection),
     projectId: firstQuery(raw.projectId),
     projectDetailId: firstQuery(raw.projectDetailId),
     page: firstQuery(raw.page),
@@ -39,12 +41,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const q = parsed.data;
-  const records = await listProjectFinancialRecords({
+  const records = (await listProjectFinancialRecords({
     projectId: q.projectId,
     projectDetailId: q.projectDetailId,
     search: q.search,
     status: q.status,
-  });
+    flowDirection: q.flowDirection,
+  })).filter((record) => matchesMaterialName(record.detailMaterialName, q.material));
   const mergedAll = mergeProjectFinancialsExportByDetail(
     records.map((row) => ({
       projectDetailId: row.projectDetailId,

@@ -6,6 +6,7 @@ import { normalizeProjectDetailStatus } from "@/utils/exportFilters";
 export type ProjectDetailsExportParams = {
   search: string;
   status: string;
+  material: string;
   projectId?: string;
   cityKabId?: string;
   page?: number;
@@ -25,6 +26,7 @@ export function useProjectDetailsExport() {
         return apiFetch("/api/project_details/export", {
           query: {
             search: s || undefined,
+            material: params.material.trim() || undefined,
             status: normalizeProjectDetailStatus(params.status),
             projectId: pid || undefined,
             cityKabId: cid || undefined,

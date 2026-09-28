@@ -24,6 +24,7 @@ export const useProjectDetailsListPage = () => {
 
   const searchFilter = createStoreFilter(store, "search");
   const statusFilter = createStoreFilter(store, "status");
+  const materialFilter = createStoreFilter(store, "material");
 
   const fetchError = ref<string | null>(null);
   const deletingId = ref<string | null>(null);
@@ -74,7 +75,7 @@ export const useProjectDetailsListPage = () => {
   );
 
   watchStoreFilters(
-    () => [store.filters.status] as const,
+    () => [store.filters.status, store.filters.material] as const,
     () => void fetchData(1).catch(() => {}),
   );
 
@@ -142,6 +143,7 @@ export const useProjectDetailsListPage = () => {
     canDelete,
     searchFilter,
     statusFilter,
+    materialFilter,
     statusOptions,
     fetchError,
     deletingId,

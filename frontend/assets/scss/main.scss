@@ -368,3 +368,9 @@ select.form-select option:checked {
   }
 }
 
+
+.filter-export-divider {
+  border-left: 2px solid var(--bs-orange);
+  flex: 0 0 auto;
+  height: 1.5rem;
+}

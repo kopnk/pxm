@@ -108,12 +108,12 @@ export async function buildPartnerInvoicePdfBuffer(
   const labelW = 84;
   const valueX = ml + labelW;
   doc.font("Helvetica").fontSize(10);
-  doc.text("PO Date", ml, y, { width: labelW });
+  doc.text("WO Date", ml, y, { width: labelW });
   doc.text(`: ${formatEnglishDate(meta.poDatePartner)}`, valueX, y, {
     width: mw - labelW,
   });
   y = doc.y + 2;
-  doc.text("PO Number", ml, y, { width: labelW });
+  doc.text("WO Number", ml, y, { width: labelW });
   doc.text(`: ${meta.poNumberPartner || "—"}`, valueX, y, { width: mw - labelW });
   y = doc.y + 2;
   doc.text("Invoice Number", ml, y, { width: labelW });

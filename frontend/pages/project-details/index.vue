@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProjectDetailsListPage } from "@/composables/useProjectDetailsListPage";
 import { useProjectDetailsExport } from "@/composables/useProjectDetailsExport";
+import { PROJECT_DETAIL_MATERIAL_NAMES } from "@/utils/exportFilters";
 
 const {
   store,
@@ -9,6 +10,7 @@ const {
   canDelete,
   searchFilter,
   statusFilter,
+  materialFilter,
   statusOptions,
   deletingId,
   deleteTarget,
@@ -31,6 +33,7 @@ const onExportExcel = () => {
   void downloadExcel({
     search: store.filters.search,
     status: store.filters.status,
+    material: store.filters.material,
     page: store.page,
     limit: store.limit,
   });
@@ -77,16 +80,26 @@ const onExportExcel = () => {
             {{ option.label }}
           </option>
         </select>
+        <select
+          v-model="materialFilter"
+          class="form-select form-select-sm flex-shrink-0 pd-filter-material"
+        >
+          <option value="">All Material</option>
+          <option v-for="material in PROJECT_DETAIL_MATERIAL_NAMES" :key="material" :value="material">
+            {{ material }}
+          </option>
+        </select>
         <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
-          Total
+        <span class="text-nowrap flex-shrink-0 small text-muted ms-auto">
+          <span title="DPP: Qty × harga satuan">Total</span>
           <span class="fw-bold text-dark ms-1">{{
             store.loading ? "..." : formatCurrency(store.listTotalPrice)
           }}</span>
         </span>
+        <span class="filter-export-divider" aria-hidden="true"></span>
         <button
           type="button"
-          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0 ms-auto"
+          class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0"
           :disabled="exporting"
           aria-label="Download Excel for current search and status filters"
           @click="onExportExcel"
@@ -119,7 +132,7 @@ const onExportExcel = () => {
             </thead>
 
             <tbody>
-              <tr v-if="store.loading">
+              <tr v-if="store.loading && store.items.length === 0">
                 <td colspan="9" class="text-center py-3">Loading...</td>
               </tr>
 
@@ -298,12 +311,16 @@ const onExportExcel = () => {
 .pd-filter-search {
   min-width: 0;
   flex: 1 1 24rem;
-  max-width: 48rem;
 }
 
 .pd-filter-status {
   width: 10.5rem;
   min-width: 10.5rem;
+}
+
+.pd-filter-material {
+  width: 13rem;
+  min-width: 13rem;
 }
 
 /* REMARK:
