@@ -44,7 +44,7 @@ const bulkLoading = ref(false);
 const loadXlsx = () => import("xlsx");
 const canBulkUpload = computed(() => authStore.user?.role?.toLowerCase() === "superadmin");
 const BULK_HEADERS = {
-  in: ["projectId", "projectDetailId", "partnerId", "qtyPartner", "unitPricePartner", "pph", "taxIn", "partnerInstallment", "partnerInstallmentPercent", "poNumberPartner", "poDatePartner", "invoiceNumberPartner", "invoiceDatePartner", "fpNumberPartner", "fpDatePartner", "bastNumber", "bastDate", "status", "stage", "note"],
+  in: ["projectId", "projectDetailId", "siteName", "materialName", "partnerId", "qtyPartner", "unitPricePartner", "pph", "taxIn", "partnerInstallment", "partnerInstallmentPercent", "poNumberPartner", "poDatePartner", "invoiceNumberPartner", "invoiceDatePartner", "fpNumberPartner", "fpDatePartner", "bastNumber", "bastDate", "status", "stage", "note"],
   out: ["projectId", "projectDetailId", "clientId", "qtyClient", "unitPriceClient", "taxOut", "poNumberClient", "poDateClient", "invoiceNumberClient", "invoiceDateClient", "fpNumberClient", "fpDateClient", "bastNumber", "bastDate", "paidNumber", "paidDate", "status", "stage", "note"],
 } as const;
 
@@ -84,10 +84,35 @@ const downloadBulkTemplate = async (flow: "in" | "out") => {
     ]);
     const headers = BULK_HEADERS[flow];
     const partyKey = flow === "in" ? "partnerId" : "clientId";
+    const projectsById = new Map(
+      projectItems.map((item: any) => [String(item.id ?? ""), item]),
+    );
+    const detailReferenceRows = detailItems
+      .map((item: any) => {
+        const project = projectsById.get(String(item.projectId ?? ""));
+        if (!project) return null;
+        return {
+          projectName: project.projectName ?? "",
+          poNumber: project.poNumber ?? "",
+          siteName: item.siteName ?? item.detailsListSite ?? "",
+          materialName: item.materialName ?? "",
+          quantity: item.quantity ?? "",
+          projectId: item.projectId ?? "",
+          projectDetailId: item.id ?? "",
+        };
+      })
+      .filter(Boolean);
+    const sampleDetail = detailReferenceRows[0];
     const row = Object.fromEntries(headers.map((header) => [header, ""]));
     Object.assign(row, {
-      projectId: projectItems[0]?.id ?? "",
-      projectDetailId: detailItems[0]?.id ?? "",
+      projectId: sampleDetail?.projectId ?? "",
+      projectDetailId: sampleDetail?.projectDetailId ?? "",
+      ...(flow === "in"
+        ? {
+            siteName: sampleDetail?.siteName ?? "",
+            materialName: sampleDetail?.materialName ?? "",
+          }
+        : {}),
       [partyKey]: partyItems[0]?.id ?? "",
       ...(flow === "in"
         ? { qtyPartner: 1, unitPricePartner: 0 }
@@ -97,8 +122,11 @@ const downloadBulkTemplate = async (flow: "in" | "out") => {
     });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([row], { header: [...headers] }), flow === "in" ? "partner_in" : "client_out");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(projectItems.map((item: any) => ({ projectName: item.projectName ?? "", poNumber: item.poNumber ?? "", projectId: item.id ?? "" }))), "project_reference");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(detailItems.map((item: any) => ({ siteName: item.siteName ?? item.detailsListSite ?? "", materialName: item.materialName ?? "", projectId: item.projectId ?? "", projectDetailId: item.id ?? "" }))), "detail_reference");
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(detailReferenceRows),
+      "project_detail_reference",
+    );
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(partyItems.map((item: any) => ({ name: item.name ?? "", [partyKey]: item.id ?? "" }))), flow === "in" ? "partner_reference" : "client_reference");
     XLSX.writeFile(workbook, `project-financial-${flow === "in" ? "partner-in" : "client-out"}-template.xlsx`);
   } catch (error: any) {

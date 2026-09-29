@@ -100,19 +100,7 @@ const submit = async () => {
             />
           </div>
 
-          <div class="form-check mb-3">
-            <input
-              id="remember-email"
-              v-model="rememberEmail"
-              class="form-check-input"
-              type="checkbox"
-            />
-            <label class="form-check-label" for="remember-email">
-              Remember Email
-            </label>
-          </div>
-
-          <div class="mb-4 position-relative">
+          <div class="mb-3 position-relative">
             <label class="form-label">Password</label>
             <input
               v-model="password"
@@ -129,6 +117,18 @@ const submit = async () => {
             >
               {{ showPassword ? "Hide" : "Show" }}
             </span>
+          </div>
+
+          <div class="form-check mb-4">
+            <input
+              id="remember-email"
+              v-model="rememberEmail"
+              class="form-check-input"
+              type="checkbox"
+            />
+            <label class="form-check-label" for="remember-email">
+              Remember Email
+            </label>
           </div>
 
           <p v-if="error" class="text-danger small mb-2">
