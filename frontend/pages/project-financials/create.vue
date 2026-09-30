@@ -43,12 +43,18 @@ const bulkFlow = ref<"in" | "out">("in");
 const bulkLoading = ref(false);
 const loadXlsx = () => import("xlsx");
 const canBulkUpload = computed(() => authStore.user?.role?.toLowerCase() === "superadmin");
+const BULK_MAX_ROWS = 50;
 const BULK_HEADERS = {
-  in: ["projectId", "projectDetailId", "siteName", "materialName", "partnerId", "qtyPartner", "unitPricePartner", "pph", "taxIn", "partnerInstallment", "partnerInstallmentPercent", "poNumberPartner", "poDatePartner", "invoiceNumberPartner", "invoiceDatePartner", "fpNumberPartner", "fpDatePartner", "bastNumber", "bastDate", "status", "stage", "note"],
+  in: ["projectId", "projectDetailId", "partnerId", "siteName", "materialName", "qtyPartner", "unitPricePartner", "pph", "taxIn", "partnerInstallment", "partnerInstallmentPercent", "poNumberPartner", "poDatePartner", "invoiceNumberPartner", "invoiceDatePartner", "fpNumberPartner", "fpDatePartner", "bastNumber", "bastDate", "status", "stage", "note"],
   out: ["projectId", "projectDetailId", "clientId", "qtyClient", "unitPriceClient", "taxOut", "poNumberClient", "poDateClient", "invoiceNumberClient", "invoiceDateClient", "fpNumberClient", "fpDateClient", "bastNumber", "bastDate", "paidNumber", "paidDate", "status", "stage", "note"],
 } as const;
 
 const bulkText = (value: unknown) => String(value ?? "").trim() || null;
+const bulkDate = (value: unknown) => {
+  const date = bulkText(value);
+  const match = date?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : date;
+};
 const bulkNumber = (value: unknown) => {
   if (value == null || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -121,7 +127,20 @@ const downloadBulkTemplate = async (flow: "in" | "out") => {
       stage: 1,
     });
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([row], { header: [...headers] }), flow === "in" ? "partner_in" : "client_out");
+    const inputSheet = XLSX.utils.json_to_sheet([row], { header: [...headers] });
+    for (const [column, header] of headers.entries()) {
+      if (!header.toLowerCase().includes("date")) continue;
+      for (let rowIndex = 1; rowIndex <= BULK_MAX_ROWS; rowIndex += 1) {
+        inputSheet[XLSX.utils.encode_cell({ r: rowIndex, c: column })] = {
+          t: "n",
+          z: "dd/mm/yyyy",
+        };
+      }
+    }
+    const inputRange = XLSX.utils.decode_range(inputSheet["!ref"] ?? "A1:A1");
+    inputRange.e.r = Math.max(inputRange.e.r, BULK_MAX_ROWS);
+    inputSheet["!ref"] = XLSX.utils.encode_range(inputRange);
+    XLSX.utils.book_append_sheet(workbook, inputSheet, flow === "in" ? "partner_in" : "client_out");
     XLSX.utils.book_append_sheet(
       workbook,
       XLSX.utils.json_to_sheet(detailReferenceRows),
@@ -149,7 +168,7 @@ const handleBulkUpload = async (event: Event) => {
     const sheet = workbook.Sheets[workbook.SheetNames[0] ?? ""];
     const rows = sheet ? XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" }) : [];
     if (!rows.length) return notify.warning("Excel file is empty");
-    if (rows.length > 25) return notify.warning("Excel file can contain a maximum of 25 rows");
+    if (rows.length > BULK_MAX_ROWS) return notify.warning(`Excel file can contain a maximum of ${BULK_MAX_ROWS} rows`);
     const invalid = rows.findIndex((row) => {
       const isIn = bulkFlow.value === "in";
       const installment = bulkText(row.partnerInstallment);
@@ -160,8 +179,8 @@ const handleBulkUpload = async (event: Event) => {
     const payload = rows.map((row) => ({
       projectId: bulkText(row.projectId), projectDetailId: bulkText(row.projectDetailId), flowDirection: bulkFlow.value,
       status: bulkText(row.status) || "draft", stage: bulkNumber(row.stage) || 1, note: bulkText(row.note),
-      bastNumber: bulkText(row.bastNumber), bastDate: bulkText(row.bastDate),
-      ...(bulkFlow.value === "in" ? { partnerId: bulkText(row.partnerId), qtyPartner: bulkNumber(row.qtyPartner), unitPricePartner: bulkNumber(row.unitPricePartner), pph: bulkNumber(row.pph), taxIn: bulkNumber(row.taxIn), partnerInstallment: bulkText(row.partnerInstallment), partnerInstallmentPercent: bulkNumber(row.partnerInstallmentPercent), poNumberPartner: bulkText(row.poNumberPartner), poDatePartner: bulkText(row.poDatePartner), invoiceNumberPartner: bulkText(row.invoiceNumberPartner), invoiceDatePartner: bulkText(row.invoiceDatePartner), fpNumberPartner: bulkText(row.fpNumberPartner), fpDatePartner: bulkText(row.fpDatePartner) } : { clientId: bulkText(row.clientId), qtyClient: bulkNumber(row.qtyClient), unitPriceClient: bulkNumber(row.unitPriceClient), taxOut: bulkNumber(row.taxOut), poNumberClient: bulkText(row.poNumberClient), poDateClient: bulkText(row.poDateClient), invoiceNumberClient: bulkText(row.invoiceNumberClient), invoiceDateClient: bulkText(row.invoiceDateClient), fpNumberClient: bulkText(row.fpNumberClient), fpDateClient: bulkText(row.fpDateClient), paidNumber: bulkText(row.paidNumber), paidDate: bulkText(row.paidDate) }),
+      bastNumber: bulkText(row.bastNumber), bastDate: bulkDate(row.bastDate),
+      ...(bulkFlow.value === "in" ? { partnerId: bulkText(row.partnerId), qtyPartner: bulkNumber(row.qtyPartner), unitPricePartner: bulkNumber(row.unitPricePartner), pph: bulkNumber(row.pph), taxIn: bulkNumber(row.taxIn), partnerInstallment: bulkText(row.partnerInstallment), partnerInstallmentPercent: bulkNumber(row.partnerInstallmentPercent), poNumberPartner: bulkText(row.poNumberPartner), poDatePartner: bulkDate(row.poDatePartner), invoiceNumberPartner: bulkText(row.invoiceNumberPartner), invoiceDatePartner: bulkDate(row.invoiceDatePartner), fpNumberPartner: bulkText(row.fpNumberPartner), fpDatePartner: bulkDate(row.fpDatePartner) } : { clientId: bulkText(row.clientId), qtyClient: bulkNumber(row.qtyClient), unitPriceClient: bulkNumber(row.unitPriceClient), taxOut: bulkNumber(row.taxOut), poNumberClient: bulkText(row.poNumberClient), poDateClient: bulkDate(row.poDateClient), invoiceNumberClient: bulkText(row.invoiceNumberClient), invoiceDateClient: bulkDate(row.invoiceDateClient), fpNumberClient: bulkText(row.fpNumberClient), fpDateClient: bulkDate(row.fpDateClient), paidNumber: bulkText(row.paidNumber), paidDate: bulkDate(row.paidDate) }),
     }));
     await createProjectFinancialsBulk(payload);
     notify.success(`Success! Project financial bulk created (${payload.length} row).`);

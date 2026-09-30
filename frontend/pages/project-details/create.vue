@@ -20,6 +20,7 @@ const authStore = useAuthStore();
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const bulkLoading = ref(false);
 const loadXlsx = () => import("xlsx");
+const BULK_MAX_ROWS = 50;
 
 const BULK_TEMPLATE_HEADERS = [
   "projectId",
@@ -305,6 +306,11 @@ const handleBulkFileChange = async (event: Event) => {
 
     if (!rows.length) {
       notify.warning("Excel file is empty");
+      return;
+    }
+
+    if (rows.length > BULK_MAX_ROWS) {
+      notify.warning(`Excel file can contain a maximum of ${BULK_MAX_ROWS} rows`);
       return;
     }
 

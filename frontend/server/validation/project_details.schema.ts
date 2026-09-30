@@ -40,7 +40,7 @@ export const createProjectDetailSchema = z.object({
 
 export const createProjectDetailBulkSchema = z.union([
   createProjectDetailSchema,
-  z.array(createProjectDetailSchema),
+  z.array(createProjectDetailSchema).min(1).max(50),
 ]);
 
 export const updateProjectDetailSchema =

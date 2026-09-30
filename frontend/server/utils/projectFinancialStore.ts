@@ -866,8 +866,8 @@ export type CreateProjectFinancialParams = Omit<
 export async function createProjectFinancialRecords(
   paramsList: CreateProjectFinancialParams[],
 ) {
-  if (!paramsList.length || paramsList.length > 25) {
-    throw createValidationError("Bulk creation accepts 1 to 25 rows");
+  if (!paramsList.length || paramsList.length > 50) {
+    throw createValidationError("Bulk creation accepts 1 to 50 rows");
   }
 
   const records = await Promise.all(

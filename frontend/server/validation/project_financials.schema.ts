@@ -133,7 +133,7 @@ export const createProjectFinancialSchema = projectFinancialSchemaBase.superRefi
 
 export const createProjectFinancialBulkSchema = z.union([
   createProjectFinancialSchema,
-  z.array(createProjectFinancialSchema).min(1).max(25),
+  z.array(createProjectFinancialSchema).min(1).max(50),
 ]);
 
 export const updateProjectFinancialSchema =
