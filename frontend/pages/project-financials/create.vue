@@ -51,8 +51,17 @@ const BULK_HEADERS = {
 
 const bulkText = (value: unknown) => String(value ?? "").trim() || null;
 const bulkDate = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86_400_000);
+    if (!Number.isNaN(date.getTime())) return date.toISOString().slice(0, 10);
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+  }
+
   const date = bulkText(value);
-  const match = date?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const match = date?.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s.*)?$/);
   return match ? `${match[3]}-${match[2]}-${match[1]}` : date;
 };
 const bulkNumber = (value: unknown) => {

@@ -80,6 +80,9 @@ const isRowIn = (item: ProjectFinancialItem) => item.flowDirection === "in";
 const rowQty = (item: ProjectFinancialItem) =>
   isRowIn(item) ? item.qtyPartner : item.qtyClient;
 
+const rowUnitPrice = (item: ProjectFinancialItem) =>
+  isRowIn(item) ? item.unitPricePartner : item.unitPriceClient;
+
 const rowDpp = (item: ProjectFinancialItem) =>
   isRowIn(item)
     ? pfListLineBase(item.qtyPartner, item.unitPricePartner)
@@ -336,6 +339,10 @@ const onExportExcel = () => {
                   <td class="fin-col-qty text-end">
                     <div>{{ formatQty(rowQty(item)) }}</div>
                     <div class="data-meta">{{ item.detailUom || "-" }}</div>
+                    <div class="data-meta mt-1">
+                      <span class="label-prefix">Unit Price</span>
+                      {{ formatCurrencyIdr(rowUnitPrice(item)) }}
+                    </div>
                   </td>
                   <td class="fin-col-amount text-end fin-amount-stack">
                     <div>
@@ -545,8 +552,8 @@ const onExportExcel = () => {
   }
 
   .fin-col-qty {
-    width: 72px;
-    min-width: 72px;
+    width: 9rem;
+    min-width: 9rem;
   }
 
   .fin-col-amount {
