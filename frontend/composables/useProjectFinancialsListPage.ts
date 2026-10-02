@@ -7,6 +7,7 @@ import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { formatListTimestamp as formatListTimestampWib } from "@/utils/formatListTimestamp";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { useListRegionFilters } from "@/composables/useListRegionFilters";
 import type { ProjectFinancialItem } from "@/stores/projectFinancials";
 import type { RlsResource } from "~/lib/rls";
 import {
@@ -64,6 +65,8 @@ export const useProjectFinancialsListPage = (options?: {
     get: () => store.filters.material,
     set: (value: string) => store.setFilters({ material: value }),
   });
+  const { regionFilter, subRegionFilter, regions, subRegions } =
+    useListRegionFilters(store);
 
   const fetchError = ref<string | null>(null);
   const deletingId = ref<string | null>(null);
@@ -121,7 +124,7 @@ export const useProjectFinancialsListPage = (options?: {
   );
 
   watchStoreFilters(
-    () => [store.filters.status, store.filters.flowDirection, store.filters.material] as const,
+    () => [store.filters.status, store.filters.flowDirection, store.filters.material, store.filters.regionId, store.filters.subRegionId] as const,
     () => void fetchData(1).catch(() => {}),
   );
 
@@ -233,6 +236,10 @@ export const useProjectFinancialsListPage = (options?: {
     status,
     flowDirection,
     material,
+    regionFilter,
+    subRegionFilter,
+    regions,
+    subRegions,
     showPartnerLineTotal,
     showClientLineTotal,
     statusOptions,

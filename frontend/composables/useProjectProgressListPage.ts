@@ -7,6 +7,7 @@ import { useProgressStageStore } from "@/stores/progressStage";
 import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { useProjectProgressExport } from "@/composables/useProjectProgressExport";
+import { useListRegionFilters } from "@/composables/useListRegionFilters";
 import {
   createStoreFilter,
   useFlatPaginationRange,
@@ -30,6 +31,8 @@ export const useProjectProgressListPage = () => {
   const stageDateTypeFilter = createStoreFilter(store, "stageDateType");
   const statusFilter = createStoreFilter(store, "status");
   const materialFilter = createStoreFilter(store, "material");
+  const { regionFilter, subRegionFilter, regions, subRegions } =
+    useListRegionFilters(store);
 
   const showDeleteModal = ref(false);
   const deleteTargetId = ref<string | null>(null);
@@ -111,6 +114,8 @@ export const useProjectProgressListPage = () => {
         store.filters.stageDateType,
         store.filters.status,
         store.filters.material,
+        store.filters.regionId,
+        store.filters.subRegionId,
       ] as const,
     () => {
       store.setPage(1);
@@ -125,6 +130,8 @@ export const useProjectProgressListPage = () => {
       stageDateType: store.filters.stageDateType,
       status: store.filters.status,
       material: store.filters.material,
+      regionId: store.filters.regionId,
+      subRegionId: store.filters.subRegionId,
       page: store.page,
       limit: store.limit,
     });
@@ -180,6 +187,10 @@ export const useProjectProgressListPage = () => {
     stageDateTypeFilter,
     statusFilter,
     materialFilter,
+    regionFilter,
+    subRegionFilter,
+    regions,
+    subRegions,
     showDeleteModal,
     deleteTargetLabel,
     stageColumns,

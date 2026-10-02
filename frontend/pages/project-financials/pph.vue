@@ -14,6 +14,10 @@ const {
   search,
   status,
   material,
+  regionFilter,
+  subRegionFilter,
+  regions,
+  subRegions,
   statusOptions,
   prevPage,
   nextPage,
@@ -80,6 +84,14 @@ const formatCity = (value: unknown) => {
           class="form-control form-control-sm pf-tax-filter-search"
           placeholder="PO, invoice, partner, project, site…"
         />
+        <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pf-tax-filter-region">
+          <option value="">All Region</option>
+          <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 pf-tax-filter-sub-region" :disabled="!regionFilter">
+          <option value="">All Sub Region</option>
+          <option v-for="subRegion in subRegions" :key="subRegion.id" :value="subRegion.id">{{ subRegion.name }}</option>
+        </select>
         <select
           v-model="status"
           class="form-select form-select-sm flex-shrink-0 pf-tax-filter-status"
@@ -256,6 +268,12 @@ const formatCity = (value: unknown) => {
 .pf-tax-filter-material {
   width: 13rem;
   min-width: 13rem;
+}
+
+.pf-tax-filter-region,
+.pf-tax-filter-sub-region {
+  width: 11rem;
+  min-width: 11rem;
 }
 
 .pf-tax-filter-totals {

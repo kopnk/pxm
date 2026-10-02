@@ -25,6 +25,8 @@ export default defineEventHandler(async (event) => {
     status: firstQuery(raw.status),
     project: firstQuery(raw.project),
     detail: firstQuery(raw.detail),
+    regionId: firstQuery(raw.regionId),
+    subRegionId: firstQuery(raw.subRegionId),
     page: firstQuery(raw.page),
     limit: firstQuery(raw.limit),
   });
@@ -45,6 +47,8 @@ export default defineEventHandler(async (event) => {
     stage: q.stage,
     stageDateType: q.stageDateType,
     status: q.status,
+    regionId: q.regionId,
+    subRegionId: q.subRegionId,
   });
   const filteredRecords = records.filter((record) => matchesMaterialName(record.materialName, q.material));
   const total = filteredRecords.length;

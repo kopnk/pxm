@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import {
   pfAmountFromPercent,
+  pfFormatQtyWithUom,
   pfListLineBase,
   pfParseNum,
 } from "../../lib/projectFinancialsMath";
@@ -10,6 +11,7 @@ export type PartnerInvoicePdfLine = {
   detailSiteName: string | null;
   detailMaterialName: string | null;
   partnerDocumentWorkLocation: string | null;
+  detailUom: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
   partnerInstallment: string | null;
@@ -139,7 +141,7 @@ export async function buildPartnerInvoicePdfBuffer(
   doc.font("Helvetica-Bold").fontSize(9);
   doc.text("#", colNo, y, { width: 21, align: "center" });
   doc.text("Work Description", colDesc, y, { width: colQty - colDesc - 6 });
-  doc.text("Qty", colQty, y, { width: colUnitPrice - colQty - 4, align: "right" });
+  doc.text("Qty / Items", colQty, y, { width: colUnitPrice - colQty - 4, align: "right" });
   doc.text("Unit Price", colUnitPrice, y, {
     width: colTotalPrice - colUnitPrice - 4,
     align: "right",
@@ -156,7 +158,7 @@ export async function buildPartnerInvoicePdfBuffer(
     width: mr - colInvoiceAmount,
     align: "right",
   });
-  y += 11;
+  y += 20;
   doc.moveTo(ml, y).lineTo(mr, y).stroke();
   y += 4;
 
@@ -174,7 +176,7 @@ export async function buildPartnerInvoicePdfBuffer(
       line.detailSiteName ||
       "—";
     const desc = `${workType} ${workLocation}`.trim();
-    const qty = pfParseNum(line.qtyPartner);
+    const qtyLabel = pfFormatQtyWithUom(line.qtyPartner, line.detailUom, "en-US", 2);
     const unitPrice = pfParseNum(line.unitPricePartner);
     const base = pfListLineBase(line.qtyPartner, line.unitPricePartner);
     const installment = installmentForInvoice(line);
@@ -184,7 +186,7 @@ export async function buildPartnerInvoicePdfBuffer(
     doc.text(String(idx + 1), colNo, y, { width: 21, align: "center" });
     doc.text(desc, colDesc, y, { width: colQty - colDesc - 6 });
     doc.text(
-      qty != null ? numberFormat.format(qty) : "—",
+      qtyLabel,
       colQty,
       y,
       { width: colUnitPrice - colQty - 4, align: "right" },
@@ -208,6 +210,7 @@ export async function buildPartnerInvoicePdfBuffer(
 
     const rowH = Math.max(
       doc.heightOfString(desc, { width: colQty - colDesc - 6 }),
+      doc.heightOfString(qtyLabel, { width: colUnitPrice - colQty - 4 }),
       12,
     );
     y += rowH + 3;

@@ -35,6 +35,8 @@ export const queryProjectSchema = z.object({
 export const projectsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   status: z.enum(["active", "closed", "cancelled"]).optional(),
+  regionId: z.string().uuid().optional(),
+  subRegionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });

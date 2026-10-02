@@ -10,6 +10,7 @@ import { successResponse } from "~/server/utils/response";
 import { firstQuery } from "~/server/utils/firstQuery";
 import { projectsExportQueryZ } from "~/server/validation/projects.schema";
 import { listProjectRecords } from "~/server/utils/projectStore";
+import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -19,6 +20,8 @@ export default defineEventHandler(async (event) => {
   const parsed = projectsExportQueryZ.safeParse({
     search: firstQuery(raw.search),
     status: firstQuery(raw.status),
+    regionId: firstQuery(raw.regionId),
+    subRegionId: firstQuery(raw.subRegionId),
     page: firstQuery(raw.page),
     limit: firstQuery(raw.limit),
   });
@@ -35,11 +38,17 @@ export default defineEventHandler(async (event) => {
     search: q.search,
     status: q.status,
   });
+  const projectIds = q.regionId || q.subRegionId
+    ? new Set((await listProjectDetailRecords({ regionId: q.regionId, subRegionId: q.subRegionId })).map((detail) => detail.projectId))
+    : null;
+  const filteredRecords = projectIds
+    ? records.filter((record) => projectIds.has(record.id))
+    : records;
 
-  const total = records.length;
+  const total = filteredRecords.length;
   const { page, limit, offset } = buildPagination(q);
 
-  const exportRows: ProjectListExportRow[] = records
+  const exportRows: ProjectListExportRow[] = filteredRecords
     .slice(offset, offset + limit)
     .map((row) => ({
       projectName: row.projectName,

@@ -65,6 +65,8 @@ export const useProjectsStore = defineStore("projects", {
     filters: {
       search: "",
       status: "",
+      regionId: "",
+      subRegionId: "",
     },
   }),
 
@@ -84,7 +86,7 @@ export const useProjectsStore = defineStore("projects", {
       this.loading = val;
     },
 
-    setFilters(filters: Partial<{ search: string; status: string }>) {
+    setFilters(filters: Partial<{ search: string; status: string; regionId: string; subRegionId: string }>) {
       this.filters = {
         ...this.filters,
         ...filters,
@@ -110,6 +112,8 @@ export const useProjectsStore = defineStore("projects", {
       };
       this.filters.search = "";
       this.filters.status = "";
+      this.filters.regionId = "";
+      this.filters.subRegionId = "";
     },
   },
 });

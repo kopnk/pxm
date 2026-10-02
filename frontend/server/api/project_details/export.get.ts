@@ -22,6 +22,8 @@ export default defineEventHandler(async (event) => {
     projectId: firstQuery(raw.projectId),
     status: firstQuery(raw.status),
     cityKabId: firstQuery(raw.cityKabId),
+    regionId: firstQuery(raw.regionId),
+    subRegionId: firstQuery(raw.subRegionId),
     page: firstQuery(raw.page),
     limit: firstQuery(raw.limit),
   });
@@ -39,6 +41,8 @@ export default defineEventHandler(async (event) => {
     projectId: q.projectId,
     status: q.status,
     cityKabId: q.cityKabId,
+    regionId: q.regionId,
+    subRegionId: q.subRegionId,
   });
 
   const filteredRecords = records.filter((record) => matchesMaterialName(record.materialName, q.material));

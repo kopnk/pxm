@@ -131,6 +131,8 @@ export type ProjectFinancialListItem = ProjectFinancialRecord & {
   regionName: string | null;
   subRegionName: string | null;
   cityKabName: string | null;
+  subRegionId: string | null;
+  regionId: string | null;
   clientName: string | null;
   clientNpwp: string | null;
   clientBankName: string | null;
@@ -399,6 +401,8 @@ function toFilterRecord(record: ProjectFinancialListItem): ProjectFinancialsFilt
     invoiceDateClient: record.invoiceDateClient,
     fpDatePartner: record.fpDatePartner,
     fpDateClient: record.fpDateClient,
+    regionId: record.regionId,
+    subRegionId: record.subRegionId,
   };
 }
 
@@ -590,6 +594,8 @@ async function enrichProjectFinancialList(
       regionName: detail?.regionName ?? null,
       subRegionName: detail?.subRegionName ?? null,
       cityKabName: detail?.cityKabName ?? null,
+      subRegionId: detail?.subRegionId ?? null,
+      regionId: detail?.regionId ?? null,
       clientName: client?.name ?? null,
       clientNpwp: client?.npwp ?? null,
       clientBankName: client?.bankName ?? null,

@@ -69,6 +69,8 @@ export type ProjectProgressListItem = ProjectProgressRecord & {
   cityKabName: string | null;
   subRegionName: string | null;
   regionName: string | null;
+  subRegionId: string | null;
+  regionId: string | null;
   remarksProjectsDetails: string | null;
   remarksDelay: string | null;
   remarksCancel: string | null;
@@ -355,6 +357,8 @@ async function enrichProjectProgressList(
       cityKabName: detail?.cityKabName ?? null,
       subRegionName: detail?.subRegionName ?? null,
       regionName: detail?.regionName ?? null,
+      subRegionId: detail?.subRegionId ?? null,
+      regionId: detail?.regionId ?? null,
       remarksProjectsDetails: detail?.remarksProjectsDetails ?? null,
       remarksDelay: detail?.remarksDelay ?? null,
       remarksCancel: detail?.remarksCancel ?? null,

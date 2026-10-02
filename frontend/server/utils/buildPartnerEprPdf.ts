@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import {
   pfAmountFromPercent,
+  pfFormatQtyWithUom,
   pfListLineBase,
   pfParseNum,
   pfPartnerTaxRupiahForDisplay,
@@ -15,6 +16,7 @@ export type PartnerEprPdfLine = {
   detailSiteName: string | null;
   partnerDocumentWorkLocation: string | null;
   detailMaterialName: string | null;
+  detailUom: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
   partnerInstallment: string | null;
@@ -33,7 +35,7 @@ type GroupedInvoice = {
   invoiceNumber: string;
   projectNames: string[];
   materialNames: string[];
-  sites: string[];
+  qtyItems: string[];
   baseAmount: number;
   installments: string[];
   installmentAmount: number;
@@ -99,11 +101,12 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
     ]
       .filter(Boolean)
       .join(" - ");
+    const qtyItem = `${site || "—"} ${pfFormatQtyWithUom(row.qtyPartner, row.detailUom, "id-ID", 2)}`;
 
     if (existing) {
       appendUnique(existing.projectNames, row.projectName);
       appendUnique(existing.materialNames, row.detailMaterialName);
-      appendUnique(existing.sites, site);
+      appendUnique(existing.qtyItems, qtyItem);
       appendUnique(existing.installments, installmentLabel);
       existing.baseAmount += base;
       existing.installmentAmount += installmentAmount;
@@ -119,7 +122,7 @@ function groupedByInvoice(lines: PartnerEprPdfLine[]): GroupedInvoice[] {
       materialNames: row.detailMaterialName?.trim()
         ? [row.detailMaterialName.trim()]
         : [],
-      sites: site ? [site] : [],
+      qtyItems: [qtyItem],
       baseAmount: base,
       installments: [installmentLabel],
       installmentAmount,
@@ -272,7 +275,7 @@ export async function buildPartnerEprPdfBuffer(
       `Project: ${g.projectNames.join("; ") || "-"} | Material: ${
         g.materialNames.join("; ") || "-"
       }`,
-      g.sites.join("; ") || "-",
+      g.qtyItems.join("; ") || "-",
     ].join("\n");
     drawAmountRow(description, g.baseAmount, false, 8.5);
     grandBase += g.baseAmount;

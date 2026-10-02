@@ -4,6 +4,7 @@ import { requireRole } from "~/server/utils/authorize";
 import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { toLocalTime } from "~/server/utils/datetime";
 import { listProjectRecords } from "~/server/utils/projectStore";
+import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -15,24 +16,32 @@ export default defineEventHandler(async (event) => {
     search: query.search ? String(query.search) : undefined,
     status: query.status ? String(query.status) : undefined,
   });
-  const total = records.length;
+  const regionId = query.regionId ? String(query.regionId) : undefined;
+  const subRegionId = query.subRegionId ? String(query.subRegionId) : undefined;
+  const projectIds = regionId || subRegionId
+    ? new Set((await listProjectDetailRecords({ regionId, subRegionId })).map((detail) => detail.projectId))
+    : null;
+  const filteredRecords = projectIds
+    ? records.filter((record) => projectIds.has(record.id))
+    : records;
+  const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);
-  const listTotalPoPrice = records.reduce(
+  const listTotalPoPrice = filteredRecords.reduce(
     (sum, record) => sum + Number(record.subTotal || 0),
     0,
   );
-  const listTotalDpp = records.reduce(
+  const listTotalDpp = filteredRecords.reduce(
     (sum, record) => sum + Number(record.dpp || 0),
     0,
   );
-  const listTotalHpp = records.reduce(
+  const listTotalHpp = filteredRecords.reduce(
     (sum, record) => sum + Number(record.hpp || 0),
     0,
   );
   const listTotalMrg = listTotalDpp > 0
     ? ((listTotalDpp - listTotalHpp) / listTotalDpp) * 100
     : 0;
-  const items = records.slice(offset, offset + limit).map((record) => ({
+  const items = filteredRecords.slice(offset, offset + limit).map((record) => ({
     ...record,
     createdAt: toLocalTime(record.createdAt),
     updatedAt: toLocalTime(record.updatedAt),

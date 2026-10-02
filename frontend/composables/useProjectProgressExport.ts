@@ -10,6 +10,8 @@ export type ProjectProgressExportParams = {
   material: string;
   project?: string;
   detail?: string;
+  regionId?: string;
+  subRegionId?: string;
   page?: number;
   limit?: number;
 };
@@ -39,6 +41,8 @@ export function useProjectProgressExport() {
             status: st || undefined,
             project: proj || undefined,
             detail: det || undefined,
+            regionId: (params.regionId ?? store.filters.regionId) || undefined,
+            subRegionId: (params.subRegionId ?? store.filters.subRegionId) || undefined,
             page: params.page ?? store.page,
             limit: params.limit ?? store.limit,
           },

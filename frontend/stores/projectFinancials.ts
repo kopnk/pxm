@@ -124,6 +124,8 @@ export interface ProjectFinancialsState {
     /** "" = all flow, "in" | "out" = filtered */
     flowDirection: string;
     material: string;
+    regionId: string;
+    subRegionId: string;
   };
 }
 
@@ -151,6 +153,8 @@ export const useProjectFinancialsStore = defineStore(
         status: "",
         flowDirection: "in",
         material: "",
+        regionId: "",
+        subRegionId: "",
       },
     }),
 
@@ -209,6 +213,8 @@ export const useProjectFinancialsStore = defineStore(
           status: string;
           flowDirection: string;
           material: string;
+          regionId: string;
+          subRegionId: string;
         }>,
       ) {
         this.filters = {
@@ -238,6 +244,8 @@ export const useProjectFinancialsStore = defineStore(
           status: "",
           flowDirection: "in",
           material: "",
+          regionId: "",
+          subRegionId: "",
         };
       },
     },

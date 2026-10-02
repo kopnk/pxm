@@ -29,6 +29,8 @@ export default defineEventHandler(async (event) => {
     flowDirection: firstQuery(raw.flowDirection),
     projectId: firstQuery(raw.projectId),
     projectDetailId: firstQuery(raw.projectDetailId),
+    regionId: firstQuery(raw.regionId),
+    subRegionId: firstQuery(raw.subRegionId),
     page: firstQuery(raw.page),
     limit: firstQuery(raw.limit),
   });
@@ -47,6 +49,8 @@ export default defineEventHandler(async (event) => {
     search: q.search,
     status: q.status,
     flowDirection: q.flowDirection,
+    regionId: q.regionId,
+    subRegionId: q.subRegionId,
   })).filter((record) => matchesMaterialName(record.detailMaterialName, q.material));
   const mergedAll = mergeProjectFinancialsExportByDetail(
     records.map((row) => ({

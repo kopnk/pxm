@@ -6,6 +6,7 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { useListRegionFilters } from "@/composables/useListRegionFilters";
 import {
   createStoreFilter,
   useMetaPaginationRange,
@@ -28,6 +29,8 @@ export const useProjectsListPage = () => {
 
   const searchFilter = createStoreFilter(store, "search");
   const statusFilter = createStoreFilter(store, "status");
+  const { regionFilter, subRegionFilter, regions, subRegions } =
+    useListRegionFilters(store);
 
   const deleteTargetProject = computed(() =>
     store.items.find((item) => item.id === deleteTargetId.value),
@@ -63,7 +66,7 @@ export const useProjectsListPage = () => {
   );
 
   watchStoreFilters(
-    () => [store.filters.status] as const,
+    () => [store.filters.status, store.filters.regionId, store.filters.subRegionId] as const,
     () => void fetchProjects(1).catch(() => {}),
   );
 
@@ -144,6 +147,10 @@ export const useProjectsListPage = () => {
     deleteTargetProject,
     searchFilter,
     statusFilter,
+    regionFilter,
+    subRegionFilter,
+    regions,
+    subRegions,
     showingStart,
     showingEnd,
     openDeleteModal,

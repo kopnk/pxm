@@ -6,6 +6,7 @@ import { useListPagePermissions } from "@/composables/useListPagePermissions";
 import { useNotify } from "@/composables/useNotify";
 import { toastSuccessDeleted } from "@/composables/useToastMessages";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { useListRegionFilters } from "@/composables/useListRegionFilters";
 import { detailStatusBadgeClass } from "~/lib/detailStatus";
 import {
   createStoreFilter,
@@ -25,6 +26,8 @@ export const useProjectDetailsListPage = () => {
   const searchFilter = createStoreFilter(store, "search");
   const statusFilter = createStoreFilter(store, "status");
   const materialFilter = createStoreFilter(store, "material");
+  const { regionFilter, subRegionFilter, regions, subRegions } =
+    useListRegionFilters(store);
 
   const fetchError = ref<string | null>(null);
   const deletingId = ref<string | null>(null);
@@ -75,7 +78,7 @@ export const useProjectDetailsListPage = () => {
   );
 
   watchStoreFilters(
-    () => [store.filters.status, store.filters.material] as const,
+    () => [store.filters.status, store.filters.material, store.filters.regionId, store.filters.subRegionId] as const,
     () => void fetchData(1).catch(() => {}),
   );
 
@@ -144,6 +147,10 @@ export const useProjectDetailsListPage = () => {
     searchFilter,
     statusFilter,
     materialFilter,
+    regionFilter,
+    subRegionFilter,
+    regions,
+    subRegions,
     statusOptions,
     fetchError,
     deletingId,

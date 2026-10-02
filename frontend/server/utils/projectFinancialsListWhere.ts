@@ -17,6 +17,8 @@ export type ProjectFinancialsListFilterInput = {
   status?: string;
   flowDirection?: string;
   taxSection?: "taxIn" | "taxOut" | "pph";
+  regionId?: string;
+  subRegionId?: string;
 };
 
 export type ProjectFinancialsFilterRecord = {
@@ -67,6 +69,8 @@ export type ProjectFinancialsFilterRecord = {
   invoiceDateClient?: string | null;
   fpDatePartner?: string | null;
   fpDateClient?: string | null;
+  regionId?: string | null;
+  subRegionId?: string | null;
 };
 
 function buildFinancialSearchHaystack(record: ProjectFinancialsFilterRecord) {
@@ -132,6 +136,9 @@ export function matchesProjectFinancialsListFilters(
   if (input.projectDetailId && record.projectDetailId !== input.projectDetailId) {
     return false;
   }
+
+  if (input.regionId && record.regionId !== input.regionId) return false;
+  if (input.subRegionId && record.subRegionId !== input.subRegionId) return false;
 
   if (
     input.poNumberPartner &&

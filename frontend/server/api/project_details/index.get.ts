@@ -17,6 +17,8 @@ export default defineEventHandler(async (event) => {
     projectId: query.projectId ? String(query.projectId) : undefined,
     status: query.status ? String(query.status) : undefined,
     cityKabId: query.cityKabId ? String(query.cityKabId) : undefined,
+    regionId: query.regionId ? String(query.regionId) : undefined,
+    subRegionId: query.subRegionId ? String(query.subRegionId) : undefined,
   });
 
   const filteredRecords = records.filter((record) =>

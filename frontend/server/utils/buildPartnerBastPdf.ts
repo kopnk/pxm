@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { pfFormatQtyWithUom } from "~/lib/projectFinancialsMath";
 
 export type PartnerBastPdfLine = {
   siteId: string | null;
@@ -6,6 +7,7 @@ export type PartnerBastPdfLine = {
   workType: string | null;
   partnerDocumentWorkLocation: string | null;
   qtyPartner: unknown;
+  uom: string | null;
 };
 
 export type PartnerBastPdfMeta = {
@@ -29,13 +31,6 @@ const SIGNATURE_NAME_TO_LINE_GAP = 1.5;
 const SIGNATURE_LINE_TO_TITLE_GAP = 3;
 const SIGNATURE_SEPARATOR_COLOR = "#7A7A7A";
 const SIGNATURE_SEPARATOR_WIDTH = 0.45;
-const qtyFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
-
-function formatQty(value: unknown) {
-  const qty = Number(value);
-  return Number.isFinite(qty) ? qtyFormat.format(qty) : "—";
-}
-
 function pageBounds(doc: InstanceType<typeof PDFDocument>) {
   const ml = doc.page.margins.left;
   const mr = doc.page.width - doc.page.margins.right;
@@ -196,7 +191,7 @@ export async function buildPartnerBastPdfBuffer(
     doc.text(String(idx + 1), colNo, y, { width: 28 });
     doc.text(workType, colType, y, { width: 180 });
     doc.text(location, colLoc, y, { width: colQty - colLoc - 8 });
-    doc.text(formatQty(line.qtyPartner), colQty, y, {
+    doc.text(pfFormatQtyWithUom(line.qtyPartner, line.uom), colQty, y, {
       width: mr - colQty,
       align: "right",
     });

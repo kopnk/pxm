@@ -11,6 +11,8 @@ export type ProjectProgressFilterRecord = {
   neId?: string | null;
   materialId?: string | null;
   detailStatus?: string | null;
+  regionId?: string | null;
+  subRegionId?: string | null;
   stageData?: Record<
     string,
     {
@@ -29,6 +31,8 @@ export type ProjectProgressListFilterInput = {
   /** Hanya baris yang punya plan / actual date terisi di stage terpilih */
   stageDateType?: StageDateTypeFilter;
   status?: string;
+  regionId?: string;
+  subRegionId?: string;
 };
 
 const detailAllowed = ["active", "delay", "closed", "cancelled"] as const;
@@ -122,6 +126,11 @@ export function matchesProjectProgressListFilters(
   const stageCode = input.stage?.trim();
   const stageDateType = normalizeStageDateType(input.stageDateType);
   const statusFilter = input.status?.trim();
+  const regionId = input.regionId?.trim();
+  const subRegionId = input.subRegionId?.trim();
+
+  if (regionId && record.regionId !== regionId) return false;
+  if (subRegionId && record.subRegionId !== subRegionId) return false;
 
   if (globalSearch) {
     if (!buildProgressSearchHaystack(record).includes(globalSearch.toLowerCase())) {

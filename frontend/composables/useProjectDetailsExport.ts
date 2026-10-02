@@ -9,6 +9,8 @@ export type ProjectDetailsExportParams = {
   material: string;
   projectId?: string;
   cityKabId?: string;
+  regionId?: string;
+  subRegionId?: string;
   page?: number;
   limit?: number;
 };
@@ -30,6 +32,8 @@ export function useProjectDetailsExport() {
             status: normalizeProjectDetailStatus(params.status),
             projectId: pid || undefined,
             cityKabId: cid || undefined,
+            regionId: (params.regionId ?? store.filters.regionId) || undefined,
+            subRegionId: (params.subRegionId ?? store.filters.subRegionId) || undefined,
             page: params.page ?? store.page,
             limit: params.limit ?? store.limit,
           },

@@ -147,6 +147,8 @@ export const projectFinancialsExportQueryZ = z.object({
   flowDirection: z.enum(["in", "out"]).optional(),
   projectId: z.string().uuid().optional(),
   projectDetailId: z.string().uuid().optional(),
+  regionId: z.string().uuid().optional(),
+  subRegionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });
@@ -157,6 +159,8 @@ export const projectFinancialsTaxSectionExportQueryZ =
     search: true,
     material: true,
     status: true,
+    regionId: true,
+    subRegionId: true,
     page: true,
     limit: true,
   });

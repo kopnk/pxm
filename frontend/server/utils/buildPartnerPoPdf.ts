@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import {
   pfListLineBase,
+  pfFormatQtyWithUom,
   pfParseNum,
 } from "../../lib/projectFinancialsMath";
 import { readKopindosatLogoBuffer } from "./pdfBranding";
@@ -11,6 +12,7 @@ export type PartnerPoPdfLine = {
   detailSiteName: string | null;
   detailMaterialName: string | null;
   partnerDocumentWorkLocation: string | null;
+  detailUom: string | null;
   qtyPartner: unknown;
   unitPricePartner: unknown;
   pph: unknown;
@@ -123,18 +125,6 @@ const amount = (n: number | null): string =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(n ?? 0);
-
-function fmtQty(v: unknown): string {
-  const num = Number(v ?? 0);
-
-  if (!Number.isFinite(num)) {
-    return "—";
-  }
-
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 4,
-  }).format(num);
-}
 
 /**
  * ============================================================
@@ -317,7 +307,7 @@ function renderTableHeader(
 
 
   doc.text(
-    "Qty",
+    "Qty / Items",
     T.c4,
     y,
     {
@@ -350,7 +340,7 @@ function renderTableHeader(
     .font("Helvetica")
     .fontSize(8);
 
-  return y + 12;
+  return y + 20;
 }
 
 /**
@@ -1089,6 +1079,11 @@ export async function buildPartnerPoPdfBuffer(
       const material =
         row.detailMaterialName?.trim() ||
         "—";
+      const qtyLabel =
+        pfFormatQtyWithUom(
+          row.qtyPartner,
+          row.detailUom,
+        );
 
       /**
        * Calculate row height.
@@ -1123,11 +1118,22 @@ export async function buildPartnerPoPdfBuffer(
           },
         );
 
+      const qtyHeight =
+        doc.heightOfString(
+          qtyLabel,
+          {
+            width:
+              T.wQty,
+            lineGap: 1,
+          },
+        );
+
       const rowHeight =
         Math.max(
           siteIdHeight,
           siteNameHeight,
           materialHeight,
+          qtyHeight,
           11,
         );
 
@@ -1206,9 +1212,7 @@ export async function buildPartnerPoPdfBuffer(
        * Qty.
        */
       doc.text(
-        fmtQty(
-          row.qtyPartner,
-        ),
+        qtyLabel,
         T.c4,
         y,
         {

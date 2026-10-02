@@ -11,6 +11,8 @@ export function useProjectFinancialsExport() {
     status?: string;
     material?: string;
     flowDirection?: "in" | "out" | "";
+    regionId?: string;
+    subRegionId?: string;
     page?: number;
     limit?: number;
   }) =>
@@ -25,6 +27,8 @@ export function useProjectFinancialsExport() {
             status: st || undefined,
             material: material || undefined,
             flowDirection: params?.flowDirection || undefined,
+            regionId: (params?.regionId ?? store.filters.regionId) || undefined,
+            subRegionId: (params?.subRegionId ?? store.filters.subRegionId) || undefined,
             page: params?.page ?? store.page,
             limit: params?.limit ?? store.limit,
           },

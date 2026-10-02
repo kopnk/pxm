@@ -68,6 +68,8 @@ export interface ProjectProgressState {
     stageDateType: "" | "planned" | "actual";
     status: string;
     material: string;
+    regionId: string;
+    subRegionId: string;
   };
 }
 
@@ -88,6 +90,8 @@ export const useProjectProgressStore = defineStore("projectProgress", {
       stageDateType: "",
       status: "",
       material: "",
+      regionId: "",
+      subRegionId: "",
     },
   }),
 
@@ -140,6 +144,8 @@ export const useProjectProgressStore = defineStore("projectProgress", {
         stageDateType: "" | "planned" | "actual";
         status: string;
         material: string;
+        regionId: string;
+        subRegionId: string;
       }>,
     ) {
       this.filters = { ...this.filters, ...filters };

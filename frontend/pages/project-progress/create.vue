@@ -288,8 +288,8 @@ onMounted(async () => {
 
     <FormSection>
       <div class="col-md-12">
-        <label class="form-label">Project Detail</label>
-        <FormScrollableSelect v-model="form.projectDetailId" :options="detailSelectOptions" placeholder="-- Select Detail --" :disabled="!form.projectId" name="projectDetailId" required />
+        <label class="form-label">Project Details</label>
+        <FormScrollableSelect v-model="form.projectDetailId" :options="detailSelectOptions" placeholder="-- Select Details --" :disabled="!form.projectId" name="projectDetailId" required />
         <small
           v-if="form.projectId && !availableProjectDetails.length"
           class="text-body-secondary"

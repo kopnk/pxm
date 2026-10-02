@@ -22,6 +22,10 @@ const {
   status,
   flowDirection,
   material,
+  regionFilter,
+  subRegionFilter,
+  regions,
+  subRegions,
   statusOptions,
   flowDirectionOptions,
   showPartnerLineTotal,
@@ -200,6 +204,14 @@ const onExportExcel = () => {
           class="form-control form-control-sm flex-grow-1 flex-shrink-1 pf-filter-search"
           placeholder="WO, project, site, partner, client, invoice, WO partner/client..."
         />
+        <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pf-filter-region">
+          <option value="">All Region</option>
+          <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 pf-filter-sub-region" :disabled="!regionFilter">
+          <option value="">All Sub Region</option>
+          <option v-for="subRegion in subRegions" :key="subRegion.id" :value="subRegion.id">{{ subRegion.name }}</option>
+        </select>
         <select
           v-model="status"
           class="form-select form-select-sm flex-shrink-0 pf-filter-status"
@@ -658,5 +670,11 @@ const onExportExcel = () => {
 .pf-filter-material {
   width: 13rem;
   min-width: 13rem;
+}
+
+.pf-filter-region,
+.pf-filter-sub-region {
+  width: 11rem;
+  min-width: 11rem;
 }
 </style>

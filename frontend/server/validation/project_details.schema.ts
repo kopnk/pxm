@@ -58,6 +58,8 @@ export const projectDetailsExportQueryZ = z.object({
     .enum(["active", "delay", "closed", "cancelled"])
     .optional(),
   cityKabId: z.string().uuid().optional(),
+  regionId: z.string().uuid().optional(),
+  subRegionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });

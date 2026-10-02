@@ -33,6 +33,8 @@ export default defineEventHandler(async (event) => {
       query.taxSection === "pph"
         ? query.taxSection
         : undefined,
+    regionId: query.regionId ? String(query.regionId) : undefined,
+    subRegionId: query.subRegionId ? String(query.subRegionId) : undefined,
   });
   const filteredRecords = records.filter((record) =>
     matchesMaterialName(record.detailMaterialName, query.material ? String(query.material) : undefined),

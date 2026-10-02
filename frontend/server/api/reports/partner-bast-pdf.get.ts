@@ -89,6 +89,7 @@ export default defineEventHandler(async (event) => {
       workType: r.detailMaterialName,
       partnerDocumentWorkLocation: r.partnerDocumentWorkLocation,
       qtyPartner: r.qtyPartner,
+      uom: r.detailUom,
     })),
     {
       bastNumber: bast,

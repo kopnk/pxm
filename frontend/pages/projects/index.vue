@@ -15,6 +15,10 @@ const {
   deleteTargetProject,
   searchFilter,
   statusFilter,
+  regionFilter,
+  subRegionFilter,
+  regions,
+  subRegions,
   showingStart,
   showingEnd,
   openDeleteModal,
@@ -63,6 +67,14 @@ const onExportExcel = () => {
           class="form-control form-control-sm projects-filter-search"
           placeholder="Project, PO, PR/SC, client..."
         />
+        <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-region">
+          <option value="">All Region</option>
+          <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-sub-region" :disabled="!regionFilter">
+          <option value="">All Sub Region</option>
+          <option v-for="subRegion in subRegions" :key="subRegion.id" :value="subRegion.id">{{ subRegion.name }}</option>
+        </select>
         <select
           v-model="statusFilter"
           class="form-select form-select-sm flex-shrink-0 projects-filter-status"
@@ -364,8 +376,13 @@ const onExportExcel = () => {
 
 .projects-filter-search {
   min-width: 0;
-  flex: 0 1 32rem;
-  max-width: 32rem;
+  flex: 1 1 34rem;
+}
+
+.projects-filter-region,
+.projects-filter-sub-region {
+  width: 11rem;
+  min-width: 11rem;
 }
 
 .projects-filter-status {

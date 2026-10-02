@@ -52,6 +52,8 @@ export const projectProgressExportQueryZ = z.object({
   status: z.string().max(120).optional(),
   project: z.string().max(200).optional(),
   detail: z.string().max(200).optional(),
+  regionId: z.string().uuid().optional(),
+  subRegionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(500).optional().default(DEFAULT_PAGE_LIMIT),
 });

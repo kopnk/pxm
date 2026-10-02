@@ -38,6 +38,8 @@ export default defineEventHandler(async (event) => {
         ? stageDateType
         : undefined,
     status: statusFilter || undefined,
+    regionId: query.regionId?.toString().trim() || undefined,
+    subRegionId: query.subRegionId?.toString().trim() || undefined,
   });
 
   const filteredRecords = records.filter((record) =>

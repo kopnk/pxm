@@ -26,6 +26,8 @@ export async function handleProjectFinancialsTaxSectionExport(
     search: firstQuery(raw.search),
     material: firstQuery(raw.material),
     status: firstQuery(raw.status),
+    regionId: firstQuery(raw.regionId),
+    subRegionId: firstQuery(raw.subRegionId),
     page: firstQuery(raw.page),
     limit: firstQuery(raw.limit),
   });
@@ -41,6 +43,8 @@ export async function handleProjectFinancialsTaxSectionExport(
   const records = await listProjectFinancialRecords({
     search: q.search,
     status: q.status,
+    regionId: q.regionId,
+    subRegionId: q.subRegionId,
   });
   const filtered = records.filter((record) =>
     matchesProjectFinancialsTaxSectionKind(kind, record) &&

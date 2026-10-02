@@ -21,6 +21,21 @@ export function pfParseNum(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Tampilan Qty untuk dokumen, dengan UOM opsional tanpa mengubah nilai sumber. */
+export function pfFormatQtyWithUom(
+  value: unknown,
+  uom: string | null | undefined,
+  locale = "en-US",
+  maximumFractionDigits = 4,
+): string {
+  const qty = pfParseNum(value);
+  const qtyLabel = qty === null
+    ? "—"
+    : new Intl.NumberFormat(locale, { maximumFractionDigits }).format(qty);
+  const unit = uom?.trim();
+  return unit ? `${qtyLabel} ${unit}` : qtyLabel;
+}
+
 /**
  * Qty × price — dasar pajak & total baris (sama dengan `pfPartnerLineTotal` / `pfClientLineTotal`).
  */

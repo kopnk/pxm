@@ -23,6 +23,8 @@ export type ProjectDetailsFilterRecord = {
   taxOut: number | null;
   projectId: string | null;
   cityKabId: string | null;
+  regionId?: string | null;
+  subRegionId?: string | null;
 };
 
 export type ProjectDetailsListFilterInput = {
@@ -30,6 +32,8 @@ export type ProjectDetailsListFilterInput = {
   projectId?: string;
   status?: string;
   cityKabId?: string;
+  regionId?: string;
+  subRegionId?: string;
 };
 
 function buildProjectDetailsSearchHaystack(record: ProjectDetailsFilterRecord) {
@@ -69,6 +73,8 @@ export function matchesProjectDetailsListFilters(
   const projectId = input.projectId?.trim();
   const status = input.status?.trim().toLowerCase();
   const cityKabId = input.cityKabId?.trim();
+  const regionId = input.regionId?.trim();
+  const subRegionId = input.subRegionId?.trim();
 
   if (projectId && record.projectId !== projectId) {
     return false;
@@ -81,6 +87,10 @@ export function matchesProjectDetailsListFilters(
   if (cityKabId && record.cityKabId !== cityKabId) {
     return false;
   }
+
+  if (regionId && record.regionId !== regionId) return false;
+
+  if (subRegionId && record.subRegionId !== subRegionId) return false;
 
   if (search && !buildProjectDetailsSearchHaystack(record).includes(search)) {
     return false;
