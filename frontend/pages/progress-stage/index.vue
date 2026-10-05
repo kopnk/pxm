@@ -148,7 +148,7 @@ const nextPage = () => {
 
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
-        <table class="table table-striped table-users mb-0 align-middle">
+        <table class="table table-striped table-users mb-0 align-middle pwa-card-table pwa-progress-stage-table">
           <thead class="table-light">
             <tr>
               <th width="50">No</th>
@@ -163,7 +163,7 @@ const nextPage = () => {
             <tr v-if="store.loading">
               <td colspan="6" class="text-center py-4 text-muted">Loading...</td>
             </tr>
-            <tr v-for="(item, index) in store.items" :key="item.id">
+            <tr v-for="(item, index) in store.items" :key="item.id" class="pwa-card-row">
               <td class="text-center fw-semibold">
                 {{ (store.page - 1) * store.limit + index + 1 }}
               </td>

@@ -239,6 +239,18 @@ watch(
   },
 );
 
+watch(
+  () => form.clientInstallment,
+  (installment, previousInstallment) => {
+    if (pageLoading.value) return;
+    if (!installment) {
+      form.clientInstallmentPercent = 100;
+    } else if (!previousInstallment) {
+      form.clientInstallmentPercent = null;
+    }
+  },
+);
+
 onMounted(async () => {
   if (!id) {
     await router.replace("/project-financials");
@@ -274,6 +286,15 @@ const handleSubmit = async () => {
     isInFlow.value &&
     form.partnerInstallment &&
     !(Number(form.partnerInstallmentPercent) > 0)
+  ) {
+    throw new Error(
+      "Installment Percentage (%) is required and must be greater than 0 when an installment is selected",
+    );
+  }
+  if (
+    isOutFlow.value &&
+    form.clientInstallment &&
+    !(Number(form.clientInstallmentPercent) > 0)
   ) {
     throw new Error(
       "Installment Percentage (%) is required and must be greater than 0 when an installment is selected",
@@ -643,6 +664,20 @@ const handleSubmit = async () => {
         <div class="number-helper number-helper-muted">
           {{ fmtMoney(form.taxOutPercent) }}%
         </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Installment</label>
+        <select v-model="form.clientInstallment" class="form-select">
+          <option value="">Select Installment</option>
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="Final">Final</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Installment Percentage (%)</label>
+        <DecimalInput v-model="form.clientInstallmentPercent" :min="0" :max="100" />
       </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">

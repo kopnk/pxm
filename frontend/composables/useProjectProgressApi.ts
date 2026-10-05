@@ -27,6 +27,7 @@ export const useProjectProgressApi = () => {
           limit: params?.limit ?? store.limit,
           search: store.filters.search || undefined,
           material: store.filters.material || undefined,
+          installment: store.filters.installment || undefined,
           regionId: store.filters.regionId || undefined,
           subRegionId: store.filters.subRegionId || undefined,
           project: params?.project,

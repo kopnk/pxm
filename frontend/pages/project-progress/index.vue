@@ -28,6 +28,7 @@ const {
   stageDateTypeFilter,
   statusFilter,
   materialFilter,
+  installmentFilter,
   regionFilter,
   subRegionFilter,
   regions,
@@ -66,18 +67,24 @@ const {
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div
-        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pp-filter-one-line"
-      >
+      <div class="card-body py-2 px-2">
         <input
           v-model="searchFilter"
           type="search"
-          class="form-control form-control-sm pp-filter-search"
+          class="form-control form-control-sm mb-2 pp-filter-search"
           placeholder="Project, PO, site..."
         />
+        <div class="d-flex flex-wrap align-items-center gap-2">
         <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pp-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="installmentFilter" class="form-select form-select-sm flex-shrink-0 pp-filter-installment">
+          <option value="">All Installment</option>
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="Final">Final</option>
         </select>
         <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 pp-filter-sub-region" :disabled="!regionFilter">
           <option value="">All Sub Region</option>
@@ -141,6 +148,7 @@ const {
         >
           {{ exporting ? "..." : "Excel" }}
         </button>
+        </div>
       </div>
     </div>
 
@@ -148,7 +156,7 @@ const {
       <div class="card-body p-0">
         <div class="table-scroll-x">
           <table
-            class="table table-sm table-hover table-users align-middle mb-0 progress-table"
+            class="table table-sm table-hover table-users align-middle mb-0 progress-table pwa-card-table pwa-project-progress-table"
           >
             <thead class="table-light">
               <tr>
@@ -177,7 +185,7 @@ const {
               </td>
             </tr>
 
-            <tr v-for="(item, index) in store.items" :key="item.id">
+            <tr v-for="(item, index) in store.items" :key="item.id" class="pwa-card-row">
               <td class="text-center small fw-semibold">
                 {{ (store.page - 1) * store.limit + index + 1 }}
               </td>
@@ -217,6 +225,7 @@ const {
                 v-for="s in stageColumns"
                 :key="s.id"
                 class="small progress-stage-cell text-center progress-stage-col"
+                :data-stage="s.name"
               >
                 <div class="progress-stage-dates">
                   <div class="progress-stage-date-row">
@@ -316,16 +325,11 @@ const {
 </template>
 
 <style scoped>
-/* Satu baris: search boleh menyusut (min-width:0); baris bisa scroll horizontal di layar sempit */
-.pp-filter-one-line {
-  overflow-x: auto;
-  scrollbar-width: thin;
+.pp-filter-search {
+  width: 100%;
 }
 
-.pp-filter-search {
-  min-width: 0;
-  flex: 1 1 24rem;
-}
+.pp-filter-installment { width: 10rem; min-width: 10rem; }
 
 .pp-filter-stage {
   width: 9.5rem;

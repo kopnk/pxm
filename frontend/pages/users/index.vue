@@ -83,7 +83,7 @@ const {
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-users-table">
             <thead class="table-light">
               <tr>
                 <th class="text-center" width="64">No</th>
@@ -105,7 +105,7 @@ const {
               </tr>
 
               <template v-for="(item, index) in store.items" :key="item.id">
-                <tr>
+                <tr class="pwa-card-row">
                   <td
                     class="text-center text-muted fw-semibold"
                     style="cursor: pointer"
@@ -181,7 +181,7 @@ const {
                   </td>
                 </tr>
 
-                <tr v-if="expandedRow === item.id" class="bg-light">
+                <tr v-if="expandedRow === item.id" class="bg-light pwa-card-expanded">
                   <td colspan="10">
                     <div class="p-4">
                       <div class="mb-0">

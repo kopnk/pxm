@@ -18,6 +18,7 @@ export const useProjectsApi = () => {
           limit: params?.limit ?? store.meta.limit,
           search: store.filters.search || undefined,
           status: store.filters.status || undefined,
+          installment: store.filters.installment || undefined,
           regionId: store.filters.regionId || undefined,
           subRegionId: store.filters.subRegionId || undefined,
         },

@@ -81,7 +81,7 @@ const displayType = (value: string | null | undefined) => {
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-dcn-table">
             <thead class="table-light">
               <tr>
                 <th width="50">No</th>
@@ -100,7 +100,7 @@ const displayType = (value: string | null | undefined) => {
                 <td colspan="9" class="text-center py-3">Loading...</td>
               </tr>
 
-              <tr v-for="(item, index) in store.items" :key="item.id">
+              <tr v-for="(item, index) in store.items" :key="item.id" class="pwa-card-row">
                 <td class="text-center data-meta">
                   {{ (store.page - 1) * store.limit + index + 1 }}
                 </td>

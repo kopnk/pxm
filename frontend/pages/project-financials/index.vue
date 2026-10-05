@@ -22,12 +22,14 @@ const {
   status,
   flowDirection,
   material,
+  installment,
   regionFilter,
   subRegionFilter,
   regions,
   subRegions,
   statusOptions,
   flowDirectionOptions,
+  installmentOptions,
   showPartnerLineTotal,
   showClientLineTotal,
   deletingId,
@@ -141,6 +143,11 @@ const rowFpDate = (item: ProjectFinancialItem) =>
 const rowPartyName = (item: ProjectFinancialItem) =>
   isRowIn(item) ? item.partnerName : item.clientName;
 
+const rowInstallment = (item: ProjectFinancialItem) =>
+  isRowIn(item)
+    ? { value: item.partnerInstallment, percent: item.partnerInstallmentPercent }
+    : { value: item.clientInstallment, percent: item.clientInstallmentPercent };
+
 const docPrimary = (value: string | null | undefined) =>
   value?.trim() ? value.trim() : "-";
 
@@ -169,6 +176,7 @@ const onExportExcel = () => {
     search: search.value,
     status: status.value,
     material: material.value,
+    installment: installment.value,
     flowDirection:
       flowDirection.value === "in" || flowDirection.value === "out"
         ? flowDirection.value
@@ -195,15 +203,14 @@ const onExportExcel = () => {
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div
-        class="card-body d-flex flex-nowrap align-items-center gap-2 gap-sm-3 py-2 px-2 pf-filter-one-line"
-      >
+      <div class="card-body py-2 px-2">
         <input
           v-model="search"
           type="search"
-          class="form-control form-control-sm flex-grow-1 flex-shrink-1 pf-filter-search"
+          class="form-control form-control-sm mb-2 pf-filter-search"
           placeholder="WO, project, site, partner, client, invoice, WO partner/client..."
         />
+        <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3">
         <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pf-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
@@ -245,6 +252,18 @@ const onExportExcel = () => {
             {{ item }}
           </option>
         </select>
+        <select
+          v-model="installment"
+          class="form-select form-select-sm flex-shrink-0 pf-filter-installment"
+        >
+          <option
+            v-for="option in installmentOptions"
+            :key="option.value || 'all-installment'"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
         <span class="text-secondary user-select-none flex-shrink-0" aria-hidden="true">|</span>
         <span
           v-if="showPartnerLineTotal"
@@ -279,6 +298,7 @@ const onExportExcel = () => {
         >
           {{ exporting ? "..." : "Excel" }}
         </button>
+        </div>
       </div>
     </div>
 
@@ -286,7 +306,7 @@ const onExportExcel = () => {
       <div class="card-body p-0">
         <div class="table-scroll-x">
           <table
-            class="table table-striped table-sm mb-0 align-top table-financials"
+            class="table table-striped table-sm mb-0 align-top table-financials pwa-card-table pwa-financials-table"
           >
             <thead class="table-light">
               <tr>
@@ -312,7 +332,7 @@ const onExportExcel = () => {
               </tr>
 
               <template v-else>
-                <tr v-for="(item, idx) in store.items" :key="item.id">
+                <tr v-for="(item, idx) in store.items" :key="item.id" class="pwa-card-row">
                   <td class="text-center data-meta fin-col-no">
                     {{ getRowNumber(idx) }}
                   </td>
@@ -438,6 +458,9 @@ const onExportExcel = () => {
                   </td>
                   <td class="fin-col-party">
                     <div class="fw-semibold">{{ rowPartyName(item) || "-" }}</div>
+                    <div v-if="rowInstallment(item).value" class="data-meta">
+                      {{ rowInstallment(item).value }} ({{ formatQty(rowInstallment(item).percent) }}%)
+                    </div>
                     <div
                       v-if="flowDirection === ''"
                       class="data-meta text-capitalize"
@@ -648,13 +671,8 @@ const onExportExcel = () => {
   }
 }
 
-.pf-filter-one-line {
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
 .pf-filter-search {
-  min-width: 7.5rem;
+  width: 100%;
 }
 
 .pf-filter-status {
@@ -670,6 +688,11 @@ const onExportExcel = () => {
 .pf-filter-material {
   width: 13rem;
   min-width: 13rem;
+}
+
+.pf-filter-installment {
+  width: 10rem;
+  min-width: 10rem;
 }
 
 .pf-filter-region,

@@ -65,6 +65,10 @@ export const useProjectFinancialsListPage = (options?: {
     get: () => store.filters.material,
     set: (value: string) => store.setFilters({ material: value }),
   });
+  const installment = computed({
+    get: () => store.filters.installment,
+    set: (value: string) => store.setFilters({ installment: value }),
+  });
   const { regionFilter, subRegionFilter, regions, subRegions } =
     useListRegionFilters(store);
 
@@ -86,6 +90,13 @@ export const useProjectFinancialsListPage = (options?: {
     { value: "in", label: "In Flow" },
     { value: "out", label: "Out Flow" },
     { value: "", label: "All Flow" },
+  ];
+  const installmentOptions = [
+    { value: "", label: "All Installment" },
+    { value: "1st", label: "1st" },
+    { value: "2nd", label: "2nd" },
+    { value: "3rd", label: "3rd" },
+    { value: "Final", label: "Final" },
   ];
 
   const deleteTarget = computed(
@@ -124,7 +135,7 @@ export const useProjectFinancialsListPage = (options?: {
   );
 
   watchStoreFilters(
-    () => [store.filters.status, store.filters.flowDirection, store.filters.material, store.filters.regionId, store.filters.subRegionId] as const,
+    () => [store.filters.status, store.filters.flowDirection, store.filters.material, store.filters.installment, store.filters.regionId, store.filters.subRegionId] as const,
     () => void fetchData(1).catch(() => {}),
   );
 
@@ -236,6 +247,7 @@ export const useProjectFinancialsListPage = (options?: {
     status,
     flowDirection,
     material,
+    installment,
     regionFilter,
     subRegionFilter,
     regions,
@@ -244,6 +256,7 @@ export const useProjectFinancialsListPage = (options?: {
     showClientLineTotal,
     statusOptions,
     flowDirectionOptions,
+    installmentOptions,
     fetchError,
     deletingId,
     deleteTarget,

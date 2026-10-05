@@ -8,6 +8,7 @@ export type ProjectProgressExportParams = {
   stageDateType: string;
   status: string;
   material: string;
+  installment?: string;
   project?: string;
   detail?: string;
   regionId?: string;
@@ -33,6 +34,7 @@ export function useProjectProgressExport() {
           query: {
             search: s || undefined,
             material: params.material.trim() || undefined,
+            installment: (params.installment ?? store.filters.installment) || undefined,
             stage: stg || undefined,
             stageDateType:
               dateType === "planned" || dateType === "actual"

@@ -53,6 +53,7 @@ export type UpdateProjectDetailInput = z.infer<typeof updateProjectDetailSchema>
 export const projectDetailsExportQueryZ = z.object({
   search: z.string().max(500).optional(),
   material: z.string().max(500).optional(),
+  installment: z.enum(["1st", "2nd", "3rd", "Final"]).optional(),
   projectId: z.string().uuid().optional(),
   status: z
     .enum(["active", "delay", "closed", "cancelled"])

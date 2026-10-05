@@ -14,11 +14,13 @@ const {
   search,
   status,
   material,
+  installment,
   regionFilter,
   subRegionFilter,
   regions,
   subRegions,
   statusOptions,
+  installmentOptions,
   prevPage,
   nextPage,
   formatCurrencyIdr,
@@ -36,6 +38,7 @@ const onExportExcel = () => {
     search: search.value,
     status: status.value,
     material: material.value,
+    installment: installment.value,
     page: store.page,
     limit: store.limit,
   });
@@ -75,18 +78,20 @@ const formatCity = (value: unknown) => {
     </div>
 
     <div class="card mb-3 border-0 shadow-sm">
-      <div
-        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pf-tax-filter-one-line"
-      >
+      <div class="card-body py-2 px-2">
         <input
           v-model="search"
           type="search"
-          class="form-control form-control-sm pf-tax-filter-search"
+          class="form-control form-control-sm mb-2 pf-tax-filter-search"
           placeholder="PO, invoice, partner, project, site…"
         />
+        <div class="d-flex flex-wrap align-items-center gap-2">
         <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pf-tax-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="installment" class="form-select form-select-sm flex-shrink-0 pf-tax-filter-installment">
+          <option v-for="option in installmentOptions" :key="option.value || 'all-installment'" :value="option.value">{{ option.label }}</option>
         </select>
         <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 pf-tax-filter-sub-region" :disabled="!regionFilter">
           <option value="">All Sub Region</option>
@@ -137,6 +142,7 @@ const formatCity = (value: unknown) => {
         >
           {{ exporting ? "…" : "Excel" }}
         </button>
+        </div>
       </div>
     </div>
 
@@ -144,7 +150,7 @@ const formatCity = (value: unknown) => {
       <div class="card-body p-0">
         <div class="table-scroll-x">
           <table
-            class="table table-striped table-sm mb-0 align-top table-financials"
+            class="table table-striped table-sm mb-0 align-top table-financials pwa-card-table pwa-tax-table"
           >
             <thead class="table-light">
               <tr>
@@ -166,7 +172,7 @@ const formatCity = (value: unknown) => {
               </tr>
 
               <template v-else>
-                <tr v-for="(item, idx) in pphRows" :key="item.id">
+                <tr v-for="(item, idx) in pphRows" :key="item.id" class="pwa-card-row">
                   <td class="text-center data-meta">
                     {{ getRowNumber(idx) }}
                   </td>
@@ -249,16 +255,11 @@ const formatCity = (value: unknown) => {
 </template>
 
 <style scoped lang="scss">
-.pf-tax-filter-one-line {
-  overflow-x: auto;
-  scrollbar-width: thin;
+.pf-tax-filter-search {
+  width: 100%;
 }
 
-.pf-tax-filter-search {
-  min-width: 0;
-  flex: 1 1 24rem;
-  max-width: 48rem;
-}
+.pf-tax-filter-installment { width: 10rem; min-width: 10rem; }
 
 .pf-tax-filter-status {
   width: 10.5rem;

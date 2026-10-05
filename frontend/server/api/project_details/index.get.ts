@@ -5,6 +5,7 @@ import { toLocalTime } from "~/server/utils/datetime";
 import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
 import { matchesMaterialName } from "~/server/utils/firstQuery";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -21,8 +22,13 @@ export default defineEventHandler(async (event) => {
     subRegionId: query.subRegionId ? String(query.subRegionId) : undefined,
   });
 
+  const installment = query.installment ? String(query.installment) : undefined;
+  const installmentDetailIds = installment
+    ? new Set((await listProjectFinancialRecords({ installment })).map((record) => record.projectDetailId))
+    : null;
   const filteredRecords = records.filter((record) =>
-    matchesMaterialName(record.materialName, query.material ? String(query.material) : undefined),
+    matchesMaterialName(record.materialName, query.material ? String(query.material) : undefined) &&
+    (!installmentDetailIds || installmentDetailIds.has(record.id)),
   );
   const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);

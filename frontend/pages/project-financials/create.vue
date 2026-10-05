@@ -46,7 +46,7 @@ const canBulkUpload = computed(() => authStore.user?.role?.toLowerCase() === "su
 const BULK_MAX_ROWS = 50;
 const BULK_HEADERS = {
   in: ["projectId", "projectDetailId", "partnerId", "siteName", "materialName", "qtyPartner", "unitPricePartner", "pph", "taxIn", "partnerInstallment", "partnerInstallmentPercent", "poNumberPartner", "poDatePartner", "invoiceNumberPartner", "invoiceDatePartner", "fpNumberPartner", "fpDatePartner", "bastNumber", "bastDate", "status", "stage", "note"],
-  out: ["projectId", "projectDetailId", "clientId", "qtyClient", "unitPriceClient", "taxOut", "poNumberClient", "poDateClient", "invoiceNumberClient", "invoiceDateClient", "fpNumberClient", "fpDateClient", "bastNumber", "bastDate", "paidNumber", "paidDate", "status", "stage", "note"],
+  out: ["projectId", "projectDetailId", "clientId", "qtyClient", "unitPriceClient", "taxOut", "clientInstallment", "clientInstallmentPercent", "poNumberClient", "poDateClient", "invoiceNumberClient", "invoiceDateClient", "fpNumberClient", "fpDateClient", "bastNumber", "bastDate", "paidNumber", "paidDate", "status", "stage", "note"],
 } as const;
 
 const bulkText = (value: unknown) => String(value ?? "").trim() || null;
@@ -180,16 +180,16 @@ const handleBulkUpload = async (event: Event) => {
     if (rows.length > BULK_MAX_ROWS) return notify.warning(`Excel file can contain a maximum of ${BULK_MAX_ROWS} rows`);
     const invalid = rows.findIndex((row) => {
       const isIn = bulkFlow.value === "in";
-      const installment = bulkText(row.partnerInstallment);
-      const installmentPercent = bulkNumber(row.partnerInstallmentPercent);
-      return !bulkText(row.projectId) || !bulkText(row.projectDetailId) || !bulkText(row[isIn ? "partnerId" : "clientId"]) || bulkNumber(row[isIn ? "qtyPartner" : "qtyClient"]) == null || bulkNumber(row[isIn ? "unitPricePartner" : "unitPriceClient"]) == null || (isIn && installment != null && !(installmentPercent != null && installmentPercent > 0));
+      const installment = bulkText(row[isIn ? "partnerInstallment" : "clientInstallment"]);
+      const installmentPercent = bulkNumber(row[isIn ? "partnerInstallmentPercent" : "clientInstallmentPercent"]);
+      return !bulkText(row.projectId) || !bulkText(row.projectDetailId) || !bulkText(row[isIn ? "partnerId" : "clientId"]) || bulkNumber(row[isIn ? "qtyPartner" : "qtyClient"]) == null || bulkNumber(row[isIn ? "unitPricePartner" : "unitPriceClient"]) == null || (installment != null && !(installmentPercent != null && installmentPercent > 0));
     });
     if (invalid >= 0) return notify.warning(`Row ${invalid + 2} has required data missing`);
     const payload = rows.map((row) => ({
       projectId: bulkText(row.projectId), projectDetailId: bulkText(row.projectDetailId), flowDirection: bulkFlow.value,
       status: bulkText(row.status) || "draft", stage: bulkNumber(row.stage) || 1, note: bulkText(row.note),
       bastNumber: bulkText(row.bastNumber), bastDate: bulkDate(row.bastDate),
-      ...(bulkFlow.value === "in" ? { partnerId: bulkText(row.partnerId), qtyPartner: bulkNumber(row.qtyPartner), unitPricePartner: bulkNumber(row.unitPricePartner), pph: bulkNumber(row.pph), taxIn: bulkNumber(row.taxIn), partnerInstallment: bulkText(row.partnerInstallment), partnerInstallmentPercent: bulkNumber(row.partnerInstallmentPercent), poNumberPartner: bulkText(row.poNumberPartner), poDatePartner: bulkDate(row.poDatePartner), invoiceNumberPartner: bulkText(row.invoiceNumberPartner), invoiceDatePartner: bulkDate(row.invoiceDatePartner), fpNumberPartner: bulkText(row.fpNumberPartner), fpDatePartner: bulkDate(row.fpDatePartner) } : { clientId: bulkText(row.clientId), qtyClient: bulkNumber(row.qtyClient), unitPriceClient: bulkNumber(row.unitPriceClient), taxOut: bulkNumber(row.taxOut), poNumberClient: bulkText(row.poNumberClient), poDateClient: bulkDate(row.poDateClient), invoiceNumberClient: bulkText(row.invoiceNumberClient), invoiceDateClient: bulkDate(row.invoiceDateClient), fpNumberClient: bulkText(row.fpNumberClient), fpDateClient: bulkDate(row.fpDateClient), paidNumber: bulkText(row.paidNumber), paidDate: bulkDate(row.paidDate) }),
+      ...(bulkFlow.value === "in" ? { partnerId: bulkText(row.partnerId), qtyPartner: bulkNumber(row.qtyPartner), unitPricePartner: bulkNumber(row.unitPricePartner), pph: bulkNumber(row.pph), taxIn: bulkNumber(row.taxIn), partnerInstallment: bulkText(row.partnerInstallment), partnerInstallmentPercent: bulkNumber(row.partnerInstallmentPercent), poNumberPartner: bulkText(row.poNumberPartner), poDatePartner: bulkDate(row.poDatePartner), invoiceNumberPartner: bulkText(row.invoiceNumberPartner), invoiceDatePartner: bulkDate(row.invoiceDatePartner), fpNumberPartner: bulkText(row.fpNumberPartner), fpDatePartner: bulkDate(row.fpDatePartner) } : { clientId: bulkText(row.clientId), qtyClient: bulkNumber(row.qtyClient), unitPriceClient: bulkNumber(row.unitPriceClient), taxOut: bulkNumber(row.taxOut), clientInstallment: bulkText(row.clientInstallment), clientInstallmentPercent: bulkNumber(row.clientInstallmentPercent), poNumberClient: bulkText(row.poNumberClient), poDateClient: bulkDate(row.poDateClient), invoiceNumberClient: bulkText(row.invoiceNumberClient), invoiceDateClient: bulkDate(row.invoiceDateClient), fpNumberClient: bulkText(row.fpNumberClient), fpDateClient: bulkDate(row.fpDateClient), paidNumber: bulkText(row.paidNumber), paidDate: bulkDate(row.paidDate) }),
     }));
     await createProjectFinancialsBulk(payload);
     notify.success(`Success! Project financial bulk created (${payload.length} row).`);
@@ -705,6 +705,20 @@ const handleSubmit = async () => {
         <div class="number-helper number-helper-muted">
           {{ fmtMoney(form.taxOutPercent) }}%
         </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Installment</label>
+        <select v-model="form.clientInstallment" class="form-select">
+          <option value="">Select Installment</option>
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="Final">Final</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Installment Percentage (%)</label>
+        <DecimalInput v-model="form.clientInstallmentPercent" :min="0" :max="100" />
       </div>
       <div class="col-12">
         <div class="alert alert-secondary py-2 mb-0 small">

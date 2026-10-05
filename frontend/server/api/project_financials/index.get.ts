@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
     flowDirection: query.flowDirection
       ? String(query.flowDirection)
       : undefined,
+    installment: query.installment ? String(query.installment) : undefined,
     taxSection:
       query.taxSection === "taxIn" ||
       query.taxSection === "taxOut" ||

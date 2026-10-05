@@ -295,7 +295,7 @@ export const stageBarPercentLabelsPlugin = {
         getProps: (
           props: string[],
           useFinalPosition?: boolean,
-        ) => { x: number; y: number; base: number };
+        ) => { x: number; y: number; base: number; width: number };
       }[];
     };
   }) {
@@ -323,21 +323,29 @@ export const stageBarPercentLabelsPlugin = {
 
       const completedBar = completedMeta.data[i];
       if (completed > 0 && completedPct >= 8 && completedBar) {
-        const props = completedBar.getProps(["x", "y", "base"], true);
+        const props = completedBar.getProps(["x", "y", "base", "width"], true);
         const midY = (props.y + props.base) / 2;
-        if (Math.abs(props.y - props.base) >= 14) {
+        const label = `${completedPct}%`;
+        if (
+          Math.abs(props.y - props.base) >= 14 &&
+          props.width >= ctx.measureText(label).width + 4
+        ) {
           ctx.fillStyle = "#ffffff";
-          ctx.fillText(`${completedPct}%`, props.x, midY);
+          ctx.fillText(label, props.x, midY);
         }
       }
 
       const remainingBar = remainingMeta.data[i];
       if (remaining > 0 && remainingPct >= 8 && remainingBar) {
-        const props = remainingBar.getProps(["x", "y", "base"], true);
+        const props = remainingBar.getProps(["x", "y", "base", "width"], true);
         const midY = (props.y + props.base) / 2;
-        if (Math.abs(props.y - props.base) >= 14) {
+        const label = `${remainingPct}%`;
+        if (
+          Math.abs(props.y - props.base) >= 14 &&
+          props.width >= ctx.measureText(label).width + 4
+        ) {
           ctx.fillStyle = "#495057";
-          ctx.fillText(`${remainingPct}%`, props.x, midY);
+          ctx.fillText(label, props.x, midY);
         }
       }
     }

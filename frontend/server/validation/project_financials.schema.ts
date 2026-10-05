@@ -6,10 +6,12 @@ const optUuid = z.string().uuid().optional().nullable();
 const optNum = z.number().optional().nullable();
 const optPercent = z.number().min(0).max(100).optional().nullable();
 
-const validatePartnerInstallment = (
+const validateInstallments = (
   val: {
     partnerInstallment?: string | null;
     partnerInstallmentPercent?: number | null;
+    clientInstallment?: string | null;
+    clientInstallmentPercent?: number | null;
   },
   ctx: z.RefinementCtx,
 ) => {
@@ -22,6 +24,17 @@ const validatePartnerInstallment = (
       message:
         "partnerInstallmentPercent is required and must be greater than 0 when partnerInstallment is selected",
       path: ["partnerInstallmentPercent"],
+    });
+  }
+  if (
+    val.clientInstallment &&
+    !(typeof val.clientInstallmentPercent === "number" && val.clientInstallmentPercent > 0)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "clientInstallmentPercent is required and must be greater than 0 when clientInstallment is selected",
+      path: ["clientInstallmentPercent"],
     });
   }
 };
@@ -93,6 +106,8 @@ const projectFinancialSchemaBase = z.object({
     .optional()
     .nullable(),
   partnerInstallmentPercent: optPercent,
+  clientInstallment: z.enum(["1st", "2nd", "3rd", "Final"]).optional().nullable(),
+  clientInstallmentPercent: optPercent,
   // Optional redaction override for partner BAST and invoice PDFs only.
   partnerDocumentWorkLocation: optStr,
   kopindosatSignatoryName: optStr,
@@ -128,7 +143,7 @@ export const createProjectFinancialSchema = projectFinancialSchemaBase.superRefi
     });
   }
 
-  validatePartnerInstallment(val, ctx);
+  validateInstallments(val, ctx);
 });
 
 export const createProjectFinancialBulkSchema = z.union([
@@ -137,7 +152,7 @@ export const createProjectFinancialBulkSchema = z.union([
 ]);
 
 export const updateProjectFinancialSchema =
-  projectFinancialSchemaBase.partial().superRefine(validatePartnerInstallment);
+  projectFinancialSchemaBase.partial().superRefine(validateInstallments);
 
 /** Query `GET /api/project_financials/export` (search, status, flow, pagination; merge per project detail). */
 export const projectFinancialsExportQueryZ = z.object({
@@ -145,6 +160,7 @@ export const projectFinancialsExportQueryZ = z.object({
   material: z.string().max(500).optional(),
   status: financialStatusZ.optional(),
   flowDirection: z.enum(["in", "out"]).optional(),
+  installment: z.enum(["1st", "2nd", "3rd", "Final"]).optional(),
   projectId: z.string().uuid().optional(),
   projectDetailId: z.string().uuid().optional(),
   regionId: z.string().uuid().optional(),
@@ -158,6 +174,7 @@ export const projectFinancialsTaxSectionExportQueryZ =
   projectFinancialsExportQueryZ.pick({
     search: true,
     material: true,
+    installment: true,
     status: true,
     regionId: true,
     subRegionId: true,

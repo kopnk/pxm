@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
     fpNumberPartner: body.fpNumberPartner ?? null, fpDatePartner: body.fpDatePartner ?? null,
     qtyPartner: body.qtyPartner ?? null, unitPricePartner: body.unitPricePartner ?? null,
     partnerInstallment: body.partnerInstallment ?? null, partnerInstallmentPercent: body.partnerInstallmentPercent ?? null,
+    clientInstallment: body.clientInstallment ?? null, clientInstallmentPercent: body.clientInstallmentPercent ?? null,
     partnerDocumentWorkLocation: body.partnerDocumentWorkLocation ?? null,
     kopindosatSignatoryName: body.kopindosatSignatoryName ?? null, kopindosatSignatoryTitle: body.kopindosatSignatoryTitle ?? null,
     poNumberClient: body.poNumberClient ?? null, poDateClient: body.poDateClient ?? null,

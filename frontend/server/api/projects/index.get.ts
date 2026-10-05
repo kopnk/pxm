@@ -5,6 +5,7 @@ import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { toLocalTime } from "~/server/utils/datetime";
 import { listProjectRecords } from "~/server/utils/projectStore";
 import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -18,12 +19,18 @@ export default defineEventHandler(async (event) => {
   });
   const regionId = query.regionId ? String(query.regionId) : undefined;
   const subRegionId = query.subRegionId ? String(query.subRegionId) : undefined;
+  const installment = query.installment ? String(query.installment) : undefined;
   const projectIds = regionId || subRegionId
     ? new Set((await listProjectDetailRecords({ regionId, subRegionId })).map((detail) => detail.projectId))
     : null;
+  const installmentProjectIds = installment
+    ? new Set((await listProjectFinancialRecords({ installment })).map((record) => record.projectId))
+    : null;
   const filteredRecords = projectIds
-    ? records.filter((record) => projectIds.has(record.id))
-    : records;
+    ? records.filter((record) => projectIds.has(record.id) && (!installmentProjectIds || installmentProjectIds.has(record.id)))
+    : installmentProjectIds
+      ? records.filter((record) => installmentProjectIds.has(record.id))
+      : records;
   const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);
   const listTotalPoPrice = filteredRecords.reduce(

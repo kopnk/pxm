@@ -7,6 +7,7 @@ export type ProjectDetailsExportParams = {
   search: string;
   status: string;
   material: string;
+  installment?: string;
   projectId?: string;
   cityKabId?: string;
   regionId?: string;
@@ -29,6 +30,7 @@ export function useProjectDetailsExport() {
           query: {
             search: s || undefined,
             material: params.material.trim() || undefined,
+            installment: (params.installment ?? store.filters.installment) || undefined,
             status: normalizeProjectDetailStatus(params.status),
             projectId: pid || undefined,
             cityKabId: cid || undefined,

@@ -25,6 +25,7 @@ export async function handleProjectFinancialsTaxSectionExport(
   const parsed = projectFinancialsTaxSectionExportQueryZ.safeParse({
     search: firstQuery(raw.search),
     material: firstQuery(raw.material),
+    installment: firstQuery(raw.installment),
     status: firstQuery(raw.status),
     regionId: firstQuery(raw.regionId),
     subRegionId: firstQuery(raw.subRegionId),
@@ -43,6 +44,7 @@ export async function handleProjectFinancialsTaxSectionExport(
   const records = await listProjectFinancialRecords({
     search: q.search,
     status: q.status,
+    installment: q.installment,
     regionId: q.regionId,
     subRegionId: q.subRegionId,
   });

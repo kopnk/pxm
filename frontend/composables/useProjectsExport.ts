@@ -6,6 +6,7 @@ import { normalizeProjectStatus } from "@/utils/exportFilters";
 export type ProjectsExportParams = {
   search?: string;
   status?: string;
+  installment?: string;
   regionId?: string;
   subRegionId?: string;
   page?: number;
@@ -27,6 +28,7 @@ export function useProjectsExport() {
           query: {
             search: s || undefined,
             status: st,
+            installment: (params?.installment ?? store.filters.installment) || undefined,
             regionId: (params?.regionId ?? store.filters.regionId) || undefined,
             subRegionId: (params?.subRegionId ?? store.filters.subRegionId) || undefined,
             page: params?.page ?? store.meta.page,

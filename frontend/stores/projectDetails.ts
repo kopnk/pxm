@@ -64,6 +64,7 @@ export interface ProjectDetailsState {
     search: string;
     status: string;
     material: string;
+    installment: string;
     regionId: string;
     subRegionId: string;
   };
@@ -83,6 +84,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
       search: "",
       status: "",
       material: "",
+      installment: "",
       regionId: "",
       subRegionId: "",
     },
@@ -131,7 +133,7 @@ export const useProjectDetailsStore = defineStore("projectDetails", {
       this.loading = value;
     },
 
-    setFilters(filters: Partial<{ search: string; status: string; material: string; regionId: string; subRegionId: string }>) {
+    setFilters(filters: Partial<{ search: string; status: string; material: string; installment: string; regionId: string; subRegionId: string }>) {
       this.filters = { ...this.filters, ...filters };
     },
 

@@ -26,6 +26,7 @@ export const useProjectDetailsListPage = () => {
   const searchFilter = createStoreFilter(store, "search");
   const statusFilter = createStoreFilter(store, "status");
   const materialFilter = createStoreFilter(store, "material");
+  const installmentFilter = createStoreFilter(store, "installment");
   const { regionFilter, subRegionFilter, regions, subRegions } =
     useListRegionFilters(store);
 
@@ -78,7 +79,7 @@ export const useProjectDetailsListPage = () => {
   );
 
   watchStoreFilters(
-    () => [store.filters.status, store.filters.material, store.filters.regionId, store.filters.subRegionId] as const,
+    () => [store.filters.status, store.filters.material, store.filters.installment, store.filters.regionId, store.filters.subRegionId] as const,
     () => void fetchData(1).catch(() => {}),
   );
 
@@ -147,6 +148,7 @@ export const useProjectDetailsListPage = () => {
     searchFilter,
     statusFilter,
     materialFilter,
+    installmentFilter,
     regionFilter,
     subRegionFilter,
     regions,

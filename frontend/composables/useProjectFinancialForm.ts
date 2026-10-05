@@ -81,6 +81,8 @@ export type ProjectFinancialFormModel = {
   unitPricePartner: number | null;
   partnerInstallment: string;
   partnerInstallmentPercent: number | null;
+  clientInstallment: string;
+  clientInstallmentPercent: number | null;
   /** Optional wording override for the location wording in partner BAST and invoice. */
   partnerDocumentWorkLocation: string;
   kopindosatSignatoryName: string;
@@ -132,6 +134,8 @@ export function emptyProjectFinancialForm(): ProjectFinancialFormModel {
     unitPricePartner: null,
     partnerInstallment: "",
     partnerInstallmentPercent: 100,
+    clientInstallment: "",
+    clientInstallmentPercent: 100,
     partnerDocumentWorkLocation: "",
     kopindosatSignatoryName: "",
     kopindosatSignatoryTitle: "",
@@ -201,6 +205,8 @@ export function buildProjectFinancialPayload(form: ProjectFinancialFormModel) {
     unitPricePartner: isInFlow ? n(form.unitPricePartner) : null,
     partnerInstallment: isInFlow ? form.partnerInstallment || null : null,
     partnerInstallmentPercent: isInFlow ? n(form.partnerInstallmentPercent) : null,
+    clientInstallment: isOutFlow ? form.clientInstallment || null : null,
+    clientInstallmentPercent: isOutFlow ? n(form.clientInstallmentPercent) : null,
     partnerDocumentWorkLocation: isInFlow ? form.partnerDocumentWorkLocation || null : null,
     kopindosatSignatoryName: isInFlow ? form.kopindosatSignatoryName || null : null,
     kopindosatSignatoryTitle: isInFlow ? form.kopindosatSignatoryTitle || null : null,
@@ -291,6 +297,8 @@ export function applyFinancialRowToForm(
   form.unitPricePartner = n(row.unitPricePartner);
   form.partnerInstallment = normalizeInstallment(row.partnerInstallment);
   form.partnerInstallmentPercent = n(row.partnerInstallmentPercent) ?? 100;
+  form.clientInstallment = normalizeInstallment(row.clientInstallment);
+  form.clientInstallmentPercent = n(row.clientInstallmentPercent) ?? 100;
   form.partnerDocumentWorkLocation = str(row.partnerDocumentWorkLocation);
   form.kopindosatSignatoryName = str(row.kopindosatSignatoryName);
   form.kopindosatSignatoryTitle = str(row.kopindosatSignatoryTitle);

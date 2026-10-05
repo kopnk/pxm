@@ -364,7 +364,7 @@ const handleSubmit = async () => {
       <div class="col-12">
         <label class="form-label mb-2">Stages (plan &amp; actual)</label>
         <div class="table-responsive border rounded">
-          <table class="table table-sm align-middle mb-0">
+          <table class="table table-sm align-middle mb-0 pwa-card-table pwa-progress-stage-form">
             <thead class="table-light">
               <tr>
                 <th style="min-width: 140px">Stage</th>
@@ -377,7 +377,7 @@ const handleSubmit = async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in stages" :key="s.id">
+              <tr v-for="s in stages" :key="s.id" class="pwa-card-row">
                 <td class="fw-semibold">{{ s.name }}</td>
                 <td>
                   <input

@@ -15,6 +15,7 @@ const {
   deleteTargetProject,
   searchFilter,
   statusFilter,
+  installmentFilter,
   regionFilter,
   subRegionFilter,
   regions,
@@ -37,6 +38,7 @@ const onExportExcel = () => {
   void downloadExcel({
     search: searchFilter.value,
     status: statusFilter.value,
+    installment: installmentFilter.value,
     page: store.meta.page,
     limit: store.meta.limit,
   });
@@ -58,18 +60,24 @@ const onExportExcel = () => {
 
     <!-- FILTER -->
     <div class="card mb-3 border-0 shadow-sm">
-      <div
-        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 projects-filter-one-line"
-      >
+      <div class="card-body py-2 px-2">
         <input
           v-model="searchFilter"
           type="search"
-          class="form-control form-control-sm projects-filter-search"
+          class="form-control form-control-sm mb-2 projects-filter-search"
           placeholder="Project, PO, PR/SC, client..."
         />
+        <div class="projects-filter-controls">
         <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="installmentFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-installment">
+          <option value="">All Installment</option>
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="Final">Final</option>
         </select>
         <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-sub-region" :disabled="!regionFilter">
           <option value="">All Sub Region</option>
@@ -84,32 +92,34 @@ const onExportExcel = () => {
           <option value="closed">Closed</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        </div>
+        <div class="projects-filter-summary mt-2">
         <span
           class="text-secondary user-select-none flex-shrink-0"
           aria-hidden="true"
         >|</span>
-        <span class="text-nowrap flex-shrink-0 small text-muted ms-auto">
+        <span class="projects-total projects-total-po text-nowrap small text-muted">
           <span title="DPP: nilai PO sebelum PPN">Total PO Price</span>
           <span class="fw-bold text-dark ms-1">{{
             store.loading ? "..." : formatCurrency(store.meta.listTotalPoPrice)
           }}</span>
         </span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
+        <span class="projects-total text-nowrap flex-shrink-0 small text-muted">
           DPP <span class="fw-bold text-dark ms-1">{{
             store.loading ? "..." : formatCurrency(store.meta.listTotalDpp)
           }}</span>
         </span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
+        <span class="projects-total text-nowrap flex-shrink-0 small text-muted">
           HPP <span class="fw-bold text-dark ms-1">{{
             store.loading ? "..." : formatCurrency(store.meta.listTotalHpp)
           }}</span>
         </span>
-        <span class="text-nowrap flex-shrink-0 small text-muted">
+        <span class="projects-total text-nowrap flex-shrink-0 small text-muted">
           MRG <span class="fw-bold text-dark ms-1">{{
             store.loading ? "..." : `${store.meta.listTotalMrg.toFixed(2)}%`
           }}</span>
         </span>
-        <span class="filter-export-divider" aria-hidden="true"></span>
+        <span class="filter-export-divider projects-filter-divider" aria-hidden="true"></span>
         <button
           type="button"
           class="btn btn-outline-secondary btn-sm text-nowrap flex-shrink-0"
@@ -119,6 +129,7 @@ const onExportExcel = () => {
         >
           {{ exporting ? "..." : "Excel" }}
         </button>
+        </div>
       </div>
     </div>
 
@@ -126,7 +137,7 @@ const onExportExcel = () => {
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-projects-table">
             <thead class="table-light">
               <tr>
                 <th class="text-center" width="64">No</th>
@@ -150,7 +161,7 @@ const onExportExcel = () => {
 
               <template v-for="(item, index) in store.items" :key="item.id">
                 <!-- MAIN ROW -->
-                <tr>
+                <tr class="pwa-card-row">
                   <td
                     class="text-center text-muted fw-semibold"
                     style="cursor: pointer"
@@ -222,7 +233,7 @@ const onExportExcel = () => {
                 </tr>
 
                 <!-- EXPANDED DETAIL -->
-                <tr v-if="expandedRow === item.id" class="bg-light">
+                <tr v-if="expandedRow === item.id" class="bg-light pwa-card-expanded">
                   <td colspan="10">
                     <div class="p-4">
                       <div class="row">
@@ -369,15 +380,23 @@ const onExportExcel = () => {
 </template>
 
 <style scoped lang="scss">
-.projects-filter-one-line {
-  overflow-x: auto;
-  scrollbar-width: thin;
+.projects-filter-search {
+  width: 100%;
 }
 
-.projects-filter-search {
-  min-width: 0;
-  flex: 1 1 34rem;
+.projects-filter-controls,
+.projects-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
+
+.projects-filter-summary {
+  justify-content: flex-end;
+}
+
+.projects-filter-installment { width: 10rem; min-width: 10rem; }
 
 .projects-filter-region,
 .projects-filter-sub-region {
@@ -388,6 +407,46 @@ const onExportExcel = () => {
 .projects-filter-status {
   width: 10.5rem;
   min-width: 10.5rem;
+}
+
+@media (max-width: 575.98px) {
+  .projects-filter-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .projects-filter-controls select,
+  .projects-filter-installment,
+  .projects-filter-region,
+  .projects-filter-sub-region,
+  .projects-filter-status {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .projects-filter-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+  }
+
+  .projects-filter-summary .projects-total {
+    min-width: 0;
+  }
+
+  .projects-total-po {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .projects-filter-divider {
+    display: none;
+  }
+
+  .projects-filter-summary button {
+    justify-self: end;
+  }
 }
 
 .table-users {

@@ -77,7 +77,7 @@ const {
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-rls-table">
             <thead class="table-light">
               <tr>
                 <th class="text-center" width="64">No</th>
@@ -96,6 +96,7 @@ const {
 
               <template v-for="(user, index) in filteredUsers" :key="user.id">
                 <tr
+                  class="pwa-card-row"
                   :class="{
                     'rls-row-saving': store.savingUserId === user.id,
                   }"
@@ -148,7 +149,7 @@ const {
 
                 <tr
                   v-if="expandedRow === user.id"
-                  class="bg-light"
+                  class="bg-light pwa-card-expanded"
                 >
                   <td colspan="6" class="p-0">
                     <div

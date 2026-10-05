@@ -67,6 +67,10 @@ export interface ProjectFinancialItem {
   fpDatePartner?: string | null;
   qtyPartner?: number | null;
   unitPricePartner?: number | null;
+  partnerInstallment?: string | null;
+  partnerInstallmentPercent?: number | null;
+  clientInstallment?: string | null;
+  clientInstallmentPercent?: number | null;
 
   poNumberClient?: string | null;
   poDateClient?: string | null;
@@ -124,6 +128,7 @@ export interface ProjectFinancialsState {
     /** "" = all flow, "in" | "out" = filtered */
     flowDirection: string;
     material: string;
+    installment: string;
     regionId: string;
     subRegionId: string;
   };
@@ -153,6 +158,7 @@ export const useProjectFinancialsStore = defineStore(
         status: "",
         flowDirection: "in",
         material: "",
+        installment: "",
         regionId: "",
         subRegionId: "",
       },
@@ -213,6 +219,7 @@ export const useProjectFinancialsStore = defineStore(
           status: string;
           flowDirection: string;
           material: string;
+          installment: string;
           regionId: string;
           subRegionId: string;
         }>,
@@ -244,6 +251,7 @@ export const useProjectFinancialsStore = defineStore(
           status: "",
           flowDirection: "in",
           material: "",
+          installment: "",
           regionId: "",
           subRegionId: "",
         };

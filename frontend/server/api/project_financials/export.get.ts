@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
     material: firstQuery(raw.material),
     status: firstQuery(raw.status),
     flowDirection: firstQuery(raw.flowDirection),
+    installment: firstQuery(raw.installment),
     projectId: firstQuery(raw.projectId),
     projectDetailId: firstQuery(raw.projectDetailId),
     regionId: firstQuery(raw.regionId),
@@ -49,6 +50,7 @@ export default defineEventHandler(async (event) => {
     search: q.search,
     status: q.status,
     flowDirection: q.flowDirection,
+    installment: q.installment,
     regionId: q.regionId,
     subRegionId: q.subRegionId,
   })).filter((record) => matchesMaterialName(record.detailMaterialName, q.material));

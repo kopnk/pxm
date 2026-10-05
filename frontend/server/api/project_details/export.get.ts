@@ -10,6 +10,7 @@ import { successResponse } from "~/server/utils/response";
 import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { firstQuery, matchesMaterialName } from "~/server/utils/firstQuery";
 import { listProjectDetailRecords } from "~/server/utils/projectDetailStore";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
@@ -19,6 +20,7 @@ export default defineEventHandler(async (event) => {
   const parsed = projectDetailsExportQueryZ.safeParse({
     search: firstQuery(raw.search),
     material: firstQuery(raw.material),
+    installment: firstQuery(raw.installment),
     projectId: firstQuery(raw.projectId),
     status: firstQuery(raw.status),
     cityKabId: firstQuery(raw.cityKabId),
@@ -45,7 +47,13 @@ export default defineEventHandler(async (event) => {
     subRegionId: q.subRegionId,
   });
 
-  const filteredRecords = records.filter((record) => matchesMaterialName(record.materialName, q.material));
+  const installmentDetailIds = q.installment
+    ? new Set((await listProjectFinancialRecords({ installment: q.installment })).map((record) => record.projectDetailId))
+    : null;
+  const filteredRecords = records.filter((record) =>
+    matchesMaterialName(record.materialName, q.material) &&
+    (!installmentDetailIds || installmentDetailIds.has(record.id)),
+  );
   const total = filteredRecords.length;
   const { page, limit, offset } = buildPagination(q);
 

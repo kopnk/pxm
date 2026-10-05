@@ -10,6 +10,7 @@ import { exportFileDateLabel, toLocalDate } from "~/server/utils/datetime";
 import { firstQuery, matchesMaterialName } from "~/server/utils/firstQuery";
 import { formatProjectProgressStageData } from "~/server/utils/projectProgressResponse";
 import { listProjectProgressRecords } from "~/server/utils/projectProgressStore";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 import { successResponse } from "~/server/utils/response";
 
 export default defineEventHandler(async (event) => {
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
   const parsed = projectProgressExportQueryZ.safeParse({
     search: firstQuery(raw.search),
     material: firstQuery(raw.material),
+    installment: firstQuery(raw.installment),
     stage: firstQuery(raw.stage),
     stageDateType: firstQuery(raw.stageDateType),
     status: firstQuery(raw.status),
@@ -50,7 +52,13 @@ export default defineEventHandler(async (event) => {
     regionId: q.regionId,
     subRegionId: q.subRegionId,
   });
-  const filteredRecords = records.filter((record) => matchesMaterialName(record.materialName, q.material));
+  const installmentDetailIds = q.installment
+    ? new Set((await listProjectFinancialRecords({ installment: q.installment })).map((record) => record.projectDetailId))
+    : null;
+  const filteredRecords = records.filter((record) =>
+    matchesMaterialName(record.materialName, q.material) &&
+    (!installmentDetailIds || installmentDetailIds.has(record.projectDetailId)),
+  );
   const total = filteredRecords.length;
   const { page, limit, offset } = buildPagination(q);
   const rows = filteredRecords.slice(offset, offset + limit);

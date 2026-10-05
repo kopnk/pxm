@@ -8,6 +8,7 @@ import {
 import { mapProjectProgressResponse } from "~/server/utils/projectProgressResponse";
 import { successResponse } from "~/server/utils/response";
 import { matchesMaterialName } from "~/server/utils/firstQuery";
+import { listProjectFinancialRecords } from "~/server/utils/projectFinancialStore";
 
 export default defineEventHandler(async (event) => {
 
@@ -42,8 +43,13 @@ export default defineEventHandler(async (event) => {
     subRegionId: query.subRegionId?.toString().trim() || undefined,
   });
 
+  const installment = query.installment?.toString().trim();
+  const installmentDetailIds = installment
+    ? new Set((await listProjectFinancialRecords({ installment })).map((record) => record.projectDetailId))
+    : null;
   const filteredRecords = records.filter((record) =>
-    matchesMaterialName(record.materialName, query.material?.toString()),
+    matchesMaterialName(record.materialName, query.material?.toString()) &&
+    (!installmentDetailIds || installmentDetailIds.has(record.projectDetailId)),
   );
   const total = filteredRecords.length;
   const totalPages = buildTotalPages(total, limit);

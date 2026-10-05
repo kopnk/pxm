@@ -232,6 +232,256 @@ input[type="number"] {
   width: 100%;
 }
 
+/* Mobile lists retain the desktop table and become one readable card per row.
+   No duplicate markup or additional client-side data is needed. */
+@media (max-width: 767.98px) {
+  .table-scroll-x:has(.pwa-card-table) {
+    overflow: visible;
+  }
+
+  .pwa-card-table {
+    min-width: 0 !important;
+    background: transparent;
+  }
+
+  .pwa-card-table thead {
+    display: none;
+  }
+
+  .pwa-card-table,
+  .pwa-card-table > tbody,
+  .pwa-card-table > tbody > tr,
+  .pwa-card-table > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+
+  .pwa-card-table > tbody > .pwa-card-row {
+    margin: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    background: var(--bs-body-bg);
+    box-shadow: var(--bs-box-shadow-sm);
+  }
+
+  .pwa-card-table > tbody > .pwa-card-row > td {
+    position: relative;
+    min-height: 2.25rem;
+    padding: 0.5rem 0.65rem 0.5rem 42% !important;
+    border: 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    text-align: left !important;
+    white-space: normal;
+  }
+
+  .pwa-card-table > tbody > .pwa-card-row > td:last-child {
+    border-bottom: 0;
+  }
+
+  .pwa-card-table > tbody > .pwa-card-row > td::before {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.65rem;
+    width: calc(42% - 1rem);
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    content: "";
+  }
+
+  .pwa-card-table > tbody > .pwa-card-expanded {
+    display: block;
+    margin: -0.35rem 0.75rem 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-top: 0;
+    border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
+  }
+
+  .pwa-card-table > tbody > .pwa-card-expanded > td {
+    padding: 0 !important;
+  }
+
+  .pwa-card-table > tbody > .pwa-card-expanded > td::before {
+    display: none;
+  }
+
+  .pwa-projects-table td:nth-child(1)::before { content: "No"; }
+  .pwa-projects-table td:nth-child(2)::before { content: "Project"; }
+  .pwa-projects-table td:nth-child(3)::before { content: "PO Date"; }
+  .pwa-projects-table td:nth-child(4)::before { content: "Delivery"; }
+  .pwa-projects-table td:nth-child(5)::before { content: "KOM"; }
+  .pwa-projects-table td:nth-child(6)::before { content: "HPP"; }
+  .pwa-projects-table td:nth-child(7)::before { content: "DPP"; }
+  .pwa-projects-table td:nth-child(8)::before { content: "MRG"; }
+  .pwa-projects-table td:nth-child(9)::before { content: "PO Price"; }
+  .pwa-projects-table td:nth-child(10)::before { content: "Status"; }
+
+  .pwa-project-details-table td:nth-child(1)::before { content: "No"; }
+  .pwa-project-details-table td:nth-child(2)::before { content: "Project"; }
+  .pwa-project-details-table td:nth-child(3)::before { content: "Region"; }
+  .pwa-project-details-table td:nth-child(4)::before { content: "Line"; }
+  .pwa-project-details-table td:nth-child(5)::before { content: "Details"; }
+  .pwa-project-details-table td:nth-child(6)::before { content: "Qty / UOM"; }
+  .pwa-project-details-table td:nth-child(7)::before { content: "Price"; }
+  .pwa-project-details-table td:nth-child(8)::before { content: "PIC"; }
+  .pwa-project-details-table td:nth-child(9)::before { content: "Status"; }
+
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Email"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Name"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Phone"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Region"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "Area"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Role"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "Password"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(9)::before { content: "Last Login"; }
+  .pwa-users-table > tbody > .pwa-card-row > td:nth-child(10)::before { content: "Status"; }
+
+  .pwa-rls-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-rls-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Email"; }
+  .pwa-rls-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Name"; }
+  .pwa-rls-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Role"; }
+  .pwa-rls-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Status"; }
+  .pwa-rls-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "Permissions"; }
+
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Name"; }
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "NPWP"; }
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Bank"; }
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Contact"; }
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "Address"; }
+  .pwa-party-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Status"; }
+
+  .pwa-regions-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-regions-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Name"; }
+  .pwa-regions-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Type"; }
+  .pwa-regions-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Parent"; }
+  .pwa-regions-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Status"; }
+
+  .pwa-progress-stage-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-progress-stage-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Code"; }
+  .pwa-progress-stage-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Name"; }
+  .pwa-progress-stage-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Type"; }
+  .pwa-progress-stage-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Sequence"; }
+  .pwa-progress-stage-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "Status"; }
+
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "Select"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "No"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Date Time"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "User"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Action"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "Access Via"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Description"; }
+  .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "Metadata"; }
+
+  .pwa-dcn-table td:nth-child(1)::before { content: "No"; }
+  .pwa-dcn-table td:nth-child(2)::before { content: "Date"; }
+  .pwa-dcn-table td:nth-child(3)::before { content: "Number"; }
+  .pwa-dcn-table td:nth-child(4)::before { content: "Type"; }
+  .pwa-dcn-table td:nth-child(5)::before { content: "From"; }
+  .pwa-dcn-table td:nth-child(6)::before { content: "To"; }
+  .pwa-dcn-table td:nth-child(7)::before { content: "Subject"; }
+  .pwa-dcn-table td:nth-child(8)::before { content: "Flow"; }
+  .pwa-dcn-table td:nth-child(9)::before { content: "Status"; }
+
+  .pwa-financials-table td:nth-child(1)::before { content: "No"; }
+  .pwa-financials-table td:nth-child(2)::before { content: "Description"; }
+  .pwa-financials-table td:nth-child(3)::before { content: "Detail"; }
+  .pwa-financials-table td:nth-child(4)::before { content: "Qty"; }
+  .pwa-financials-table td:nth-child(5)::before { content: "Amount"; }
+  .pwa-financials-table td:nth-child(6)::before { content: "WO / PO"; }
+  .pwa-financials-table td:nth-child(7)::before { content: "Invoice"; }
+  .pwa-financials-table td:nth-child(8)::before { content: "Tax Invoice"; }
+  .pwa-financials-table td:nth-child(9)::before { content: "Balap / BAST"; }
+  .pwa-financials-table td:nth-child(10)::before { content: "Paid"; }
+  .pwa-financials-table td:nth-child(11)::before { content: "Partner / Client"; }
+  .pwa-financials-table td:nth-child(12)::before { content: "Status"; }
+
+  /* Financial rows contain more document fields than other lists. Keep their
+     mobile card compact with a two-column value grid instead of a long label
+     column, while preserving the same table markup and desktop layout. */
+  .pwa-financials-table .pwa-card-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pwa-financials-table .pwa-card-row td {
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0.55rem 0.65rem !important;
+    overflow: visible;
+    border-right: 1px solid var(--bs-border-color-translucent);
+  }
+
+  .pwa-financials-table .pwa-card-row td:nth-child(even) {
+    border-right: 0;
+  }
+
+  .pwa-financials-table .pwa-card-row td::before {
+    position: static;
+    display: block;
+    width: auto;
+    margin-bottom: 0.3rem;
+  }
+
+  .pwa-financials-table .pwa-card-row .fin-desc,
+  .pwa-financials-table .pwa-card-row .fin-site,
+  .pwa-financials-table .pwa-card-row .fin-col-party,
+  .pwa-financials-table .pwa-card-row .fin-col-status {
+    grid-column: 1 / -1;
+    border-right: 0;
+  }
+
+  .pwa-financials-table .pwa-card-row .fin-col-no {
+    grid-column: 1 / -1;
+    min-height: 0;
+    padding-block: 0.4rem !important;
+  }
+
+  .pwa-financials-table .fin-doc-block {
+    align-items: stretch;
+  }
+
+  .pwa-tax-table td:nth-child(1)::before { content: "No"; }
+  .pwa-tax-table td:nth-child(2)::before { content: "NPWP"; }
+  .pwa-tax-table td:nth-child(3)::before { content: "Name"; }
+  .pwa-tax-table td:nth-child(4)::before { content: "Address"; }
+  .pwa-tax-table td:nth-child(5)::before { content: "City"; }
+  .pwa-tax-table td:nth-child(6)::before { content: "DPP"; }
+  .pwa-tax-table td:nth-child(7)::before { content: "Tax"; }
+  .pwa-tax-table td:nth-child(8)::before { content: "Journal / Bill"; }
+  .pwa-tax-table td:nth-child(9)::before { content: "Paid Date"; }
+  .pwa-tax-table td:nth-child(10)::before { content: "Description"; }
+
+  .pwa-project-progress-table td:nth-child(1)::before { content: "No"; }
+  .pwa-project-progress-table td:nth-child(2)::before { content: "Project"; }
+  .pwa-project-progress-table td:nth-child(3)::before { content: "Details"; }
+  .pwa-project-progress-table .progress-stage-cell {
+    padding-left: 0.65rem !important;
+  }
+  .pwa-project-progress-table .progress-stage-cell::before {
+    position: static;
+    display: block;
+    width: auto;
+    margin-bottom: 0.35rem;
+    content: attr(data-stage);
+  }
+  .pwa-project-progress-table .progress-stage-cell + .progress-stage-cell {
+    border-top: 1px solid var(--bs-border-color-translucent);
+  }
+  .pwa-project-progress-table td:last-child::before { content: "Status"; }
+
+  .pwa-progress-stage-form td:nth-child(1)::before { content: "Stage"; }
+  .pwa-progress-stage-form td:nth-child(2)::before { content: "Plan / Submit"; }
+  .pwa-progress-stage-form td:nth-child(3)::before { content: "Actual / Approve"; }
+  .pwa-progress-stage-form td:nth-child(4)::before { content: "Remarks"; }
+  .pwa-progress-stage-form td:nth-child(5)::before { content: "Status"; }
+  .pwa-progress-stage-form td:nth-child(6)::before { content: "Document URL"; }
+  .pwa-progress-stage-form td:nth-child(7)::before { content: "Upload File"; }
+}
+
 /* Consistent active marker for native selects and Bootstrap dropdowns. */
 select.form-select:has(option:checked:not([value=""])) {
   background-image:

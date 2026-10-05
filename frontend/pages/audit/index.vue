@@ -81,7 +81,7 @@ const {
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-audit-table">
             <thead class="table-light">
               <tr>
                 <th style="width: 42px" class="text-center">
@@ -108,7 +108,7 @@ const {
                 <td colspan="8" class="text-center py-3">Loading...</td>
               </tr>
 
-              <tr v-for="(item, index) in store.items" :key="item.id">
+              <tr v-for="(item, index) in store.items" :key="item.id" class="pwa-card-row">
                 <td class="text-center">
                   <input
                     class="form-check-input"

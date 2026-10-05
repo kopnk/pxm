@@ -72,6 +72,8 @@ export default defineEventHandler(async (event) => {
     unitPricePartner: body.unitPricePartner,
     partnerInstallment: body.partnerInstallment,
     partnerInstallmentPercent: body.partnerInstallmentPercent,
+    clientInstallment: body.clientInstallment,
+    clientInstallmentPercent: body.clientInstallmentPercent,
     partnerDocumentWorkLocation: body.partnerDocumentWorkLocation,
     kopindosatSignatoryName: body.kopindosatSignatoryName,
     kopindosatSignatoryTitle: body.kopindosatSignatoryTitle,

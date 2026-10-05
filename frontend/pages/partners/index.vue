@@ -58,7 +58,7 @@ const {
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
         <div class="table-wrapper">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-party-table">
             <thead class="table-light">
               <tr>
                 <th width="50">No</th>
@@ -76,7 +76,7 @@ const {
                 <td colspan="7" class="text-center py-3">Loading...</td>
               </tr>
 
-              <tr v-for="(p, index) in store.items" :key="p.id">
+              <tr v-for="(p, index) in store.items" :key="p.id" class="pwa-card-row">
                 <td class="text-center fw-bold">
                   {{ (store.page - 1) * store.limit + index + 1 }}
                 </td>

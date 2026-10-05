@@ -27,6 +27,7 @@ export function useProjectFinancialsTaxSectionExport(
     search?: string;
     status?: string;
     material?: string;
+    installment?: string;
     regionId?: string;
     subRegionId?: string;
     page?: number;
@@ -44,6 +45,7 @@ export function useProjectFinancialsTaxSectionExport(
             search: s || undefined,
             status: st,
             material: material || undefined,
+            installment: (params?.installment ?? store.filters.installment) || undefined,
             regionId: (params?.regionId ?? store.filters.regionId) || undefined,
             subRegionId: (params?.subRegionId ?? store.filters.subRegionId) || undefined,
             page: params?.page ?? store.page,

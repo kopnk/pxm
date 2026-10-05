@@ -11,6 +11,7 @@ const {
   searchFilter,
   statusFilter,
   materialFilter,
+  installmentFilter,
   regionFilter,
   subRegionFilter,
   regions,
@@ -38,6 +39,7 @@ const onExportExcel = () => {
     search: store.filters.search,
     status: store.filters.status,
     material: store.filters.material,
+    installment: installmentFilter.value,
     page: store.page,
     limit: store.limit,
   });
@@ -63,18 +65,24 @@ const onExportExcel = () => {
 
     <!-- FILTER -->
     <div class="card mb-3 border-0 shadow-sm">
-      <div
-        class="card-body d-flex flex-nowrap align-items-center gap-2 py-2 px-2 pd-filter-one-line"
-      >
+      <div class="card-body py-2 px-2">
         <input
           v-model="searchFilter"
           type="search"
-          class="form-control form-control-sm pd-filter-search"
+          class="form-control form-control-sm mb-2 pd-filter-search"
           placeholder="Site, material, PO, region..."
         />
+        <div class="d-flex flex-wrap align-items-center gap-2">
         <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pd-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
+        </select>
+        <select v-model="installmentFilter" class="form-select form-select-sm flex-shrink-0 pd-filter-installment">
+          <option value="">All Installment</option>
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="Final">Final</option>
         </select>
         <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 pd-filter-sub-region" :disabled="!regionFilter">
           <option value="">All Sub Region</option>
@@ -118,6 +126,7 @@ const onExportExcel = () => {
         >
           {{ exporting ? "..." : "Excel" }}
         </button>
+        </div>
       </div>
     </div>
 
@@ -128,7 +137,7 @@ const onExportExcel = () => {
              - browser/page tidak melebar
              - horizontal scroll hanya terjadi pada area tabel -->
         <div class="table-scroll-x">
-          <table class="table table-striped table-users mb-0">
+          <table class="table table-striped table-users mb-0 pwa-card-table pwa-project-details-table">
             <thead class="table-light">
               <tr>
                 <th style="width: 50px">No</th>
@@ -148,7 +157,7 @@ const onExportExcel = () => {
                 <td colspan="9" class="text-center py-3">Loading...</td>
               </tr>
 
-              <tr v-for="(item, index) in store.items" :key="item.id">
+              <tr v-for="(item, index) in store.items" :key="item.id" class="pwa-card-row">
                 <!-- No -->
                 <td class="text-center fw-semibold align-middle">
                   {{ getRowNumber(index) }}
@@ -315,15 +324,11 @@ const onExportExcel = () => {
 </template>
 
 <style scoped>
-.pd-filter-one-line {
-  overflow-x: auto;
-  scrollbar-width: thin;
+.pd-filter-search {
+  width: 100%;
 }
 
-.pd-filter-search {
-  min-width: 0;
-  flex: 1 1 24rem;
-}
+.pd-filter-installment { width: 10rem; min-width: 10rem; }
 
 .pd-filter-status {
   width: 10.5rem;

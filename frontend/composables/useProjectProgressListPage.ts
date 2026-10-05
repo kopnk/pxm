@@ -31,6 +31,7 @@ export const useProjectProgressListPage = () => {
   const stageDateTypeFilter = createStoreFilter(store, "stageDateType");
   const statusFilter = createStoreFilter(store, "status");
   const materialFilter = createStoreFilter(store, "material");
+  const installmentFilter = createStoreFilter(store, "installment");
   const { regionFilter, subRegionFilter, regions, subRegions } =
     useListRegionFilters(store);
 
@@ -114,6 +115,7 @@ export const useProjectProgressListPage = () => {
         store.filters.stageDateType,
         store.filters.status,
         store.filters.material,
+        store.filters.installment,
         store.filters.regionId,
         store.filters.subRegionId,
       ] as const,
@@ -130,6 +132,7 @@ export const useProjectProgressListPage = () => {
       stageDateType: store.filters.stageDateType,
       status: store.filters.status,
       material: store.filters.material,
+      installment: store.filters.installment,
       regionId: store.filters.regionId,
       subRegionId: store.filters.subRegionId,
       page: store.page,
@@ -187,6 +190,7 @@ export const useProjectProgressListPage = () => {
     stageDateTypeFilter,
     statusFilter,
     materialFilter,
+    installmentFilter,
     regionFilter,
     subRegionFilter,
     regions,

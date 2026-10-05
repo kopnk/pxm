@@ -86,6 +86,8 @@ export type ProjectFinancialRecord = {
   unitPricePartner: number | null;
   partnerInstallment: string | null;
   partnerInstallmentPercent: number | null;
+  clientInstallment: string | null;
+  clientInstallmentPercent: number | null;
   /** Optional wording override used only in the partner BAST and invoice PDFs. */
   partnerDocumentWorkLocation: string | null;
   kopindosatSignatoryName: string | null;
@@ -316,6 +318,8 @@ function normalizeProjectFinancialRecord(
     unitPricePartner: normalizeNullableNumber(record.unitPricePartner),
     partnerInstallment: normalizeNullableText(record.partnerInstallment),
     partnerInstallmentPercent: normalizeNullableNumber(record.partnerInstallmentPercent),
+    clientInstallment: normalizeNullableText(record.clientInstallment),
+    clientInstallmentPercent: normalizeNullableNumber(record.clientInstallmentPercent),
     partnerDocumentWorkLocation: normalizeNullableText(record.partnerDocumentWorkLocation),
     kopindosatSignatoryName: normalizeNullableText(record.kopindosatSignatoryName),
     kopindosatSignatoryTitle: normalizeNullableText(record.kopindosatSignatoryTitle),
@@ -403,6 +407,8 @@ function toFilterRecord(record: ProjectFinancialListItem): ProjectFinancialsFilt
     fpDateClient: record.fpDateClient,
     regionId: record.regionId,
     subRegionId: record.subRegionId,
+    partnerInstallment: record.partnerInstallment,
+    clientInstallment: record.clientInstallment,
   };
 }
 

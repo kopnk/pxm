@@ -16,6 +16,7 @@ export type ProjectFinancialsListFilterInput = {
   search?: string;
   status?: string;
   flowDirection?: string;
+  installment?: string;
   taxSection?: "taxIn" | "taxOut" | "pph";
   regionId?: string;
   subRegionId?: string;
@@ -71,6 +72,8 @@ export type ProjectFinancialsFilterRecord = {
   fpDateClient?: string | null;
   regionId?: string | null;
   subRegionId?: string | null;
+  partnerInstallment?: string | null;
+  clientInstallment?: string | null;
 };
 
 function buildFinancialSearchHaystack(record: ProjectFinancialsFilterRecord) {
@@ -171,6 +174,20 @@ export function matchesProjectFinancialsListFilters(
     if (
       (FLOW_DIRECTIONS as readonly string[]).includes(flowDirection) &&
       record.flowDirection !== flowDirection
+    ) {
+      return false;
+    }
+  }
+
+  if (input.installment) {
+    const installment = input.installment.trim();
+    const recordInstallment =
+      record.flowDirection === "out"
+        ? record.clientInstallment
+        : record.partnerInstallment;
+    if (
+      ["1st", "2nd", "3rd", "Final"].includes(installment) &&
+      recordInstallment !== installment
     ) {
       return false;
     }
