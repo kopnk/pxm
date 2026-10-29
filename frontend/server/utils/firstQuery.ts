@@ -12,12 +12,6 @@ export function firstQuery(
   return text === "" ? undefined : text;
 }
 
-/** Cocokkan filter teks secara tidak peka huruf besar/kecil. */
-export function matchesStoredTextOption(value: string | null | undefined, selected?: string) {
-  const filter = selected?.trim();
-  return !filter || String(value ?? "").trim().toLocaleLowerCase("id-ID") === filter.toLocaleLowerCase("id-ID");
-}
-
 /** Material names used across project detail, progress, and financial filters. */
 export const PROJECT_DETAIL_MATERIAL_NAMES = [
   "Services",

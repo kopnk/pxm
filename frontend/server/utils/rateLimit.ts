@@ -60,13 +60,8 @@ export function checkRateLimit(
   return { allowed: true, retryAfterSec: 0 };
 }
 
-export function assertRateLimit(
-  event: H3Event,
-  scope: string,
-  options: RateLimitOptions,
-): void {
-  const ip = resolveClientIp(event);
-  const result = checkRateLimit(`${scope}:${ip}`, options);
+export function assertRateLimitKey(key: string, options: RateLimitOptions): void {
+  const result = checkRateLimit(key, options);
 
   if (!result.allowed) {
     throw createError({
@@ -74,4 +69,12 @@ export function assertRateLimit(
       statusMessage: `Too many requests. Try again in ${result.retryAfterSec}s`,
     });
   }
+}
+
+export function assertRateLimit(
+  event: H3Event,
+  scope: string,
+  options: RateLimitOptions,
+): void {
+  assertRateLimitKey(`${scope}:${resolveClientIp(event)}`, options);
 }

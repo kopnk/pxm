@@ -92,21 +92,21 @@
     />
 
     <div class="charts-grid">
-      <div class="card clickable" @click="openPanel('cpi')">
+      <div class="card clickable" role="button" tabindex="0" @click="openPanel('cpi')" @keydown.enter="openPanel('cpi')">
         <h3 class="section-title">CPI & SPI Trend (Weekly)</h3>
         <div class="chart-container">
           <Line :data="cpiSpiChart" :options="chartOptions" />
         </div>
       </div>
 
-      <div class="card clickable" @click="openPanel('progress')">
+      <div class="card clickable" role="button" tabindex="0" @click="openPanel('progress')" @keydown.enter="openPanel('progress')">
         <h3 class="section-title">Progress Site Trend (Weekly)</h3>
         <div class="chart-container">
           <Line :data="progressChart" :options="chartOptions" />
         </div>
       </div>
 
-      <div class="card clickable" @click="openPanel('scurve')">
+      <div class="card clickable" role="button" tabindex="0" @click="openPanel('scurve')" @keydown.enter="openPanel('scurve')">
         <h3 class="section-title">S-Curve (Plan vs Actual)</h3>
         <div class="chart-container">
           <Line :data="sCurveChart" :options="chartOptions" />
@@ -166,7 +166,7 @@
       </div>
     </div>
 
-    <div v-if="activePanel" class="fullscreen" @click="activePanel = null">
+    <div v-if="activePanel" class="fullscreen" role="dialog" aria-modal="true" @click="activePanel = null" @keydown.esc="activePanel = null">
       <div class="fullscreen-content" @click.stop>
         <h3 class="mb-3 fw-bold">{{ panelTitle }}</h3>
         <div class="fullscreen-chart-wrap">
@@ -954,7 +954,9 @@ watch(
 .dashboard-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  max-width: 1800px;
+  margin-inline: auto;
 }
 
 .dashboard-head {
@@ -966,14 +968,16 @@ watch(
 
 .dashboard-title {
   margin: 0;
-  font-size: 1.25rem;
+  color: var(--pxm-ink);
+  font-size: 1.5rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .dashboard-subtitle {
   margin: 0.25rem 0 0;
-  color: #6c757d;
-  font-size: 0.9rem;
+  color: var(--pxm-muted);
+  font-size: 0.875rem;
 }
 
 .dashboard-actions {
@@ -985,29 +989,47 @@ watch(
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .metric-card {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #ececec;
-  padding: 0.75rem;
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--pxm-line);
+  border-radius: var(--pxm-radius-lg);
+  background: var(--pxm-surface);
+  box-shadow: var(--pxm-shadow-xs);
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--pxm-brand-stripe);
 }
 
 .data-meta {
-  color: #6c757d;
-  font-size: 0.85rem;
+  color: var(--pxm-muted);
+  font-size: 0.8125rem;
 }
 
 .metric-label {
-  color: #6c757d;
-  font-size: 0.85rem;
+  color: var(--pxm-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .metric-value {
-  font-size: 1.25rem;
+  margin-top: 0.25rem;
+  color: var(--pxm-ink);
+  font-size: 1.625rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .charts-grid {
@@ -1015,22 +1037,22 @@ watch(
   min-height: 550px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .card {
-  background: #fff;
-  padding: 0.85rem;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
+  padding: 1rem 1.125rem;
+  border-radius: var(--pxm-radius-lg);
+  background: var(--pxm-surface);
 }
 
 .section-title {
-  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  color: var(--pxm-ink);
+  font-size: 0.875rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
 }
 
 .chart-container {
@@ -1041,11 +1063,12 @@ watch(
 
 .clickable {
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .clickable:hover {
-  transform: translateY(-2px);
+  border-color: var(--pxm-line-strong) !important;
+  box-shadow: var(--pxm-shadow-sm) !important;
 }
 
 .summary-card {
@@ -1095,7 +1118,8 @@ watch(
 .fullscreen {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(16 24 40 / 55%);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1103,11 +1127,12 @@ watch(
 }
 
 .fullscreen-content {
-  background: #fff;
   width: min(1100px, 92vw);
   height: min(650px, 90vh);
-  padding: 1rem;
-  border-radius: 10px;
+  padding: 1.25rem;
+  border-radius: var(--pxm-radius-lg);
+  background: var(--pxm-surface);
+  box-shadow: var(--pxm-shadow-lg);
 }
 
 .fullscreen-chart-wrap {

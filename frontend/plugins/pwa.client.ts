@@ -3,11 +3,17 @@ export default defineNuxtPlugin(() => {
   if (!import.meta.client) return;
   if (!("serviceWorker" in navigator)) return;
 
-  window.addEventListener("load", async () => {
+  const registerWorker = async () => {
     try {
       await navigator.serviceWorker.register("/sw.js");
     } catch (error) {
       console.error("[pwa] service worker registration failed", error);
     }
-  });
+  };
+
+  if (document.readyState === "complete") {
+    void registerWorker();
+  } else {
+    window.addEventListener("load", registerWorker, { once: true });
+  }
 });

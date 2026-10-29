@@ -65,26 +65,28 @@ const onExportExcel = () => {
           v-model="searchFilter"
           type="search"
           class="form-control form-control-sm mb-2 projects-filter-search"
+          aria-label="Search projects"
           placeholder="Project, PO, PR/SC, client..."
         />
         <div class="projects-filter-controls">
-        <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-region">
+        <select v-model="regionFilter" aria-label="Region" class="form-select form-select-sm flex-shrink-0 projects-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>
         </select>
-        <select v-model="installmentFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-installment">
+        <select v-model="installmentFilter" aria-label="Installment" class="form-select form-select-sm flex-shrink-0 projects-filter-installment">
           <option value="">All Installment</option>
           <option value="1st">1st</option>
           <option value="2nd">2nd</option>
           <option value="3rd">3rd</option>
           <option value="Final">Final</option>
         </select>
-        <select v-model="subRegionFilter" class="form-select form-select-sm flex-shrink-0 projects-filter-sub-region" :disabled="!regionFilter">
+        <select v-model="subRegionFilter" aria-label="Sub region" class="form-select form-select-sm flex-shrink-0 projects-filter-sub-region" :disabled="!regionFilter">
           <option value="">All Sub Region</option>
           <option v-for="subRegion in subRegions" :key="subRegion.id" :value="subRegion.id">{{ subRegion.name }}</option>
         </select>
         <select
           v-model="statusFilter"
+          aria-label="Status"
           class="form-select form-select-sm flex-shrink-0 projects-filter-status"
         >
           <option value="">All Status</option>
@@ -94,10 +96,6 @@ const onExportExcel = () => {
         </select>
         </div>
         <div class="projects-filter-summary mt-2">
-        <span
-          class="text-secondary user-select-none flex-shrink-0"
-          aria-hidden="true"
-        >|</span>
         <span class="projects-total projects-total-po text-nowrap small text-muted">
           <span title="DPP: nilai PO sebelum PPN">Total PO Price</span>
           <span class="fw-bold text-dark ms-1">{{
@@ -136,8 +134,9 @@ const onExportExcel = () => {
     <!-- TABLE -->
     <div class="card shadow-sm border-0">
       <div class="card-body p-0">
-        <div class="table-wrapper">
+        <div class="table-wrapper table-scroll-x" role="region" aria-label="Projects table" tabindex="0">
           <table class="table table-striped table-users mb-0 pwa-card-table pwa-projects-table">
+            <caption class="visually-hidden">Projects and purchase order summary</caption>
             <thead class="table-light">
               <tr>
                 <th class="text-center" width="64">No</th>
@@ -162,12 +161,16 @@ const onExportExcel = () => {
               <template v-for="(item, index) in store.items" :key="item.id">
                 <!-- MAIN ROW -->
                 <tr class="pwa-card-row">
-                  <td
-                    class="text-center text-muted fw-semibold"
-                    style="cursor: pointer"
-                    @click="toggleRow(item.id)"
-                  >
-                    {{ getRowNumber(index) }}
+                  <td class="text-center text-muted fw-semibold">
+                    <button
+                      type="button"
+                      class="btn btn-link btn-sm text-decoration-none"
+                      :aria-label="`Toggle details for ${item.projectName}`"
+                      :aria-expanded="expandedRow === item.id"
+                      @click="toggleRow(item.id)"
+                    >
+                      {{ getRowNumber(index) }}
+                    </button>
                   </td>
 
                   <td>
@@ -220,15 +223,17 @@ const onExportExcel = () => {
                       :updated-at="item.updatedAt"
                     />
 
-                    <span
+                    <button
                       v-if="canDelete"
-                      class="text-danger fw-semibold"
-                      style="cursor: pointer"
+                      type="button"
+                      class="btn btn-link btn-sm text-danger text-decoration-none"
+                      :aria-label="`Delete ${item.projectName}`"
+                      :disabled="deletingId === item.id"
                       @click.stop="openDeleteModal(item.id)"
                     >
                       <span v-if="deletingId === item.id">...</span>
-                      <span v-else>x</span>
-                    </span>
+                      <span v-else>Delete</span>
+                    </button>
                   </td>
                 </tr>
 
@@ -450,6 +455,7 @@ const onExportExcel = () => {
 }
 
 .table-users {
+  min-width: 75rem;
   th,
   td {
     font-size: 0.9rem;

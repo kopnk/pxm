@@ -81,19 +81,24 @@ const submit = async () => {
 </script>
 
 <template>
-  <div class="signin-wrapper d-flex align-items-center justify-content-center">
-    <div class="card signin-card shadow-sm">
-      <div class="card-body p-4">
-        <div class="text-center mb-4">
-          <img src="/pxm.png" alt="PXM" height="78" />
-        </div>
+  <main class="signin-wrapper">
+    <section class="signin-panel">
+      <div class="signin-card">
+        <h2>Sign in</h2>
+        <p class="text-muted small mb-4">Sign in with your PXM account.</p>
 
-        <form @submit.prevent="submit">
+        <form :aria-busy="loading" @submit.prevent="submit">
           <div class="mb-3">
-            <label class="form-label">Email</label>
+            <label for="signin-email" class="form-label">Email</label>
             <input
+              id="signin-email"
               v-model="email"
               type="email"
+              name="email"
+              autocomplete="username"
+              autocapitalize="none"
+              inputmode="email"
+              :aria-describedby="error ? 'signin-error' : undefined"
               class="form-control"
               placeholder="your@email.com"
               required
@@ -101,22 +106,30 @@ const submit = async () => {
           </div>
 
           <div class="mb-3 position-relative">
-            <label class="form-label">Password</label>
+            <label for="signin-password" class="form-label">Password</label>
             <input
+              id="signin-password"
               v-model="password"
+              name="password"
+              autocomplete="current-password"
+              :aria-describedby="error ? 'signin-error' : undefined"
               :type="showPassword ? 'text' : 'password'"
               class="form-control pe-5"
               placeholder="your password"
               required
             />
 
-            <span
-              class="password-toggle"
+            <button
+              type="button"
+              class="password-toggle btn btn-link text-decoration-none"
               @click="showPassword = !showPassword"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-pressed="showPassword"
+              aria-controls="signin-password"
               :title="showPassword ? 'Hide password' : 'Show password'"
             >
               {{ showPassword ? "Hide" : "Show" }}
-            </span>
+            </button>
           </div>
 
           <div class="form-check mb-4">
@@ -131,17 +144,27 @@ const submit = async () => {
             </label>
           </div>
 
-          <p v-if="error" class="text-danger small mb-2">
+          <div
+            v-if="error"
+            id="signin-error"
+            role="alert"
+            class="alert alert-danger py-2 px-3 small mb-3"
+          >
             {{ error }}
-          </p>
+          </div>
 
           <div class="d-grid">
             <button class="btn btn-primary" :disabled="loading">
+              <span
+                v-if="loading"
+                class="spinner-border spinner-border-sm me-2"
+                aria-hidden="true"
+              />
               {{ loading ? "Signing in..." : "Sign In" }}
             </button>
           </div>
         </form>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 </template>

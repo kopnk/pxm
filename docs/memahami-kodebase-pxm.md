@@ -135,6 +135,23 @@ Kalau menambah fitur, pikirkan dulu access pattern list, filter, dan export-nya,
 - Metadata file tetap dicatat di DynamoDB.
 - Audit log tidak lagi memakai database relasional; semuanya masuk ke DynamoDB.
 
+## 6a) Aturan Keamanan API
+
+- Semua middleware membaca path lewat `server/utils/apiPath.ts` (path dinormalisasi, traversal ditolak).
+- `server/middleware/02-rls-enforce.ts` bersifat **fail closed**: endpoint `/api/*` yang tidak punya aturan di `server/utils/apiAccessMap.ts` ditolak 403. Endpoint baru wajib ditambahkan ke peta tersebut. Aturan khusus (`export-pph`, `next-number`, dst.) diletakkan sebelum aturan umum `/:id`.
+- User dengan password sementara (`mustChangePassword`) hanya boleh memanggil `GET /api/profile` dan `POST /api/profile/change-password` sampai password diganti.
+- `/api/project_files*` mengikuti RLS record induknya (`projects`, `project_financials`, `project_progress`) lewat `server/utils/projectFileAccess.ts`.
+- Upload divalidasi oleh `server/utils/uploadValidation.ts` (tipe MIME + magic bytes, ekstensi dari MIME, bukan dari nama file). Avatar hanya PNG/JPEG/WebP.
+- Login dibatasi per IP dan per email.
+
+## 6b) Shell UI dan Design System
+
+- Navigasi tunggal di `composables/useAppNavigation.ts` (grup menu + cek RLS). Dipakai sidebar desktop, drawer mobile, dan bottom bar PWA di `components/AppNavigation.vue`.
+- Ikon shell: `lib/navIcons.ts` + `components/NavIcon.vue` (SVG inline, tanpa request tambahan).
+- Style: `assets/scss/_tokens.scss` (warna, radius, shadow, metrik shell), `_app-shell.scss` (layout), `_components.scss` (kartu, tabel, form, badge, toast). Ubah token dulu sebelum menambah warna baru.
+- Tombol hapus baris memakai `components/AppRowDelete.vue`; form memakai `FormShell` + `FormSection` (tombol Simpan sticky).
+- Gambar avatar dikompres di browser (`utils/compressImage.ts`); export Excel ditulis dengan `compression: true`.
+
 ## 7) Stage `dev` dan `prod`
 
 Stage adalah konsep inti di PXM saat ini:
@@ -175,10 +192,11 @@ Urutan yang paling efektif:
 2. Tambah/ubah validation di `frontend/server/validation/`.
 3. Tambah/ubah store helper di `frontend/server/utils/`.
 4. Tambah/ubah endpoint `frontend/server/api/...`.
-5. Tambah/ubah composable di `frontend/composables/useXxxApi.ts`.
-6. Update store jika hanya perlu state baru.
-7. Update halaman/komponen.
-8. Verifikasi pagination, audit, dan response envelope tetap konsisten.
+5. Daftarkan endpoint di `frontend/server/utils/apiAccessMap.ts` (tanpa ini endpoint ditolak).
+6. Tambah/ubah composable di `frontend/composables/useXxxApi.ts`.
+7. Update store jika hanya perlu state baru.
+8. Update halaman/komponen; menu baru cukup ditambah di `useAppNavigation.ts`.
+9. Verifikasi pagination, audit, dan response envelope tetap konsisten.
 
 ## 10) Prinsip Implementasi
 

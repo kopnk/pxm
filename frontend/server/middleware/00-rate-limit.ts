@@ -1,12 +1,13 @@
 import { defineEventHandler } from "h3";
 import { assertRateLimit } from "~/server/utils/rateLimit";
+import { requestMethod, resolveApiPath } from "~/server/utils/apiPath";
 
 export default defineEventHandler((event) => {
-  const url = event.node.req.url || "";
-  const pathOnly = url.split("?")[0] ?? "";
-  const method = (event.node.req.method || "GET").toUpperCase();
+  const path = resolveApiPath(event);
+  if (!path) return;
+  const method = requestMethod(event);
 
-  if (method === "POST" && pathOnly === "/api/auth/login") {
+  if (method === "POST" && path === "/api/auth/login") {
     assertRateLimit(event, "auth-login", {
       limit: 10,
       windowMs: 15 * 60 * 1000,
@@ -14,7 +15,7 @@ export default defineEventHandler((event) => {
     return;
   }
 
-  if (method === "GET" && pathOnly === "/api/project_financials/export") {
+  if (method === "GET" && path === "/api/project_financials/export") {
     assertRateLimit(event, "financial-export", {
       limit: 5,
       windowMs: 60 * 1000,
@@ -24,7 +25,7 @@ export default defineEventHandler((event) => {
 
   if (
     method === "GET" &&
-    (pathOnly.includes("/export") || pathOnly.startsWith("/api/reports/"))
+    (path.includes("/export") || path.startsWith("/api/reports/"))
   ) {
     assertRateLimit(event, "export-pdf", {
       limit: 30,

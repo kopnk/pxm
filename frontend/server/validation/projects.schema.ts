@@ -24,13 +24,6 @@ export const createProjectSchema = z.object({
 
 export const updateProjectSchema = createProjectSchema.partial();
 
-export const queryProjectSchema = z.object({
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(DEFAULT_PAGE_LIMIT),
-  search: z.string().optional(),
-  status: z.enum(["active", "closed", "cancelled"]).optional(),
-});
-
 /** Query untuk `GET /api/projects/export` (search + status + pagination, sama seperti list). */
 export const projectsExportQueryZ = z.object({
   search: z.string().max(500).optional(),

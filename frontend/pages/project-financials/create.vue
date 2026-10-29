@@ -156,7 +156,7 @@ const downloadBulkTemplate = async (flow: "in" | "out") => {
       "project_detail_reference",
     );
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(partyItems.map((item: any) => ({ name: item.name ?? "", [partyKey]: item.id ?? "" }))), flow === "in" ? "partner_reference" : "client_reference");
-    XLSX.writeFile(workbook, `project-financial-${flow === "in" ? "partner-in" : "client-out"}-template.xlsx`);
+    XLSX.writeFile(workbook, `project-financial-${flow === "in" ? "partner-in" : "client-out"}-template.xlsx`, { compression: true });
   } catch (error: any) {
     notify.error(error?.data?.message || error?.message || "Failed to download bulk template");
   }

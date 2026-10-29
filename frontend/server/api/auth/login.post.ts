@@ -5,6 +5,7 @@ import { toLocalTime } from "~/server/utils/datetime";
 import { logAudit } from "~/server/utils/audit";
 import { loginSchema } from "~/server/validation/auth.schema";
 import { parseBody } from "~/server/utils/zod";
+import { assertRateLimitKey } from "~/server/utils/rateLimit";
 import {
   isCognitoAuthEnabled,
   loginWithPassword,
@@ -18,6 +19,13 @@ import {
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const { email, password } = parseBody(loginSchema, body);
+
+  // Per-account limit on top of the per-IP limit: forwarded IPs can be spoofed
+  // or rotated, the targeted account cannot.
+  assertRateLimitKey(`auth-login-email:${email}`, {
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+  });
 
   if (!isCognitoAuthEnabled()) {
     throw createError({

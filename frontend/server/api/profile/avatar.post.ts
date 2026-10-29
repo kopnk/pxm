@@ -7,10 +7,14 @@ import {
   uploadAppFileObject,
 } from "~/server/utils/appFilesStorage";
 import { randomUUID } from "node:crypto";
+import { assertUploadedFile } from "~/server/utils/uploadValidation";
 import {
   getAppUserRecordById,
   updateAppUserRecord,
 } from "~/server/utils/appUserStore";
+
+const AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
 export default defineEventHandler(async (event) => {
 
@@ -43,19 +47,10 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  if (!file.type?.startsWith("image/")) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Invalid image type",
-    });
-  }
-
-  if (file.data.length > 2 * 1024 * 1024) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Max 2MB allowed",
-    });
-  }
+  const { mimeType, extension } = assertUploadedFile(file, {
+    allowedTypes: AVATAR_TYPES,
+    maxBytes: AVATAR_MAX_BYTES,
+  });
 
   const userId = authUser.id;
 
@@ -70,13 +65,12 @@ export default defineEventHandler(async (event) => {
   }
 
   /* ================= UPLOAD NEW FILE ================= */
-  const fileExt = file.type.split("/")[1] || "jpg";
-  const filePath = `avatars/users/${userId}/${randomUUID()}.${fileExt}`;
+  const filePath = `avatars/users/${userId}/${randomUUID()}.${extension}`;
 
   const { publicUrl } = await uploadAppFileObject({
     key: filePath,
     body: file.data,
-    contentType: file.type,
+    contentType: mimeType,
     cacheControl: "public, max-age=31536000, immutable",
   });
 

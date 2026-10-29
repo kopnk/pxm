@@ -44,7 +44,7 @@ export const useUsersListPage = () => {
     store.items.find((item) => item.id === resetTargetId.value),
   );
 
-  const { showingStart, showingEnd } = useMetaPaginationRange(store.meta);
+  const { showingStart, showingEnd } = useMetaPaginationRange(() => store.meta);
 
   const fetchUsers = async (page = store.meta.page, showToast = true) => {
     try {

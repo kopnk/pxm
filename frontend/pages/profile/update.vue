@@ -4,6 +4,8 @@ import { toastSuccessUpdated } from "@/composables/useToastMessages";
 import FormShell from "@/components/form/FormShell.vue";
 import FormSection from "@/components/form/FormSection.vue";
 import { apiFetch } from "~/utils/apiFetch";
+import { compressImageFile } from "~/utils/compressImage";
+import { resolveAvatarUrl } from "~/utils/resolveAvatarUrl";
 
 const router = useRouter();
 const profileStore = useProfileStore();
@@ -20,13 +22,20 @@ const avatarUploaded = ref(false);
 const previewAvatar = ref<string | null>(null);
 const avatarFile = ref<File | null>(null);
 
-const onAvatarChange = (e: Event) => {
+const onAvatarChange = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
-  avatarFile.value = file;
-  previewAvatar.value = URL.createObjectURL(file);
+  // Resize before upload: a phone photo shrinks from several MB to ~100 KB.
+  const compressed = await compressImageFile(file, { maxDimension: 512 });
+  avatarFile.value = compressed;
+  if (previewAvatar.value) URL.revokeObjectURL(previewAvatar.value);
+  previewAvatar.value = URL.createObjectURL(compressed);
 };
+
+onBeforeUnmount(() => {
+  if (previewAvatar.value) URL.revokeObjectURL(previewAvatar.value);
+});
 
 const uploadAvatar = async () => {
   if (!avatarFile.value) return;
@@ -103,55 +112,79 @@ const submit = async () => {
     @submit="submit"
     @cancel="router.replace('/profile')"
   >
-    <FormSection>
-      <!-- Email -->
+    <FormSection title="Account">
       <div class="col-12">
-        <label>Email</label>
-        <input v-model="user.email" class="form-control" disabled />
+        <label for="profile-email">Email</label>
+        <input id="profile-email" v-model="user.email" class="form-control" disabled />
       </div>
 
-      <div class="col-6">
-        <label>First Name</label>
-        <input v-model="user.firstName" class="form-control" />
-      </div>
-
-      <div class="col-6">
-        <label>Last Name</label>
-        <input v-model="user.lastName" class="form-control" />
-      </div>
-
-      <div class="col-6">
-        <label>Phone</label>
-        <input v-model="user.phone" class="form-control" />
-      </div>
-
-      <div class="col-12">
-        <label>Avatar</label>
+      <div class="col-md-6">
+        <label for="profile-first-name">First Name</label>
         <input
-          type="file"
+          id="profile-first-name"
+          v-model="user.firstName"
           class="form-control"
-          accept="image/*"
-          @change="onAvatarChange"
+          autocomplete="given-name"
         />
       </div>
 
-      <div class="col-12">
+      <div class="col-md-6">
+        <label for="profile-last-name">Last Name</label>
+        <input
+          id="profile-last-name"
+          v-model="user.lastName"
+          class="form-control"
+          autocomplete="family-name"
+        />
+      </div>
+
+      <div class="col-md-6">
+        <label for="profile-phone">Phone</label>
+        <input
+          id="profile-phone"
+          v-model="user.phone"
+          class="form-control"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+        />
+      </div>
+
+      <div class="col-md-3 col-6">
+        <label for="profile-region">Region</label>
+        <input id="profile-region" v-model="user.region" class="form-control" disabled />
+      </div>
+
+      <div class="col-md-3 col-6">
+        <label for="profile-area">Area</label>
+        <input id="profile-area" v-model="user.area" class="form-control" disabled />
+      </div>
+    </FormSection>
+
+    <FormSection title="Avatar">
+      <div class="col-12 d-flex flex-wrap align-items-center gap-3">
         <img
-          v-if="previewAvatar"
-          :src="previewAvatar"
-          class="rounded mt-2"
-          style="width: 120px; height: 120px; object-fit: cover"
+          :src="previewAvatar || resolveAvatarUrl(profileStore.profile?.avatarUrl)"
+          alt=""
+          width="72"
+          height="72"
+          class="rounded-circle border"
+          style="object-fit: cover"
         />
-      </div>
-
-      <div class="col-6">
-        <label>Region</label>
-        <input v-model="user.region" class="form-control" disabled />
-      </div>
-
-      <div class="col-6">
-        <label>Area</label>
-        <input v-model="user.area" class="form-control" disabled />
+        <div class="flex-grow-1">
+          <label for="profile-avatar">Upload photo</label>
+          <input
+            id="profile-avatar"
+            type="file"
+            class="form-control"
+            accept="image/png,image/jpeg,image/webp"
+            aria-describedby="profile-avatar-help"
+            @change="onAvatarChange"
+          />
+          <div id="profile-avatar-help" class="form-text">
+            PNG, JPG, atau WebP. Foto otomatis diperkecil sebelum diunggah.
+          </div>
+        </div>
       </div>
     </FormSection>
   </FormShell>

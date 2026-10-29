@@ -64,8 +64,8 @@ expectIncludes(
 
 expectIncludes(
   apiAccessFile,
-  '...rulesFor("/api/users", "users", [ { pattern: /^\\/api\\/users\\/region-options(?:\\/|$)/, method: M.GET, resource: "users", action: "create" }, { pattern: /^\\/api\\/users\\/[^/]+\\/reset-password(?:\\/|$)/, method: M.POST, resource: "users", action: "update" }, { pattern: /^\\/api\\/users\\/signup(?:\\/|$)/, method: M.POST, resource: "users", action: "create" }, ]),',
-  "users signup endpoint must map to users:create",
+  '...rulesFor("/api/users", "users", [ { pattern: /^\\/api\\/users\\/region-options(?:\\/|$)/, method: M.GET, resource: "users", action: "read" }, { pattern: /^\\/api\\/users\\/[^/]+\\/reset-password(?:\\/|$)/, method: M.POST, resource: "users", action: "update" }, { pattern: /^\\/api\\/users\\/signup(?:\\/|$)/, method: M.POST, resource: "users", action: "create" }, ]),',
+  "users signup must map to users:create; region options stay readable for the update form",
 );
 expectIncludes(
   apiAccessFile,

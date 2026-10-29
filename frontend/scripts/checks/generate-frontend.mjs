@@ -1,6 +1,6 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnNuxtSync } from "../run-nuxt.mjs";
+import { spawnNuxtSync, stampServiceWorker } from "../run-nuxt.mjs";
 
 const rootDir = resolve(import.meta.dirname, "../..");
 const nuxtBuildDir = ".nuxt-prod-generate";
@@ -39,30 +39,7 @@ const generatedIndex = readFileSync(
   resolve(generatedPublicDir, "index.html"),
   "utf8",
 );
-const buildMetadata = JSON.parse(
-  readFileSync(
-    resolve(generatedPublicDir, "_nuxt", "builds", "latest.json"),
-    "utf8",
-  ),
-);
-const buildId = String(buildMetadata?.id ?? "").trim();
-
-if (!/^[a-zA-Z0-9-]+$/.test(buildId)) {
-  throw new Error("Production frontend has an invalid or missing build ID.");
-}
-
-const generatedServiceWorkerPath = resolve(generatedPublicDir, "sw.js");
-const generatedServiceWorker = readFileSync(generatedServiceWorkerPath, "utf8");
-
-if (!generatedServiceWorker.includes("__PXM_BUILD_ID__")) {
-  throw new Error("Service worker build ID placeholder was not found.");
-}
-
-writeFileSync(
-  generatedServiceWorkerPath,
-  generatedServiceWorker.replaceAll("__PXM_BUILD_ID__", buildId),
-  "utf8",
-);
+stampServiceWorker(generatedPublicDir);
 
 if (
   /https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?|\/@vite\/client|[A-Za-z]:\//i.test(

@@ -2,28 +2,22 @@
 import { useNotificationStore } from "@/stores/notifications";
 
 const store = useNotificationStore();
+const isError = computed(() => store.type === "danger" || store.type === "warning");
 </script>
 
 <template>
-  <div
-    v-if="store.visible"
-    class="position-fixed bottom-0 end-0 p-3"
-    style="z-index: 9999"
-  >
-    <div
-      class="toast show align-items-center text-white border-0 shadow"
-      :class="`bg-${store.type}`"
-    >
-      <div class="d-flex">
-        <div class="toast-body">
-          {{ store.message }}
-        </div>
+  <div class="app-toast-region" :role="isError ? 'alert' : 'status'" aria-live="polite">
+    <Transition name="app-toast">
+      <div v-if="store.visible" class="app-toast" :class="`app-toast-${store.type}`">
+        <span class="app-toast-bar" aria-hidden="true" />
+        <p class="app-toast-message">{{ store.message }}</p>
         <button
           type="button"
-          class="btn-close btn-close-white me-2 m-auto"
+          class="btn-close"
+          aria-label="Dismiss notification"
           @click="store.hide"
-        ></button>
+        />
       </div>
-    </div>
+    </Transition>
   </div>
 </template>

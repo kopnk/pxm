@@ -1,0 +1,604 @@
+/* =========================================================
+   App shell: desktop sidebar (collapsible rail), mobile
+   top bar + drawer, and PWA bottom bar. One <aside> serves
+   as both sidebar and drawer; media queries switch roles.
+   ========================================================= */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--app-sidebar-w) minmax(0, 1fr);
+  grid-template-areas: "sidebar main";
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--pxm-canvas);
+  transition: grid-template-columns 0.2s ease;
+}
+
+.app-shell.is-collapsed {
+  grid-template-columns: var(--app-sidebar-rail-w) minmax(0, 1fr);
+}
+
+.main-scroll {
+  grid-area: main;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--pxm-canvas);
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.main-scroll:focus {
+  outline: none;
+}
+
+/* Pages without their own container (dashboard) get the same gutters. */
+.main-scroll > :not(.container-fluid):not(.container):not(.modal) {
+  padding: 1.5rem 2rem 2.5rem;
+}
+
+.main-scroll > :is(.container-fluid, .container) {
+  max-width: 1800px;
+  margin-inline: auto;
+  padding: 1.5rem 2rem 2.5rem !important;
+}
+
+/* ---------- Sidebar ---------- */
+.app-sidebar {
+  grid-area: sidebar;
+  position: relative;
+  z-index: 1030;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--pxm-surface);
+  border-right: 1px solid var(--pxm-line);
+  padding-left: var(--safe-left);
+}
+
+.app-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--pxm-brand-stripe);
+}
+
+.app-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1.125rem 0.875rem 0.75rem;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  color: var(--pxm-ink);
+  text-decoration: none;
+}
+
+.app-brand img {
+  flex-shrink: 0;
+  border-radius: var(--pxm-radius);
+  box-shadow: 0 0 0 1px var(--pxm-line);
+}
+
+.app-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.app-brand-text strong {
+  font-size: 1.0625rem;
+  letter-spacing: 0.02em;
+}
+
+.app-brand-text small {
+  color: var(--pxm-muted);
+  font-size: 0.6875rem;
+  line-height: 1.25;
+}
+
+.app-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem 0.75rem 1rem;
+  scrollbar-width: thin;
+}
+
+.app-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav-group + .app-nav-group {
+  margin-top: 1rem;
+}
+
+.app-nav-heading {
+  margin: 0 0 0.375rem;
+  padding: 0 0.625rem;
+  color: var(--pxm-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.app-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
+  margin-bottom: 0.125rem;
+  padding: 0.5rem 0.625rem;
+  border: 0;
+  border-radius: var(--pxm-radius);
+  background: transparent;
+  color: var(--pxm-ink-soft);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.app-nav-link .nav-icon {
+  color: var(--pxm-muted);
+  transition: color 0.15s ease;
+}
+
+.app-nav-link.is-active {
+  background: var(--pxm-brand-tint);
+  color: var(--pxm-brand-strong);
+  font-weight: 650;
+}
+
+.app-nav-link.is-active .nav-icon {
+  color: var(--pxm-brand);
+}
+
+.app-nav-link.is-active:not(.app-subnav-link)::before {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  left: -0.75rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--pxm-brand);
+}
+
+.app-nav-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-nav-caret {
+  margin-left: auto;
+  transition: transform 0.15s ease;
+}
+
+[aria-expanded="true"] > .app-nav-caret {
+  transform: rotate(180deg);
+}
+
+.app-subnav {
+  margin: 0.125rem 0 0.375rem 1.5rem !important;
+  padding-left: 0.75rem !important;
+  border-left: 1px solid var(--pxm-line);
+}
+
+.app-subnav-link {
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+}
+
+.app-nav-danger,
+.app-nav-danger .nav-icon {
+  color: #b42318;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-nav-link:hover {
+    background: var(--pxm-surface-muted);
+    color: var(--pxm-ink);
+  }
+
+  .app-nav-link:hover .nav-icon {
+    color: var(--pxm-ink-soft);
+  }
+
+  .app-nav-link.is-active:hover {
+    background: var(--pxm-brand-tint);
+    color: var(--pxm-brand-strong);
+  }
+
+  .app-nav-danger:hover {
+    background: #fef3f2;
+    color: #912018;
+  }
+}
+
+/* ---------- Sidebar footer / account ---------- */
+.app-sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem 0.75rem calc(0.75rem + var(--safe-bottom));
+  border-top: 1px solid var(--pxm-line);
+}
+
+.app-account-menu {
+  margin: 0 0 0.25rem;
+  padding: 0.25rem 0 0.375rem;
+  list-style: none;
+  border-bottom: 1px dashed var(--pxm-line);
+}
+
+.app-account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--pxm-line);
+  border-radius: var(--pxm-radius-lg);
+  background: var(--pxm-surface-muted);
+  color: var(--pxm-ink);
+  text-align: left;
+}
+
+.app-account-avatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px var(--pxm-surface), 0 0 0 3px var(--pxm-line);
+}
+
+.app-account-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.app-account-copy strong {
+  overflow: hidden;
+  font-size: 0.875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-account-copy small {
+  color: var(--pxm-muted);
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.app-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 0.625rem;
+  border: 0;
+  border-radius: var(--pxm-radius);
+  background: transparent;
+  color: var(--pxm-muted);
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.app-sidebar-note {
+  padding: 0 0.625rem;
+  color: #8a96a6;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-account-trigger:hover,
+  .app-collapse-btn:hover {
+    background: var(--pxm-canvas);
+    color: var(--pxm-ink);
+  }
+}
+
+/* ---------- Collapsed rail (desktop only) ---------- */
+@media (min-width: 992px) {
+  .is-collapsed .app-sidebar-head {
+    justify-content: center;
+    padding-inline: 0.5rem;
+  }
+
+  .is-collapsed :is(.app-brand-text, .app-nav-label, .app-nav-caret, .app-account-copy, .app-sidebar-note, .app-subnav) {
+    display: none !important;
+  }
+
+  .is-collapsed .app-nav {
+    padding-inline: 0.625rem;
+  }
+
+  .is-collapsed .app-nav-heading {
+    overflow: hidden;
+    height: 1px;
+    margin: 0.625rem 0.5rem;
+    padding: 0;
+    background: var(--pxm-line);
+    color: transparent;
+  }
+
+  .is-collapsed :is(.app-nav-link, .app-collapse-btn) {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .is-collapsed .app-nav-link.is-active::before {
+    left: -0.625rem;
+  }
+
+  .is-collapsed .app-account-trigger {
+    justify-content: center;
+    padding: 0.375rem;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .is-collapsed .app-account-menu {
+    display: none !important;
+  }
+}
+
+/* ---------- Mobile-only chrome hidden on desktop ---------- */
+.app-topbar,
+.app-bottombar,
+.app-backdrop {
+  display: none;
+}
+
+.app-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pxm-radius);
+  background: transparent;
+  color: var(--pxm-ink);
+}
+
+.app-icon-btn:active {
+  background: var(--pxm-canvas);
+}
+
+.app-icon-btn.app-drawer-close {
+  display: none;
+}
+
+/* ---------- Tablet & phone: top bar + drawer + bottom bar ---------- */
+@media (max-width: 991.98px) {
+  .app-shell,
+  .app-shell.is-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "topbar" "main" "bottombar";
+  }
+
+  .app-topbar {
+    grid-area: topbar;
+    position: relative;
+    z-index: 1020;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: calc(var(--app-topbar-h) + var(--safe-top));
+    padding: var(--safe-top) calc(0.375rem + var(--safe-right)) 0 calc(0.375rem + var(--safe-left));
+    background: var(--pxm-surface);
+    border-bottom: 1px solid var(--pxm-line);
+  }
+
+  .app-topbar::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--pxm-brand-stripe);
+  }
+
+  .app-topbar-brand {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+    color: var(--pxm-ink);
+    text-decoration: none;
+  }
+
+  .app-topbar-brand img {
+    border-radius: var(--pxm-radius-sm);
+    box-shadow: 0 0 0 1px var(--pxm-line);
+  }
+
+  .app-topbar-title {
+    overflow: hidden;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-avatar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .app-avatar-btn img {
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 2px var(--pxm-surface), 0 0 0 3px var(--pxm-line);
+  }
+
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 1050;
+    width: min(20rem, 86vw);
+    padding-top: var(--safe-top);
+    border-right: 0;
+    box-shadow: var(--pxm-shadow-lg);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 0.24s ease, visibility 0s linear 0.24s;
+  }
+
+  .app-sidebar.is-open {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 0.24s ease, visibility 0s;
+  }
+
+  .app-sidebar::before {
+    top: var(--safe-top);
+  }
+
+  .app-icon-btn.app-drawer-close {
+    display: inline-flex;
+  }
+
+  .app-collapse-btn {
+    display: none;
+  }
+
+  .app-nav-link {
+    min-height: 2.75rem;
+  }
+
+  .app-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    display: block;
+    background: rgb(16 24 40 / 45%);
+    animation: app-fade-in 0.2s ease;
+  }
+
+  .app-bottombar {
+    grid-area: bottombar;
+    z-index: 1020;
+    display: flex;
+    align-items: stretch;
+    min-height: calc(var(--app-bottombar-h) + var(--safe-bottom));
+    padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+    background: var(--pxm-surface);
+    border-top: 1px solid var(--pxm-line);
+  }
+
+  .app-bottombar-link {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-width: 0;
+    padding: 0.375rem 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--pxm-muted);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-bottombar-link span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-bottombar-link.is-active {
+    color: var(--pxm-brand);
+  }
+
+  .app-bottombar-link.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 2rem;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--pxm-brand);
+  }
+
+  .main-scroll > :not(.container-fluid):not(.container):not(.modal),
+  .main-scroll > :is(.container-fluid, .container) {
+    padding: 1rem calc(1rem + var(--safe-right)) 1.5rem calc(1rem + var(--safe-left)) !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .main-scroll > :not(.container-fluid):not(.container):not(.modal),
+  .main-scroll > :is(.container-fluid, .container) {
+    padding: 0.875rem calc(0.75rem + var(--safe-right)) 1.25rem calc(0.75rem + var(--safe-left)) !important;
+  }
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .app-sidebar,
+  .app-sidebar.is-open,
+  .app-nav-link,
+  .app-nav-caret {
+    transition: none !important;
+  }
+
+  .app-backdrop {
+    animation: none;
+  }
+}
+
+/* Installed desktop PWA: no browser chrome, so give the rail a little more air. */
+@media (display-mode: standalone) and (min-width: 992px) {
+  .app-sidebar-head {
+    padding-top: 1.375rem;
+  }
+}

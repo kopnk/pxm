@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { access, copyFile, mkdir, rm } from "node:fs/promises";
-import { spawnNuxt } from "../run-nuxt.mjs";
+import { spawnNuxt, stampServiceWorker } from "../run-nuxt.mjs";
 
 const mode = process.argv[2];
 
@@ -10,8 +10,8 @@ const modes = {
     viteCacheDir: "node_modules/.cache/vite-build-verify",
     nitroOutputDir: ".output-build-verify",
     cleanupAfterBuild: true,
-    verify: async (env) => {
-      await run("node", ["scripts/checks/verify-no-dayjs.mjs"], env);
+    verify: async (_env, outputDir) => {
+      await access(`${outputDir}/server/index.mjs`);
     },
   },
   lambda: {
@@ -82,6 +82,7 @@ await cleanBuildArtifacts();
 
 try {
   await run("nuxt", ["build"], env);
+  stampServiceWorker(`${selected.nitroOutputDir}/public`);
   await selected.verify(env, selected.nitroOutputDir);
 } finally {
   if (selected.cleanupAfterBuild) {

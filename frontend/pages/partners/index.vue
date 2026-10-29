@@ -128,14 +128,7 @@ const {
                     :created-at="p.createdAt"
                     :updated-at="p.updatedAt"
                   />
-                  <span
-                    v-if="canDelete"
-                    class="text-danger fw-semibold"
-                    style="cursor: pointer"
-                    @click.stop="openDeleteModal(p.id)"
-                  >
-                    x
-                  </span>
+                  <AppRowDelete v-if="canDelete" @delete="openDeleteModal(p.id)" />
                 </td>
               </tr>
 

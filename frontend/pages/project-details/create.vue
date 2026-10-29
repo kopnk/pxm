@@ -254,7 +254,7 @@ const downloadBulkTemplate = async () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "project_details");
     XLSX.utils.book_append_sheet(workbook, projectReferenceSheet, "project_reference");
     XLSX.utils.book_append_sheet(workbook, cityReferenceSheet, "city_kab_reference");
-    XLSX.writeFile(workbook, "project-details-bulk-template.xlsx");
+    XLSX.writeFile(workbook, "project-details-bulk-template.xlsx", { compression: true });
   } catch (err: any) {
     notify.error(
       err?.data?.message || err?.message || "Failed to download bulk template",

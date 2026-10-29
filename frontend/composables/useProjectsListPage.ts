@@ -37,7 +37,7 @@ export const useProjectsListPage = () => {
     store.items.find((item) => item.id === deleteTargetId.value),
   );
 
-  const { showingStart, showingEnd } = useMetaPaginationRange(store.meta);
+  const { showingStart, showingEnd } = useMetaPaginationRange(() => store.meta);
 
   const fetchProjects = async (page = store.meta.page, showToast = true) => {
     try {

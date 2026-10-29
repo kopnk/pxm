@@ -34,8 +34,15 @@ export default defineNuxtConfig({
   ssr: false, // Keep SPA mode for the current frontend runtime.
 
   routeRules: {
+    "/api/**": {
+      headers: { "cache-control": "no-store" },
+    },
+    "/sw.js": {
+      headers: { "cache-control": "no-cache" },
+    },
     "/**": {
       headers: {
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
         "x-content-type-options": "nosniff",
         "x-frame-options": "DENY",
         "referrer-policy": "strict-origin-when-cross-origin",
@@ -51,8 +58,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: "PXM",
+      viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
       meta: [
-        { name: "theme-color", content: "#0d6efd" },
+        { name: "theme-color", content: "#ffffff" },
         { name: "mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "default" },
@@ -67,7 +75,8 @@ export default defineNuxtConfig({
         },
       ],
       link: [
-        { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+        { rel: "icon", type: "image/x-icon", href: "/favicon.ico", sizes: "48x48" },
+        { rel: "icon", type: "image/png", href: "/pwa-192.png", sizes: "192x192" },
         { rel: "manifest", href: "/manifest.webmanifest" },
         { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       ],

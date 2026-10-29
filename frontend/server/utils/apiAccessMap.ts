@@ -1,4 +1,3 @@
-import type { H3Event } from "h3";
 import type { RlsAction, RlsResource } from "~/lib/rls";
 
 type ApiAccessRule = {
@@ -21,18 +20,19 @@ function rulesFor(
   extra: ApiAccessRule[] = [],
 ): ApiAccessRule[] {
   const base = prefix.replace(/\/$/, "");
+  // Specific sub-routes first, otherwise the generic `/:id` rule would shadow them.
   return [
+    ...extra,
     { pattern: new RegExp(`^${base}/export(?:/|$)`), method: M.GET, resource, action: "read" },
     { pattern: new RegExp(`^${base}/?$`), method: M.GET, resource, action: "read" },
     { pattern: new RegExp(`^${base}/?$`), method: M.POST, resource, action: "create" },
     { pattern: new RegExp(`^${base}/[^/]+/?$`), method: M.GET, resource, action: "read" },
     { pattern: new RegExp(`^${base}/[^/]+/?$`), method: M.PUT, resource, action: "update" },
     { pattern: new RegExp(`^${base}/[^/]+/?$`), method: M.DELETE, resource, action: "delete" },
-    ...extra,
   ];
 }
 
-/** Central API → RLS mapping. Auth/RLS admin routes are excluded in middleware. */
+/** Central API → RLS mapping. Any `/api` route missing here is rejected (fail closed). */
 export const API_ACCESS_RULES: ApiAccessRule[] = [
   ...rulesFor("/api/projects", "projects"),
   ...rulesFor("/api/project_details", "project_details"),
@@ -49,7 +49,7 @@ export const API_ACCESS_RULES: ApiAccessRule[] = [
   ...rulesFor("/api/clients", "clients"),
   ...rulesFor("/api/partners", "partners"),
   ...rulesFor("/api/users", "users", [
-    { pattern: /^\/api\/users\/region-options(?:\/|$)/, method: M.GET, resource: "users", action: "create" },
+    { pattern: /^\/api\/users\/region-options(?:\/|$)/, method: M.GET, resource: "users", action: "read" },
     { pattern: /^\/api\/users\/[^/]+\/reset-password(?:\/|$)/, method: M.POST, resource: "users", action: "update" },
     { pattern: /^\/api\/users\/signup(?:\/|$)/, method: M.POST, resource: "users", action: "create" },
   ]),
@@ -68,32 +68,25 @@ export const API_ACCESS_RULES: ApiAccessRule[] = [
   },
   ...rulesFor("/api/regions", "regions"),
   { pattern: /^\/api\/reports\//, method: M.GET, resource: "project_financials", action: "read" },
-  { pattern: /^\/api\/dashboard\//, method: M.POST, resource: "dashboard", action: "read" },
 ];
 
-const API_ACCESS_EXEMPT_PREFIXES = [
-  "/api/auth/",
-  "/api/rls",
-];
+/**
+ * Endpoints that run their own authorization inside the handler:
+ * - `/api/rls*` is superadmin-only (`requireRole`).
+ * - `/api/project_files*` checks the RLS resource of the referenced record.
+ */
+const RLS_EXEMPT_PATTERNS = [/^\/api\/rls(?:\/|$)/, /^\/api\/project_files(?:\/|$)/];
+
+export function isRlsExemptApiPath(path: string): boolean {
+  return RLS_EXEMPT_PATTERNS.some((pattern) => pattern.test(path));
+}
 
 export function resolveApiAccess(
-  event: H3Event,
+  path: string,
+  method: string,
 ): { resource: RlsResource; action: RlsAction } | null {
-  const url = event.node.req.url || "";
-  const pathOnly = url.split("?")[0] ?? "";
-  const method = (event.node.req.method || "GET").toUpperCase();
-
-  if (API_ACCESS_EXEMPT_PREFIXES.some((p) => pathOnly.startsWith(p))) {
-    return null;
-  }
-
-  // Handlers already enforce requireRole; refTable varies (projects / project_financials).
-  if (/^\/api\/project_files(?:\/|$)/.test(pathOnly)) {
-    return null;
-  }
-
   for (const rule of API_ACCESS_RULES) {
-    if (rule.method === method && rule.pattern.test(pathOnly)) {
+    if (rule.method === method && rule.pattern.test(path)) {
       return { resource: rule.resource, action: rule.action };
     }
   }

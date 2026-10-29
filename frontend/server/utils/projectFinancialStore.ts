@@ -936,13 +936,6 @@ export async function createProjectFinancialRecords(
   return records;
 }
 
-export async function createProjectFinancialRecord(
-  params: CreateProjectFinancialParams,
-) {
-  const [record] = await createProjectFinancialRecords([params]);
-  return record!;
-}
-
 export async function updateProjectFinancialRecord(
   financialId: string,
   updates: Partial<Omit<ProjectFinancialRecord, "id" | "createdAt" | "createdUser" | "projectProgressId">> & {

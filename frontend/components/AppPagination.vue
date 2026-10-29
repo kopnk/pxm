@@ -11,25 +11,29 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="totalPages > 1" class="btn-group btn-group-sm">
+  <nav v-if="totalPages > 1" class="pxm-pagination" aria-label="Pagination">
     <button
       type="button"
-      class="btn btn-outline-secondary"
+      class="btn btn-sm btn-outline-secondary"
       :disabled="currentPage === 1"
+      aria-label="Previous page"
       @click="$emit('prev')"
     >
-      Prev
+      <span aria-hidden="true">‹</span>
+      <span class="pxm-pagination-text">Prev</span>
     </button>
-    <span class="btn btn-outline-secondary disabled">
-      Page {{ currentPage }} of {{ totalPages }}
+    <span class="pxm-pagination-status" aria-live="polite" aria-atomic="true">
+      Page <strong>{{ currentPage }}</strong> of {{ totalPages }}
     </span>
     <button
       type="button"
-      class="btn btn-outline-secondary"
+      class="btn btn-sm btn-outline-secondary"
       :disabled="currentPage >= totalPages"
+      aria-label="Next page"
       @click="$emit('next')"
     >
-      Next
+      <span class="pxm-pagination-text">Next</span>
+      <span aria-hidden="true">›</span>
     </button>
-  </div>
+  </nav>
 </template>

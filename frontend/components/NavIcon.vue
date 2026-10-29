@@ -1,34 +1,34 @@
 <script setup lang="ts">
+import { NAV_ICON_PATHS, type NavIconName } from "~/lib/navIcons";
+
 const props = defineProps<{
-  name: string;
+  name: NavIconName;
+  size?: number;
 }>();
 
-const maskUrl = computed(() => `/icon/${props.name}.svg`);
+const paths = computed(() => NAV_ICON_PATHS[props.name] ?? []);
 </script>
 
 <template>
-  <span
+  <svg
     class="nav-icon"
-    :style="{
-      WebkitMaskImage: `url(${maskUrl})`,
-      maskImage: `url(${maskUrl})`,
-    }"
+    viewBox="0 0 24 24"
+    :width="size ?? 20"
+    :height="size ?? 20"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
     aria-hidden="true"
-  />
+    focusable="false"
+  >
+    <path v-for="(d, index) in paths" :key="index" :d="d" />
+  </svg>
 </template>
 
 <style scoped>
 .nav-icon {
-  display: inline-block;
-  width: 1.125rem;
-  height: 1.125rem;
   flex-shrink: 0;
-  background-color: currentColor;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
 }
 </style>

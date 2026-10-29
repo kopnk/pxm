@@ -5,12 +5,17 @@ import { buildPagination, buildTotalPages } from "~/lib/pagination";
 import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
 import { listProjectFilesSchema } from "~/server/validation/project_files.schema";
 import { listProjectFileRecords } from "~/server/utils/projectFileStore";
+import { requireProjectFileAccess } from "~/server/utils/projectFileAccess";
+import { parseBody } from "~/server/utils/zod";
 
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin", "staff"]);
   if (forbidden) return forbidden;
 
-  const query = listProjectFilesSchema.parse(getQuery(event));
+  const query = parseBody(listProjectFilesSchema, getQuery(event));
+  const denied = requireProjectFileAccess(event, query.refTable, ["read"]);
+  if (denied) return denied;
+
   const { page, limit, offset } = buildPagination(query);
 
   const records = await listProjectFileRecords({

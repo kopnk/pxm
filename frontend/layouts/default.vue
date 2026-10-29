@@ -1,7 +1,27 @@
 <script setup lang="ts">
-import { nextTick, onMounted, watch } from "vue";
+import { nextTick, onMounted, ref, watch } from "vue";
 
 const route = useRoute();
+
+/* Sidebar rail preference is a per-device convenience only. */
+const SIDEBAR_KEY = "pxm.sidebar-collapsed";
+const collapsed = ref(false);
+
+onMounted(() => {
+  try {
+    collapsed.value = localStorage.getItem(SIDEBAR_KEY) === "1";
+  } catch {
+    // Storage can be unavailable (private mode); default stays expanded.
+  }
+});
+
+watch(collapsed, (value) => {
+  try {
+    localStorage.setItem(SIDEBAR_KEY, value ? "1" : "0");
+  } catch {
+    // Ignore: the preference simply is not remembered.
+  }
+});
 
 const focusPageTarget = async () => {
   await nextTick();
@@ -37,37 +57,12 @@ watch(
 </script>
 
 <template>
-  <div class="app-wrapper">
-    <Header />
+  <div class="app-shell" :class="{ 'is-collapsed': collapsed }">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <AppNavigation v-model:collapsed="collapsed" />
 
-    <main class="main-scroll">
+    <main id="main-content" class="main-scroll" tabindex="-1">
       <slot />
     </main>
-
-    <Footer />
   </div>
 </template>
-
-<style scoped>
-.app-wrapper {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden; /* body tidak scroll */
-}
-
-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 1100;
-}
-
-.main-scroll {
-  flex: 1;
-  position: relative;
-  z-index: 0;
-  overflow: auto;
-  padding: 1rem 1.25rem;
-  background: #fafafa;
-}
-</style>

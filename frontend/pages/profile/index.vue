@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatListTimestamp } from "@/utils/formatListTimestamp";
+import { resolveAvatarUrl } from "@/utils/resolveAvatarUrl";
 
 const profileApi = useProfileApi();
 const profileStore = useProfileStore();
@@ -10,65 +11,59 @@ const profile = computed(() => profileStore.profile);
 </script>
 
 <template>
-  <div class="container py-4">
+  <div class="container">
     <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
       <h4 class="text-brand mb-0">My profile</h4>
+      <NuxtLink to="/profile/update" class="btn btn-primary btn-sm">Edit profile</NuxtLink>
     </div>
 
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <table class="table table-sm table-striped mb-0 align-middle">
-          <tbody>
-            <tr>
-              <th class="text-muted" scope="row">Email</th>
-              <td>
-                <NuxtLink to="/profile/update" class="text-decoration-none">
-                  {{ profile?.email }}
-                </NuxtLink>
-              </td>
-            </tr>
+    <div class="card">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap align-items-center gap-3 pb-4 mb-3 border-bottom">
+          <img
+            :src="resolveAvatarUrl(profile?.avatarUrl)"
+            alt=""
+            width="72"
+            height="72"
+            class="rounded-circle border"
+            style="object-fit: cover"
+          />
+          <div class="flex-grow-1 text-break">
+            <div class="fs-5 fw-bold">
+              {{ [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || "-" }}
+            </div>
+            <div class="data-meta text-break">{{ profile?.email }}</div>
+          </div>
+          <span
+            class="badge ms-md-auto"
+            :class="profile?.isActive ? 'bg-success' : 'bg-secondary'"
+          >
+            {{ profile?.isActive ? "Active" : "Inactive" }}
+          </span>
+        </div>
 
-            <tr>
-              <th class="text-muted" scope="row">First name</th>
-              <td>{{ profile?.firstName }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Last name</th>
-              <td>{{ profile?.lastName }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Region</th>
-              <td>{{ profile?.region }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Area</th>
-              <td>{{ profile?.area }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Phone</th>
-              <td>{{ profile?.phone }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Avatar URL</th>
-              <td>{{ profile?.avatarUrl }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Active</th>
-              <td>{{ profile?.isActive ? "Yes" : "No" }}</td>
-            </tr>
-
-            <tr>
-              <th class="text-muted" scope="row">Last login</th>
-              <td>{{ formatListTimestamp(profile?.lastLoginAt) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <dl class="row mb-0 gy-3">
+          <div class="col-sm-6 col-lg-4">
+            <dt class="data-label">Region</dt>
+            <dd class="data-value mb-0">{{ profile?.region || "-" }}</dd>
+          </div>
+          <div class="col-sm-6 col-lg-4">
+            <dt class="data-label">Area</dt>
+            <dd class="data-value mb-0">{{ profile?.area || "-" }}</dd>
+          </div>
+          <div class="col-sm-6 col-lg-4">
+            <dt class="data-label">Phone</dt>
+            <dd class="data-value mb-0">{{ profile?.phone || "-" }}</dd>
+          </div>
+          <div class="col-sm-6 col-lg-4">
+            <dt class="data-label">Last login</dt>
+            <dd class="data-value mb-0">{{ formatListTimestamp(profile?.lastLoginAt) }}</dd>
+          </div>
+          <div class="col-12">
+            <dt class="data-label">Avatar URL</dt>
+            <dd class="data-meta mb-0 text-break">{{ profile?.avatarUrl || "-" }}</dd>
+          </div>
+        </dl>
       </div>
     </div>
   </div>

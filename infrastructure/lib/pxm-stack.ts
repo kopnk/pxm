@@ -3,6 +3,7 @@ import {
   Duration,
   Fn,
   RemovalPolicy,
+  Size,
   Stack,
   type StackProps,
 } from "aws-cdk-lib";
@@ -119,10 +120,13 @@ export class PxmStack extends Stack {
     const userPoolClient = new UserPoolClient(this, "UserPoolClient", {
       userPoolClientName: `${resourcePrefix}-web`,
       userPool,
+      // The API signs users in server-side (ADMIN_USER_PASSWORD_AUTH). Public
+      // USER_PASSWORD/SRP flows would let anyone with the client id bypass the
+      // app's rate limit and active-user checks, so they stay disabled.
       authFlows: {
         adminUserPassword: true,
-        userPassword: true,
-        userSrp: true,
+        userPassword: false,
+        userSrp: false,
       },
       disableOAuth: true,
       accessTokenValidity: Duration.hours(3),
@@ -271,6 +275,8 @@ export class PxmStack extends Stack {
       // response, so `application/pdf` alone corrupts PDFs opened in-browser.
       // Nitro already sets `isBase64Encoded` only for binary responses.
       binaryMediaTypes: ["*/*"],
+      // Gzip JSON list/export payloads (Excel matrices can be several MB).
+      minCompressionSize: Size.kibibytes(1),
       deployOptions: {
         stageName: config.stage,
         throttlingBurstLimit: config.apiThrottleBurstLimit,

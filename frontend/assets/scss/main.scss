@@ -1,207 +1,88 @@
 /* =========================
-   Sass Modules
-========================= */
-@use "sass:color";
-
-/* =========================
-   Load Bootstrap + Override Variable
-   (INI CARA YANG BENAR)
+   Bootstrap with PXM brand configuration
 ========================= */
 @use "bootstrap/scss/bootstrap" as * with (
   $primary: #c1121f,
   $secondary: #f77f00,
-  $warning: #fcbf49
+  $warning: #fcbf49,
+  $body-color: #1f2a37,
+  $border-radius: 0.5rem,
+  $border-radius-sm: 0.375rem,
+  $border-radius-lg: 0.75rem,
+  $btn-font-weight: 600,
+  $table-cell-padding-y: 0.7rem,
+  $table-cell-padding-x: 0.75rem
 );
 
-/* =========================
-   Global Styles
-========================= */
-:root {
-  --bs-body-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-family: var(--bs-body-font-family);
-}
-
-body {
-  background-color: #f8f9fa;
-  font-family: var(--bs-body-font-family);
-}
-
-/* Headings receive programmatic focus after navigation for screen readers. */
-main :is(h1, h2, h3, h4)[tabindex="-1"]:focus {
-  outline: none;
-}
-
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 1200;
-  overflow: visible;
-  background: linear-gradient(
-    105deg,
-    $primary 0%,
-    #e63918 14%,
-    $secondary 32%,
-    $warning 50%,
-    #5ec8f2 68%,
-    #2b8fd9 84%,
-    #1e6bb8 100%
-  );
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
-
-  /* Highlight halus di atas gradient */
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      transparent 45%,
-      rgba(0, 0, 0, 0.05) 100%
-    );
-    pointer-events: none;
-  }
-
-  > .container {
-    position: relative;
-    z-index: 1;
-  }
-
-  .dropdown-menu {
-    z-index: 1210;
-    border: none;
-    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.18);
-  }
-
-  .nav-item.dropdown {
-    position: static;
-  }
-
-  @media (min-width: 992px) {
-    .nav-item.dropdown {
-      position: relative;
-    }
-  }
-}
-.text-brand {
-  color: $primary;
-}
+/* Design system layers (plain CSS, ordered from generic to specific). */
+@use "tokens";
+@use "app-shell";
+@use "components";
 
 /* =========================
-   Typography Utilities
-========================= */
-.label-field {
-  font-size: 0.85rem;
-  color: #6c757d;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.label-prefix {
-  color: #6c757d;
-  font-size: 0.9rem;
-
-  &::after {
-    content: ": ";
-  }
-}
-
-.data-label {
-  display: block;
-  color: #6c757d;
-  font-size: 0.85rem;
-  margin-bottom: 0.25rem;
-}
-
-.data-value {
-  display: block;
-  font-weight: 600;
-  color: #212529;
-  margin-bottom: 0.5rem;
-}
-
-.data-meta {
-  font-size: 0.85rem;
-  color: #6c757d;
-  font-family: "SFMono-Regular", "Menlo", "Monaco", "Courier New", monospace;
-}
-
-.number-helper {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.45rem;
-  padding: 0.28rem 0.65rem;
-  border: 1px solid rgba(193, 18, 31, 0.16);
-  border-radius: 999px;
-  background:
-    linear-gradient(135deg, rgba(252, 191, 73, 0.18), rgba(94, 200, 242, 0.12)),
-    #fff;
-  color: #495057;
-  font-size: 0.82rem;
-  font-weight: 600;
-  line-height: 1.2;
-  box-shadow: 0 0.25rem 0.75rem rgba(193, 18, 31, 0.06);
-}
-
-.number-helper::before {
-  content: "";
-  width: 0.48rem;
-  height: 0.48rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #c1121f, #f77f00);
-  box-shadow: 0 0 0 0.18rem rgba(247, 127, 0, 0.12);
-}
-
-.number-helper-muted {
-  border-color: rgba(108, 117, 125, 0.16);
-  background:
-    linear-gradient(135deg, rgba(108, 117, 125, 0.08), rgba(94, 200, 242, 0.1)),
-    #fff;
-}
-
-.number-helper-muted::before {
-  background: linear-gradient(135deg, #6c757d, #5ec8f2);
-  box-shadow: 0 0 0 0.18rem rgba(94, 200, 242, 0.14);
-}
-
-/* =========================
-   Number inputs: hide spin buttons
-========================= */
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-}
-
-.badge-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* =========================
-   Signin Page
+   Sign-in
 ========================= */
 .signin-wrapper {
-  min-height: 70vh;
-  background: linear-gradient(
-    5deg,
-    color.adjust($primary, $lightness: 40%),
-    color.adjust($warning, $lightness: 35%)
-  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(1.5rem, var(--safe-top)) max(1rem, var(--safe-right)) max(1.5rem, var(--safe-bottom)) max(1rem, var(--safe-left));
+  background: var(--pxm-canvas);
+}
+
+.signin-panel {
+  width: 100%;
+  max-width: 26rem;
 }
 
 .signin-card {
   width: 100%;
-  max-width: 380px;
-  border-radius: 12px;
-  border: none;
+  padding: 2.5rem 2.25rem;
+  border: 1px solid var(--pxm-line);
+  border-radius: var(--pxm-radius-lg);
+  background: var(--pxm-surface);
+  box-shadow: var(--pxm-shadow-sm);
+}
+
+.signin-card h2 {
+  margin: 0 0 0.375rem;
+  color: var(--pxm-ink);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.signin-card .form-label {
+  color: var(--pxm-ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.signin-card .form-control {
+  min-height: 2.875rem;
+  border-color: var(--pxm-line-strong);
+  font-size: 1rem;
+}
+
+.signin-card .btn-primary {
+  min-height: 2.875rem;
+}
+
+.signin-card .password-toggle {
+  top: 1.875rem;
+  right: 0.125rem;
+  min-height: 2.875rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  opacity: 1;
+}
+
+@media (max-width: 575.98px) {
+  .signin-card {
+    padding: 2rem 1.5rem;
+  }
 }
 
 /* =========================
@@ -221,20 +102,75 @@ input[type="number"] {
   }
 }
 
-/*.table-wrapper {
-  width: 100%;
-  max-height: calc(100vh - 160px); // header + footer
-  overflow: auto;                 //  dua arah kalau mau table yang scroll
-  border-radius: 8px;
-} */
+/* A single app-level bar keeps wide-table navigation available without
+   reaching the final row. The table remains the only rendered data source. */
+.app-horizontal-scrollbar {
+  position: fixed;
+  bottom: 0.5rem;
+  left: 1rem;
+  width: calc(100% - 2rem);
+  right: auto;
+  z-index: 2000;
+  height: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  scrollbar-gutter: stable;
+  box-shadow: 0 -2px 6px rgb(0 0 0 / 8%);
+}
 
-.table-wrapper {
-  width: 100%;
+.app-horizontal-scrollbar > div {
+  height: 1px;
+}
+
+/* The global proxy is the only visible horizontal control for the active table. */
+.table-scroll-x.app-horizontal-scroll-active {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.table-scroll-x.app-horizontal-scroll-active::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* Mobile lists retain the desktop table and become one readable card per row.
    No duplicate markup or additional client-side data is needed. */
 @media (max-width: 767.98px) {
+  .pf-tax-filter-controls {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pf-tax-filter-controls > select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .pf-tax-filter-totals {
+    display: grid !important;
+    width: 100%;
+    margin-left: 0 !important;
+    gap: 0.35rem !important;
+    white-space: normal !important;
+  }
+
+  .pf-tax-filter-totals > span {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    white-space: normal !important;
+  }
+
+  .pf-tax-filter-controls .filter-export-divider {
+    display: none;
+  }
+
+  .pf-tax-filter-controls > button {
+    justify-self: start;
+  }
+
   .table-scroll-x:has(.pwa-card-table) {
     overflow: visible;
   }
@@ -257,7 +193,8 @@ input[type="number"] {
   }
 
   .pwa-card-table > tbody > .pwa-card-row {
-    margin: 0.75rem;
+    width: auto;
+    margin: 0 0 0.75rem;
     overflow: hidden;
     border: 1px solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
@@ -293,7 +230,8 @@ input[type="number"] {
 
   .pwa-card-table > tbody > .pwa-card-expanded {
     display: block;
-    margin: -0.35rem 0.75rem 0.75rem;
+    width: auto;
+    margin: -0.35rem 0 0.75rem;
     border: 1px solid var(--bs-border-color);
     border-top: 0;
     border-radius: 0 0 var(--bs-border-radius) var(--bs-border-radius);
@@ -307,26 +245,26 @@ input[type="number"] {
     display: none;
   }
 
-  .pwa-projects-table td:nth-child(1)::before { content: "No"; }
-  .pwa-projects-table td:nth-child(2)::before { content: "Project"; }
-  .pwa-projects-table td:nth-child(3)::before { content: "PO Date"; }
-  .pwa-projects-table td:nth-child(4)::before { content: "Delivery"; }
-  .pwa-projects-table td:nth-child(5)::before { content: "KOM"; }
-  .pwa-projects-table td:nth-child(6)::before { content: "HPP"; }
-  .pwa-projects-table td:nth-child(7)::before { content: "DPP"; }
-  .pwa-projects-table td:nth-child(8)::before { content: "MRG"; }
-  .pwa-projects-table td:nth-child(9)::before { content: "PO Price"; }
-  .pwa-projects-table td:nth-child(10)::before { content: "Status"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Project"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "PO Date"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Delivery"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "KOM"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "HPP"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "DPP"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "MRG"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(9)::before { content: "PO Price"; }
+  .pwa-projects-table > tbody > .pwa-card-row > td:nth-child(10)::before { content: "Status"; }
 
-  .pwa-project-details-table td:nth-child(1)::before { content: "No"; }
-  .pwa-project-details-table td:nth-child(2)::before { content: "Project"; }
-  .pwa-project-details-table td:nth-child(3)::before { content: "Region"; }
-  .pwa-project-details-table td:nth-child(4)::before { content: "Line"; }
-  .pwa-project-details-table td:nth-child(5)::before { content: "Details"; }
-  .pwa-project-details-table td:nth-child(6)::before { content: "Qty / UOM"; }
-  .pwa-project-details-table td:nth-child(7)::before { content: "Price"; }
-  .pwa-project-details-table td:nth-child(8)::before { content: "PIC"; }
-  .pwa-project-details-table td:nth-child(9)::before { content: "Status"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Project"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Region"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Line"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Details"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "Qty / UOM"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Price"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "PIC"; }
+  .pwa-project-details-table > tbody > .pwa-card-row > td:nth-child(9)::before { content: "Status"; }
 
   .pwa-users-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
   .pwa-users-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Email"; }
@@ -376,38 +314,38 @@ input[type="number"] {
   .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Description"; }
   .pwa-audit-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "Metadata"; }
 
-  .pwa-dcn-table td:nth-child(1)::before { content: "No"; }
-  .pwa-dcn-table td:nth-child(2)::before { content: "Date"; }
-  .pwa-dcn-table td:nth-child(3)::before { content: "Number"; }
-  .pwa-dcn-table td:nth-child(4)::before { content: "Type"; }
-  .pwa-dcn-table td:nth-child(5)::before { content: "From"; }
-  .pwa-dcn-table td:nth-child(6)::before { content: "To"; }
-  .pwa-dcn-table td:nth-child(7)::before { content: "Subject"; }
-  .pwa-dcn-table td:nth-child(8)::before { content: "Flow"; }
-  .pwa-dcn-table td:nth-child(9)::before { content: "Status"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Date"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Number"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Type"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "From"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "To"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Subject"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "Flow"; }
+  .pwa-dcn-table > tbody > .pwa-card-row > td:nth-child(9)::before { content: "Status"; }
 
-  .pwa-financials-table td:nth-child(1)::before { content: "No"; }
-  .pwa-financials-table td:nth-child(2)::before { content: "Description"; }
-  .pwa-financials-table td:nth-child(3)::before { content: "Detail"; }
-  .pwa-financials-table td:nth-child(4)::before { content: "Qty"; }
-  .pwa-financials-table td:nth-child(5)::before { content: "Amount"; }
-  .pwa-financials-table td:nth-child(6)::before { content: "WO / PO"; }
-  .pwa-financials-table td:nth-child(7)::before { content: "Invoice"; }
-  .pwa-financials-table td:nth-child(8)::before { content: "Tax Invoice"; }
-  .pwa-financials-table td:nth-child(9)::before { content: "Balap / BAST"; }
-  .pwa-financials-table td:nth-child(10)::before { content: "Paid"; }
-  .pwa-financials-table td:nth-child(11)::before { content: "Partner / Client"; }
-  .pwa-financials-table td:nth-child(12)::before { content: "Status"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Description"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Detail"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Qty"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "Amount"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "WO / PO"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Invoice"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "Tax Invoice"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(9)::before { content: "Balap / BAST"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(10)::before { content: "Paid"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(11)::before { content: "Partner / Client"; }
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(12)::before { content: "Status"; }
 
   /* Financial rows contain more document fields than other lists. Keep their
      mobile card compact with a two-column value grid instead of a long label
      column, while preserving the same table markup and desktop layout. */
-  .pwa-financials-table .pwa-card-row {
+  .pwa-financials-table > tbody > .pwa-card-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pwa-financials-table .pwa-card-row td {
+  .pwa-financials-table > tbody > .pwa-card-row > td {
     width: auto !important;
     min-width: 0 !important;
     padding: 0.55rem 0.65rem !important;
@@ -415,51 +353,75 @@ input[type="number"] {
     border-right: 1px solid var(--bs-border-color-translucent);
   }
 
-  .pwa-financials-table .pwa-card-row td:nth-child(even) {
+  .pwa-financials-table > tbody > .pwa-card-row > td:nth-child(even) {
     border-right: 0;
   }
 
-  .pwa-financials-table .pwa-card-row td::before {
+  .pwa-financials-table > tbody > .pwa-card-row > td::before {
     position: static;
     display: block;
     width: auto;
     margin-bottom: 0.3rem;
   }
 
-  .pwa-financials-table .pwa-card-row .fin-desc,
-  .pwa-financials-table .pwa-card-row .fin-site,
-  .pwa-financials-table .pwa-card-row .fin-col-party,
-  .pwa-financials-table .pwa-card-row .fin-col-status {
+  .pwa-financials-table > tbody > .pwa-card-row .fin-desc,
+  .pwa-financials-table > tbody > .pwa-card-row .fin-site,
+  .pwa-financials-table > tbody > .pwa-card-row .fin-col-doc,
+  .pwa-financials-table > tbody > .pwa-card-row .fin-col-balap,
+  .pwa-financials-table > tbody > .pwa-card-row .fin-col-paid,
+  .pwa-financials-table > tbody > .pwa-card-row .fin-col-party,
+  .pwa-financials-table > tbody > .pwa-card-row .fin-col-status {
     grid-column: 1 / -1;
     border-right: 0;
   }
 
-  .pwa-financials-table .pwa-card-row .fin-col-no {
+  .pwa-financials-table > tbody > .pwa-card-row .fin-col-no {
     grid-column: 1 / -1;
     min-height: 0;
     padding-block: 0.4rem !important;
+    background: var(--bs-tertiary-bg);
   }
 
   .pwa-financials-table .fin-doc-block {
     align-items: stretch;
   }
 
-  .pwa-tax-table td:nth-child(1)::before { content: "No"; }
-  .pwa-tax-table td:nth-child(2)::before { content: "NPWP"; }
-  .pwa-tax-table td:nth-child(3)::before { content: "Name"; }
-  .pwa-tax-table td:nth-child(4)::before { content: "Address"; }
-  .pwa-tax-table td:nth-child(5)::before { content: "City"; }
-  .pwa-tax-table td:nth-child(6)::before { content: "DPP"; }
-  .pwa-tax-table td:nth-child(7)::before { content: "Tax"; }
-  .pwa-tax-table td:nth-child(8)::before { content: "Journal / Bill"; }
-  .pwa-tax-table td:nth-child(9)::before { content: "Paid Date"; }
-  .pwa-tax-table td:nth-child(10)::before { content: "Description"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "NPWP"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Name"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(4)::before { content: "Address"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(5)::before { content: "City"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(6)::before { content: "DPP"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(7)::before { content: "Tax"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(8)::before { content: "Journal / Bill"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(9)::before { content: "Paid Date"; }
+  .pwa-tax-table > tbody > .pwa-card-row > td:nth-child(10)::before { content: "Description"; }
 
-  .pwa-project-progress-table td:nth-child(1)::before { content: "No"; }
-  .pwa-project-progress-table td:nth-child(2)::before { content: "Project"; }
-  .pwa-project-progress-table td:nth-child(3)::before { content: "Details"; }
+  .pwa-project-progress-table > tbody > .pwa-card-row > td:nth-child(1)::before { content: "No"; }
+  .pwa-project-progress-table > tbody > .pwa-card-row > td:nth-child(2)::before { content: "Project"; }
+  .pwa-project-progress-table > tbody > .pwa-card-row > td:nth-child(3)::before { content: "Details"; }
   .pwa-project-progress-table .progress-stage-cell {
     padding-left: 0.65rem !important;
+  }
+
+  .pwa-project-progress-table > tbody > .pwa-card-row > td,
+  .pwa-project-progress-table .progress-main-col,
+  .pwa-project-progress-table .progress-stage-col {
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .pwa-project-progress-table .progress-stage-col {
+    border-left: 0;
+  }
+
+  .pwa-project-progress-table .progress-stage-date-value {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .pwa-project-progress-table .progress-stage-cell::before {
     position: static;
@@ -471,7 +433,7 @@ input[type="number"] {
   .pwa-project-progress-table .progress-stage-cell + .progress-stage-cell {
     border-top: 1px solid var(--bs-border-color-translucent);
   }
-  .pwa-project-progress-table td:last-child::before { content: "Status"; }
+  .pwa-project-progress-table > tbody > .pwa-card-row > td:last-child::before { content: "Status"; }
 
   .pwa-progress-stage-form td:nth-child(1)::before { content: "Stage"; }
   .pwa-progress-stage-form td:nth-child(2)::before { content: "Plan / Submit"; }
@@ -480,147 +442,4 @@ input[type="number"] {
   .pwa-progress-stage-form td:nth-child(5)::before { content: "Status"; }
   .pwa-progress-stage-form td:nth-child(6)::before { content: "Document URL"; }
   .pwa-progress-stage-form td:nth-child(7)::before { content: "Upload File"; }
-}
-
-/* Consistent active marker for native selects and Bootstrap dropdowns. */
-select.form-select:has(option:checked:not([value=""])) {
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Ccircle cx='4' cy='4' r='4' fill='%23198754'/%3E%3C/svg%3E"),
-    var(--bs-form-select-bg-img);
-  background-position:
-    right 2.25rem center,
-    right 0.75rem center;
-  background-size:
-    0.5rem 0.5rem,
-    16px 12px;
-}
-
-select.form-select option:checked {
-  color: var(--bs-success-text-emphasis);
-  font-weight: 600;
-}
-
-.dropdown-item.active::after,
-.dropdown-item[aria-current="page"]::after {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-left: auto;
-  border-radius: 50%;
-  background: var(--bs-success);
-}
-
-.dropdown-item.active,
-.dropdown-item[aria-current="page"] {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Optional: sticky table header */
-.table-users thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
-
-/* =========================
-   Page transition (Nuxt <NuxtPage>)
-========================= */
-.pxm-page-enter-active,
-.pxm-page-leave-active {
-  transition: opacity 0.16s ease;
-}
-
-.pxm-page-enter-from,
-.pxm-page-leave-to {
-  opacity: 0;
-}
-
-/* =========================
-   Hover & focus (pointer devices only)
-========================= */
-@media (hover: hover) and (pointer: fine) {
-  .btn:not(:disabled):not(.btn-link) {
-    transition:
-      transform 0.14s ease,
-      box-shadow 0.14s ease,
-      filter 0.14s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.03);
-    }
-
-    &:active {
-      transform: translateY(0);
-      filter: none;
-    }
-  }
-
-  .btn-outline-secondary:hover,
-  .btn-outline-primary:hover {
-    box-shadow: 0 0.2rem 0.45rem rgba(0, 0, 0, 0.08);
-  }
-
-  .card.shadow-sm,
-  .card.border-0.shadow-sm {
-    transition:
-      box-shadow 0.18s ease,
-      transform 0.18s ease;
-
-    &:hover {
-      box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.09) !important;
-    }
-  }
-
-  .navbar-brand:hover {
-    opacity: 0.92;
-  }
-
-  .dropdown-item {
-    transition: background-color 0.12s ease;
-  }
-
-  .table-hover > tbody > tr {
-    transition: background-color 0.12s ease;
-  }
-
-  a.text-brand:hover,
-  .pagination .page-link:hover {
-    opacity: 0.88;
-  }
-}
-
-/* Aksesibilitas: tanpa animasi jika user minta reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .pxm-page-enter-active,
-  .pxm-page-leave-active {
-    transition: none !important;
-  }
-
-  .pxm-page-enter-from,
-  .pxm-page-leave-to {
-    opacity: 1;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .btn:not(:disabled):not(.btn-link),
-    .card.shadow-sm,
-    .card.border-0.shadow-sm {
-      transition: none !important;
-    }
-
-    .btn:not(:disabled):not(.btn-link):hover {
-      transform: none;
-      filter: none;
-    }
-  }
-}
-
-
-.filter-export-divider {
-  border-left: 2px solid var(--bs-orange);
-  flex: 0 0 auto;
-  height: 1.5rem;
 }

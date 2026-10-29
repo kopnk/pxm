@@ -2,7 +2,8 @@
 <html lang="id">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
     <title>PXM Offline</title>
     <style>
       :root {
@@ -13,32 +14,63 @@
       }
 
       body {
+        box-sizing: border-box;
         margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         display: grid;
         place-items: center;
-        background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
-        color: #212529;
+        padding: 1.5rem;
+        background: #f4f6f9;
+        color: #1f2a37;
       }
 
       main {
-        width: min(92vw, 32rem);
-        padding: 2rem;
-        border-radius: 1rem;
-        background: rgba(255, 255, 255, 0.96);
-        box-shadow: 0 1rem 2.5rem rgba(13, 110, 253, 0.12);
+        position: relative;
+        box-sizing: border-box;
+        width: min(100%, 26rem);
+        padding: 2.25rem 2rem 2rem;
+        overflow: hidden;
+        border: 1px solid #e3e8ef;
+        border-radius: 0.75rem;
+        background: #fff;
+        box-shadow: 0 12px 32px rgb(16 24 40 / 10%);
         text-align: center;
+      }
+
+      main::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto;
+        height: 4px;
+        background: linear-gradient(90deg, #c1121f, #f77f00 30%, #fcbf49 50%, #5ec8f2 72%, #1e6bb8);
       }
 
       h1 {
         margin: 0 0 0.75rem;
-        font-size: 1.5rem;
+        font-size: 1.375rem;
       }
 
       p {
         margin: 0.5rem 0 0;
-        color: #495057;
-        line-height: 1.5;
+        color: #5b6878;
+        line-height: 1.55;
+      }
+
+      a {
+        display: inline-block;
+        margin-top: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        background: #c1121f;
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      a:focus-visible {
+        outline: 3px solid rgb(193 18 31 / 30%);
+        outline-offset: 2px;
       }
     </style>
   </head>
@@ -46,7 +78,8 @@
     <main>
       <h1>PXM sedang offline</h1>
       <p>Koneksi internet tidak tersedia saat ini.</p>
-      <p>Buka kembali halaman setelah koneksi tersambung, atau gunakan data yang sudah tersimpan di cache browser.</p>
+      <p>Sambungkan kembali internet, lalu muat ulang halaman. Data akun dan dokumen memerlukan koneksi yang aman.</p>
+      <a href="">Coba lagi</a>
     </main>
   </body>
-  </html>
+</html>

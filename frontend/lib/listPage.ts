@@ -79,19 +79,21 @@ export function useFlatPaginationRange(source: {
 }
 
 /** Pagination range for stores using nested `meta`. */
-export function useMetaPaginationRange(meta: {
+export function useMetaPaginationRange(getMeta: () => {
   page: number;
   limit: number;
   total: number;
 }) {
   const showingStart = computed(() => {
+    const meta = getMeta();
     if (meta.total === 0) return 0;
     return (meta.page - 1) * meta.limit + 1;
   });
 
-  const showingEnd = computed(() =>
-    Math.min(meta.page * meta.limit, meta.total),
-  );
+  const showingEnd = computed(() => {
+    const meta = getMeta();
+    return Math.min(meta.page * meta.limit, meta.total);
+  });
 
   return { showingStart, showingEnd };
 }

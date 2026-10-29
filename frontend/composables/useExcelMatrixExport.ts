@@ -39,7 +39,7 @@ export function useExcelMatrixExport() {
     const sheet = XLSX.utils.aoa_to_sheet(matrix);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheet, sheetName);
-    XLSX.writeFile(wb, suggestedFileName || fallbackFileName);
+    XLSX.writeFile(wb, suggestedFileName || fallbackFileName, { compression: true });
   }
 
   async function runExport(

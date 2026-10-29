@@ -47,9 +47,19 @@ export async function resolvePartnerPoPdfSecret(
   return resolveSsmSecret(parameterName);
 }
 
+const MIN_COOKIE_SECRET_LENGTH = 32;
+
 export async function resolveAuthCookieSecret(): Promise<string> {
   const localSecret = process.env.AWS_AUTH_COOKIE_SECRET?.trim();
-  if (localSecret) return localSecret;
+  if (localSecret) {
+    // A short or placeholder secret makes the session cookie signature forgeable.
+    if (localSecret.length < MIN_COOKIE_SECRET_LENGTH || localSecret.startsWith("replace-with")) {
+      throw new Error(
+        `AWS_AUTH_COOKIE_SECRET must be a random value of at least ${MIN_COOKIE_SECRET_LENGTH} characters.`,
+      );
+    }
+    return localSecret;
+  }
 
   const parameterName = process.env.AWS_AUTH_COOKIE_SECRET_PARAM?.trim();
   if (!parameterName) throw new Error("AWS auth cookie secret is not configured.");

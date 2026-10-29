@@ -256,13 +256,7 @@ const onExportExcel = () => {
                   />
 
                   <div v-if="canDelete" class="mt-1">
-                    <span
-                      class="text-danger small fw-semibold"
-                      style="cursor: pointer"
-                      @click.stop="openDeleteModal(item.id)"
-                    >
-                      {{ deletingId === item.id ? "..." : "x" }}
-                    </span>
+                    <AppRowDelete :busy="deletingId === item.id" @delete="openDeleteModal(item.id)" />
                   </div>
                 </td>
               </tr>

@@ -85,7 +85,7 @@ const formatCity = (value: unknown) => {
           class="form-control form-control-sm mb-2 pf-tax-filter-search"
           placeholder="PO, invoice, partner, project, site…"
         />
-        <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2 pf-tax-filter-controls">
         <select v-model="regionFilter" class="form-select form-select-sm flex-shrink-0 pf-tax-filter-region">
           <option value="">All Region</option>
           <option v-for="region in regions" :key="region.id" :value="region.id">{{ region.name }}</option>

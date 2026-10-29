@@ -84,12 +84,12 @@ onBeforeUnmount(() => {
 <template>
   <div
     v-if="visible"
-    class="modal d-block"
+    class="modal d-block pxm-modal"
     tabindex="-1"
     role="dialog"
     aria-modal="true"
     :aria-labelledby="titleId"
-    style="background: rgba(0, 0, 0, 0.45)"
+    @click.self="!loading && emit('cancel')"
   >
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
           <button
             ref="cancelButtonRef"
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-outline-secondary"
             :disabled="loading"
             @click="emit('cancel')"
           >

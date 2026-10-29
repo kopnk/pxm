@@ -21,29 +21,17 @@ import {
 import { uploadAppFileObject } from "~/server/utils/appFilesStorage";
 import { createProjectFileRecord } from "~/server/utils/projectFileStore";
 import { withProjectFileSignedUrls } from "~/server/utils/projectFileStorage";
+import { requireProjectFileAccess } from "~/server/utils/projectFileAccess";
+import { parseBody } from "~/server/utils/zod";
+import {
+  assertUploadedFile,
+  sanitizeDisplayFileName,
+} from "~/server/utils/uploadValidation";
 
 const displayNameFromUrl = (fileUrl: string, fileName?: string | null) =>
-  fileName?.trim() ||
-  fileUrl.split(/[/\\]/).filter(Boolean).pop() ||
+  sanitizeDisplayFileName(fileName) ||
+  sanitizeDisplayFileName(fileUrl.split(/[/\\]/).filter(Boolean).pop()) ||
   "External document";
-
-const matchesFileSignature = (data: Buffer, mimeType?: string | null) => {
-  if (mimeType === "application/pdf") {
-    return data.subarray(0, 4).toString("utf8") === "%PDF";
-  }
-
-  if (mimeType === "image/png") {
-    return data.subarray(0, 8).equals(
-      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    );
-  }
-
-  if (mimeType === "image/jpeg") {
-    return data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
-  }
-
-  return false;
-};
 
 const insertExternalUrlRecord = async (
   event: H3Event,
@@ -82,6 +70,11 @@ const insertExternalUrlRecord = async (
   return successResponse(event, "Document URL saved", signedFile, 201);
 };
 
+const PROJECT_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
+const PROJECT_FILE_MAX_BYTES = 10 * 1024 * 1024;
+/** Attaching a document is part of creating or editing the referenced record. */
+const ATTACH_ACTIONS = ["create", "update"] as const;
+
 export default defineEventHandler(async (event) => {
   const forbidden = requireRole(event, ["superadmin", "admin"]);
   if (forbidden) return forbidden;
@@ -94,7 +87,9 @@ export default defineEventHandler(async (event) => {
   const contentType = getHeader(event, "content-type") || "";
 
   if (contentType.includes("application/json")) {
-    const body = createProjectFileSchema.parse(await readBody(event));
+    const body = parseBody(createProjectFileSchema, await readBody(event));
+    const denied = requireProjectFileAccess(event, body.refTable, ATTACH_ACTIONS);
+    if (denied) return denied;
 
     return insertExternalUrlRecord(event, userId, {
       refTable: body.refTable,
@@ -113,7 +108,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  let rawFields: Record<string, string> = {};
+  const rawFields: Record<string, string> = {};
   let file: (typeof form)[number] | undefined;
 
   for (const field of form) {
@@ -126,7 +121,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const parsed = uploadProjectFileSchema.parse(rawFields);
+  const parsed = parseBody(uploadProjectFileSchema, rawFields);
   const {
     refTable,
     refId,
@@ -134,6 +129,9 @@ export default defineEventHandler(async (event) => {
     externalUrl,
     fileName: externalFileName,
   } = parsed;
+
+  const denied = requireProjectFileAccess(event, refTable, ATTACH_ACTIONS);
+  if (denied) return denied;
 
   if (!file && !externalUrl) {
     throw createError({
@@ -156,47 +154,28 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "File is required" });
   }
 
-  const maxSize = 10 * 1024 * 1024;
-  if (file.data.length > maxSize) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "File too large (max 10MB)",
-    });
-  }
+  const { mimeType, extension } = assertUploadedFile(file, {
+    allowedTypes: PROJECT_FILE_TYPES,
+    maxBytes: PROJECT_FILE_MAX_BYTES,
+  });
 
-  const allowedTypes = ["application/pdf", "image/png", "image/jpeg"];
-  if (!allowedTypes.includes(file.type || "")) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Invalid file type",
-    });
-  }
-
-  if (!matchesFileSignature(file.data, file.type)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "File content does not match file type",
-    });
-  }
-
-  const fileExt = file.filename?.split(".").pop();
-  const uniqueName = `${randomUUID()}.${fileExt}`;
+  const uniqueName = `${randomUUID()}.${extension}`;
   const filePath = `${PROJECT_FILES_PREFIX}/${refTable}/${refId}/${uniqueName}`;
 
   await uploadAppFileObject({
     key: filePath,
     body: file.data,
-    contentType: file.type,
+    contentType: mimeType,
   });
 
   const created = await createProjectFileRecord({
     refTable,
     refId,
     fileCategory,
-    fileName: file.filename ?? null,
+    fileName: sanitizeDisplayFileName(file.filename),
     fileUrl: toProjectStorageUrl(`${refTable}/${refId}/${uniqueName}`),
     fileSize: file.data.length,
-    mimeType: file.type ?? null,
+    mimeType,
     version: 1,
     uploadedBy: userId,
     isArchived: false,

@@ -139,3 +139,9 @@ Keluarga item yang disarankan:
 - `AUDIT#<yyyy-mm>` / `<timestamp>#<id>`
 
 Finalkan key yang tepat hanya setelah list page, filter, dan export report benar-benar sudah dipetakan.
+
+## Catatan keamanan
+
+- App client Cognito hanya mengizinkan `ADMIN_USER_PASSWORD_AUTH` (login lewat API). Flow `USER_PASSWORD_AUTH` dan SRP dimatikan agar rate limit dan pengecekan user aktif tidak bisa dilewati dengan memanggil Cognito langsung.
+- REST API mengompres respons di atas 1 KB (`minCompressionSize`), sehingga list dan export JSON lebih ringan diunduh.
+- Kedua perubahan berlaku setelah `npm run cdk:deploy:dev` / `cdk:deploy:prod`.

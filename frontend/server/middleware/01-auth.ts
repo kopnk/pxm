@@ -1,38 +1,34 @@
-import { defineEventHandler, createError } from "h3";
+import { defineEventHandler, createError, getQuery } from "h3";
 import { resolvePartnerPoPdfReference } from "~/server/utils/partnerPoPdfAccess";
 import { resolvePartnerPoPdfSecret } from "~/server/utils/partnerPoPdfSecret";
 import {
   isCognitoAuthEnabled,
   resolveAuthSession,
 } from "~/server/utils/cognitoAuth";
+import {
+  isPasswordChangeApiCall,
+  isPublicApiPath,
+  requestMethod,
+  resolveApiPath,
+} from "~/server/utils/apiPath";
+
+const queryValue = (value: unknown) =>
+  typeof value === "string" ? value : null;
 
 export default defineEventHandler(async (event) => {
-  const url = event.node.req.url || "";
+  const path = resolveApiPath(event);
+  if (!path || isPublicApiPath(path)) return;
 
-  if (!url.startsWith("/api/")) {
-    return;
-  }
-
-  if (url.startsWith("/api/auth/")) {
-    return;
-  }
-
-  const pathOnly = url.split("?")[0] ?? "";
-  if (pathOnly === "/api/health" || pathOnly === "/api/ready") {
-    return;
-  }
-
-  const queryString = url.includes("?") ? url.slice(url.indexOf("?") + 1) : "";
-  const pdfParams = new URLSearchParams(queryString);
-  if (pathOnly === "/api/reports/partner-po-pdf") {
+  if (path === "/api/reports/partner-po-pdf") {
+    const query = getQuery(event);
     const config = useRuntimeConfig(event);
     const secret = await resolvePartnerPoPdfSecret(config.partnerPoPdfSecret);
     const reference = resolvePartnerPoPdfReference(
       {
-        po: pdfParams.get("po"),
-        ref: pdfParams.get("ref"),
-        access: pdfParams.get("access"),
-        projectId: pdfParams.get("projectId"),
+        po: queryValue(query.po),
+        ref: queryValue(query.ref),
+        access: queryValue(query.access),
+        projectId: queryValue(query.projectId),
       },
       secret,
     );
@@ -59,12 +55,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: "Forbidden" });
   }
 
+  const mustChangePassword = Boolean(authSession.appUser.user.mustChangePassword);
+
+  // Users holding a temporary password may only finish the password change.
+  // The UI already redirects them; this keeps the API consistent with it.
+  if (mustChangePassword && !isPasswordChangeApiCall(path, requestMethod(event))) {
+    throw createError({ statusCode: 403, statusMessage: "Password change required" });
+  }
+
   event.context.user = {
     id: authSession.appUser.user.id,
     email: authSession.appUser.user.email,
     role: authSession.appUser.user.role ?? "staff",
     isActive: Boolean(authSession.appUser.user.isActive),
-    mustChangePassword: Boolean(authSession.appUser.user.mustChangePassword),
+    mustChangePassword,
   };
   event.context.session = authSession.state;
   event.context.permissions = authSession.appUser.permissions;

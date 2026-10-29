@@ -265,13 +265,7 @@ const {
                   :updated-at="item.updatedAt"
                 />
                 <div v-if="canDelete" class="mt-1">
-                  <span
-                    class="text-danger small fw-semibold"
-                    style="cursor: pointer"
-                    @click.stop="handleDelete(item.id, item.siteName)"
-                  >
-                    x
-                  </span>
+                  <AppRowDelete @delete="handleDelete(item.id, item.siteName)" />
                 </div>
               </td>
             </tr>

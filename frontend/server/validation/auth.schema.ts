@@ -47,19 +47,3 @@ export const loginSchema = z.object({
     )
     .max(100, "Password exceeds maximum length"),
 });
-
-/**
- * LOGOUT
- * ------------------------------------------------------------------
- * No request body is required.
- * Schema is defined for future extensibility.
- */
-export const logoutSchema = z.object({});
-
-/**
- * ME
- * ------------------------------------------------------------------
- * Session-based endpoint.
- * No request body validation is required.
- */
-export const meSchema = z.object({});

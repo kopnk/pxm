@@ -43,6 +43,40 @@ if (!authMiddleware.includes("signedPartnerPoPdfAccess")) {
   failures.push("Signed Partner PO PDF scoped auth context is missing");
 }
 
+const rlsMiddleware = readFileSync(resolve("server/middleware/02-rls-enforce.ts"), "utf8");
+if (!rlsMiddleware.includes("Fail closed")) {
+  failures.push("RLS middleware must reject API routes without an RLS rule");
+}
+
+if (!authMiddleware.includes("Password change required")) {
+  failures.push("API must block users with a pending forced password change");
+}
+
+for (const handler of ["server/api/project_files/index.post.ts", "server/api/profile/avatar.post.ts"]) {
+  if (!readFileSync(resolve(handler), "utf8").includes("assertUploadedFile(")) {
+    failures.push(`${handler} must validate uploads with assertUploadedFile`);
+  }
+}
+
+const removedFiles = [
+  "pages/about.vue",
+  "pages/auth/signup.vue",
+  "server/api/reports/partner-bast-groups.get.ts",
+  "server/api/project_files/[id].get.ts",
+  "server/api/project_files/[id].put.ts",
+  "components/Header.vue",
+  "components/Footer.vue",
+  "plugins/bootstrap.client.ts",
+  "types/bootstrap.d.ts",
+  "scripts/checks/verify-no-dayjs.mjs",
+];
+
+for (const legacy of removedFiles) {
+  if (existsSync(resolve(legacy))) {
+    failures.push(`Removed file must stay deleted: ${legacy}`);
+  }
+}
+
 if (failures.length > 0) {
   console.error(failures.join("\n"));
   process.exit(1);

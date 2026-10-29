@@ -20,10 +20,14 @@ export const externalFileUrlSchema = z
   .trim()
   .min(1)
   .max(2048)
-  .refine(
-    (value) => !/^(javascript|data|vbscript):/i.test(value),
-    "Invalid URL scheme",
-  )
+  .refine((value) => {
+    try {
+      const { protocol } = new URL(value);
+      return protocol === "https:" || protocol === "http:";
+    } catch {
+      return false;
+    }
+  }, "Document URL must start with http:// or https://")
   .refine(
     (value) => !value.toLowerCase().startsWith("s3://"),
     "Use Upload File for managed app storage",
@@ -39,7 +43,7 @@ export const externalFileUrlSchema = z
 export const uploadProjectFileSchema = z.object({
   refTable: projectFileRefTableSchema,
   refId: z.string().uuid(),
-  fileCategory: z.string().min(1),
+  fileCategory: z.string().trim().min(1).max(100),
   externalUrl: externalFileUrlSchema.optional(),
   fileName: z.string().trim().min(1).max(255).optional(),
 });
@@ -47,7 +51,7 @@ export const uploadProjectFileSchema = z.object({
 export const createProjectFileSchema = z.object({
   refTable: projectFileRefTableSchema,
   refId: z.string().uuid(),
-  fileCategory: z.string().min(1),
+  fileCategory: z.string().trim().min(1).max(100),
   fileName: z.string().trim().min(1).max(255).optional(),
   fileUrl: externalFileUrlSchema,
   fileSize: z.number().optional(),
@@ -56,13 +60,12 @@ export const createProjectFileSchema = z.object({
   isArchived: z.boolean().optional(),
 });
 
-export const updateProjectFileSchema = createProjectFileSchema.partial();
 
 export const listProjectFilesSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(DEFAULT_PAGE_LIMIT),
   search: z.string().optional(),
-  refTable: projectFileRefTableSchema.optional(),
+  refTable: projectFileRefTableSchema,
   refId: z.string().uuid().optional(),
   fileCategory: z.string().optional(),
 });

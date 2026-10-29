@@ -125,15 +125,7 @@ const {
                     :created-at="c.createdAt"
                     :updated-at="c.updatedAt"
                   />
-                  <span
-                    v-if="canDelete"
-                    class="text-danger fw-semibold"
-                    style="cursor: pointer"
-                    @click.stop="openDeleteModal(c.id)"
-                  >
-                    <span v-if="deletingId === c.id">...</span>
-                    <span v-else>x</span>
-                  </span>
+                  <AppRowDelete v-if="canDelete" :busy="deletingId === c.id" @delete="openDeleteModal(c.id)" />
                 </td>
               </tr>
 
